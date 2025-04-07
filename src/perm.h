@@ -48,7 +48,7 @@ class Permutation {
         return perm_vec.size();
     }
 
-    [[nodiscard]] int operator[](int idx) {
+    [[nodiscard]] size_t operator[](size_t idx) {
         return perm_vec[idx];
     }
 
