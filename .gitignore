@@ -15,3 +15,5 @@ CTestTestfile.cmake
 _deps
 CMakeUserPresets.json
 src/main.dSYM
+emp-tool
+emp-tool/** 

@@ -1,4 +1,7 @@
 #pragma once
+
+#include <NTL/ZZ_p.h>
+
 #include <cstdint>
 
 enum Party {
@@ -8,5 +11,7 @@ enum Party {
 };
 
 constexpr Party Dealer = P2;
+constexpr uint64_t FIELDSIZE = 4;  // bytes
+using Field = NTL::ZZ_p;
 
 typedef uint32_t Row;
