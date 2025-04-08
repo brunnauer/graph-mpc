@@ -5,6 +5,6 @@
 #include "random_generators.h"
 
 int main(int argc, char **argv) {
-    int i = 1;
+    int i = 2;
     return 0;
 }
