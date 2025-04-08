@@ -47,8 +47,21 @@ jobs:
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
+    - name: Restore Dependencies 
+      id: cache-dependencies-restore
+      uses: actions/cache@v4
+      with:
+        path: |
+          /usr/local/include
+          /usr/lib/x86_64-linux-gnu/cmake/Boost-1.83.0/BoostConfig.cmake
+          /usr/lib/x86_64-linux-gnu/libcrypto.so 
+          /usr/local/include
+          /usr/local/lib/libntl.a
+        key: ${{ runner.os }}-dependencies
+
     - name: Install Dependencies
       # Install all dependencies needed to build this application.
+      if: steps.cache-dependencies-restore.outputs.cache-hit != 'true'
       run: |
         sudo apt-get update
         sudo apt-get install libboost-all-dev
@@ -68,6 +81,18 @@ jobs:
         ./configure 
         make
         sudo make install
+    
+    - name: Save Primes
+      id: cache-dependencies-save
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          /usr/local/include
+          /usr/lib/x86_64-linux-gnu/cmake/Boost-1.83.0/BoostConfig.cmake
+          /usr/lib/x86_64-linux-gnu/libcrypto.so 
+          /usr/local/include
+          /usr/local/lib/libntl.a
+        key: ${{ steps.cache-dependencies-restore.outputs.cache-primary-key }}
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
