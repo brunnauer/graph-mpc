@@ -4,9 +4,9 @@ name: CMake on multiple platforms
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "add-networking" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "add-networking" ]
 
 jobs:
   build:
