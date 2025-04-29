@@ -23,12 +23,14 @@ struct ShufflePreprocessing {
 
 class Shuffle {
    public:
-    Shuffle(Party _pid, size_t _n_rows, size_t _n_rounds, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network);
-    void evaluate();
-    void evaluate_send(std::vector<Row> &vals);
-    void evaluate_recv(std::vector<Row> &vals);
+    Shuffle(Party pid, size_t n_rows, size_t n_rounds, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network);
+    void run();
+    void evaluate(size_t shuffle_idx);
+    void evaluate_send(size_t shuffle_idx, std::vector<Row> &vals);
+    void evaluate_recv(size_t shuffle_idx, std::vector<Row> &vals);
     void preprocess();
     void preprocess_compute(std::vector<Row> &shared_secret_D0, std::vector<Row> &shared_secret_D1);
+    void set_input(std::vector<Row> &input);
 
    private:
     Party pid;

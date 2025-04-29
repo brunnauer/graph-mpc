@@ -5,15 +5,26 @@ Shuffle::Shuffle(Party pid, size_t n_rows, size_t n_rounds, RandomGenerators &rn
     pis_1 = std::vector<std::shared_ptr<Permutation>>(n_rounds);
     pis_0_p = std::vector<std::shared_ptr<Permutation>>(n_rounds);
     pis_1_p = std::vector<std::shared_ptr<Permutation>>(n_rounds);
+    preproc = std::vector<std::shared_ptr<ShufflePreprocessing<Row>>>(n_rounds);
     wire = std::vector<Row>(n_rows);
 }
 
-void Shuffle::evaluate() {
+void Shuffle::run() {
+    if (wire.empty()) {
+        throw std::invalid_argument("Input needs to be specified.");
+    }
+
+    for (size_t i = 0; i < n_rounds; ++i) {
+        evaluate(i);
+    }
+}
+
+void Shuffle::evaluate(size_t shuffle_idx) {
     size_t comm = n_rows * n_rounds;
     std::vector<Row> vals;
 
     if (pid != D) {
-        evaluate_send(vals);
+        evaluate_send(shuffle_idx, vals);
 
         int seg_factor = 100000;  // 100000000; // Was 100000 during LAN benchmarks as per Graphiti, optimized to less rounds for WAN here!
         int num_comm = comm / seg_factor;
@@ -77,7 +88,7 @@ void Shuffle::evaluate() {
                 data_recv[num_comm * seg_factor + j] = data_recv_last[j];
             }
         }
-        evaluate_recv(vals);
+        evaluate_recv(shuffle_idx, vals);
     }
 }
 
@@ -85,21 +96,19 @@ void Shuffle::evaluate() {
  * P0 computes: A_1 = pi_0_p(share + R_0)
  * P1 computes: A_0 = pi_1(share + R_1)
  */
-void Shuffle::evaluate_send(std::vector<Row> &vals) {
-    for (size_t i = 0; i < n_rounds; ++i) {
-        ShufflePreprocessing<Row> pp = *preproc[i];
-        std::vector<Row> *mask = (pid == P0) ? &pp.R_0 : &pp.R_1;
-        std::vector<Row> to_send(n_rows);
+void Shuffle::evaluate_send(size_t shuffle_idx, std::vector<Row> &vals) {
+    ShufflePreprocessing<Row> pp = *preproc[shuffle_idx];
+    std::vector<Row> *mask = (pid == P0) ? &pp.R_0 : &pp.R_1;
+    std::vector<Row> to_send(n_rows);
 
-        for (size_t j = 0; j < n_rows; ++j) {
-            to_send[j] = wire[j] + (*mask)[j];
-        }
-        Permutation perm = (pid == P0) ? pp.pi_0_p : pp.pi_1;
-        perm(to_send);
+    for (size_t j = 0; j < n_rows; ++j) {
+        to_send[j] = wire[j] + (*mask)[j];
+    }
+    Permutation perm = (pid == P0) ? pp.pi_0_p : pp.pi_1;
+    perm(to_send);
 
-        for (size_t i = 0; i < n_rows; ++i) {
-            vals.push_back(to_send[i]);
-        }
+    for (size_t i = 0; i < n_rows; ++i) {
+        vals.push_back(to_send[i]);
     }
 }
 
@@ -108,18 +117,16 @@ void Shuffle::evaluate_send(std::vector<Row> &vals) {
  * P0 computes: pi_0(A_0) - B_0
  * P1 computes: pi_1_p(A_1) - B_1
  */
-void Shuffle::evaluate_recv(std::vector<Row> &vals) {
-    for (size_t i = 0; i < n_rounds; ++i) {
-        ShufflePreprocessing<Row> pp = *preproc[i];
-        std::vector<Row> *B = (pid == P0) ? &pp.B_0 : &pp.B_1;
-        Permutation *perm = (pid == P0) ? &pp.pi_0 : &pp.pi_1_p;
+void Shuffle::evaluate_recv(size_t shuffle_idx, std::vector<Row> &vals) {
+    ShufflePreprocessing<Row> pp = *preproc[shuffle_idx];
+    std::vector<Row> *B = (pid == P0) ? &pp.B_0 : &pp.B_1;
+    Permutation *perm = (pid == P0) ? &pp.pi_0 : &pp.pi_1_p;
 
-        for (size_t j = 0; j < n_rows; ++j) {
-            wire[j] = vals[i * n_rows + j] - (*B)[j];
-        }
-
-        (*perm)(wire);
+    for (size_t i = 0; i < n_rows; ++i) {
+        wire[i] = vals[shuffle_idx * n_rows + i] - (*B)[i];
     }
+
+    (*perm)(wire);
 }
 
 void Shuffle::preprocess() {
