@@ -76,6 +76,10 @@ jobs:
         ./configure 
         make
         sudo make install
+
+    - name: Install nlohmann-json
+      run: |
+        sudo apt-get install nlohmann-json-dev
     
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
