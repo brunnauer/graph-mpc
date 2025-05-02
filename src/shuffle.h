@@ -17,20 +17,26 @@ struct ShufflePreprocessing {
     Permutation pi_0, pi_1, pi_0_p, pi_1_p;
     std::vector<R> R_0, R_1, B_0, B_1;
     ShufflePreprocessing() = default;
-    ShufflePreprocessing(Permutation &pi_0, Permutation &pi_1, Permutation &pi_0_p, Permutation &pi_1_p, std::vector<R> R_0, std::vector<R> R_1, std::vector<R> B_0, std::vector<R> B_1)
+    ShufflePreprocessing(Permutation &pi_0, Permutation &pi_1, Permutation &pi_0_p, Permutation &pi_1_p, std::vector<R> R_0, std::vector<R> R_1,
+                         std::vector<R> B_0, std::vector<R> B_1)
         : pi_0(pi_0), pi_1(pi_1), pi_0_p(pi_0_p), pi_1_p(pi_1_p), R_0(R_0), R_1(R_1), B_0(B_0), B_1(B_1) {}
+    ~ShufflePreprocessing() = default;
 };
 
 class Shuffle {
    public:
     Shuffle(Party pid, size_t n_rows, size_t n_rounds, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network);
+    ~Shuffle();
+    void set_input(std::vector<Row> &input);
     void run();
+    void run_offline();
+    void run_online();
     void evaluate(size_t shuffle_idx);
     void evaluate_send(size_t shuffle_idx, std::vector<Row> &vals);
     void evaluate_recv(size_t shuffle_idx, std::vector<Row> &vals);
     void preprocess();
     void preprocess_compute(std::vector<Row> &shared_secret_D0, std::vector<Row> &shared_secret_D1);
-    void set_input(std::vector<Row> &input);
+    std::vector<Row> result();
 
    private:
     Party pid;

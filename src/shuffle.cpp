@@ -1,19 +1,76 @@
 #include "shuffle.h"
 
-Shuffle::Shuffle(Party pid, size_t n_rows, size_t n_rounds, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network) : rngs(rngs), pid(pid), n_rows(n_rows), n_rounds(n_rounds), network(network) {
+Shuffle::Shuffle(Party pid, size_t n_rows, size_t n_rounds, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network)
+    : rngs(rngs), pid(pid), n_rows(n_rows), n_rounds(n_rounds), network(network) {
     pis_0 = std::vector<std::shared_ptr<Permutation>>(n_rounds);
     pis_1 = std::vector<std::shared_ptr<Permutation>>(n_rounds);
     pis_0_p = std::vector<std::shared_ptr<Permutation>>(n_rounds);
     pis_1_p = std::vector<std::shared_ptr<Permutation>>(n_rounds);
-    preproc = std::vector<std::shared_ptr<ShufflePreprocessing<Row>>>(n_rounds);
     wire = std::vector<Row>(n_rows);
 }
 
-void Shuffle::run() {
+Shuffle::~Shuffle() = default;
+
+std::vector<Row> Shuffle::result() {
+    std::vector<Row> outvals(n_rows);
     if (wire.empty()) {
-        throw std::invalid_argument("Input needs to be specified.");
+        return outvals;
     }
 
+    if (pid != D) {
+        std::vector<Row> output_share_self(wire.size());
+        std::vector<Row> output_share_other(wire.size());
+
+        std::copy(wire.begin(), wire.end(), output_share_self.begin());
+
+        if (pid == P0) {
+            network->send(1, output_share_self.data(), output_share_self.size() * sizeof(Row));
+            network->recv(1, output_share_other.data(), output_share_other.size() * sizeof(Row));
+        }
+        if (pid == P1) {
+            network->send(0, output_share_self.data(), output_share_self.size() * sizeof(Row));
+            network->recv(0, output_share_other.data(), output_share_other.size() * sizeof(Row));
+        }
+
+        for (size_t i = 0; i < wire.size(); ++i) {
+            Row outmask = output_share_other[i];
+            outvals[i] = output_share_self[i] + outmask;
+        }
+        return outvals;
+    } else {
+        return outvals;
+    }
+}
+
+void Shuffle::set_input(std::vector<Row> &input) {
+    if (input.size() != n_rows) {
+        throw std::invalid_argument("Input vector needs to be of size " + n_rows);
+    }
+}
+
+void Shuffle::run() {
+    for (size_t i = 0; i < n_rounds; ++i) {
+        preprocess();
+    }
+
+    for (size_t i = 0; i < n_rounds; ++i) {
+        evaluate(i);
+    }
+}
+
+void Shuffle::run_offline() {
+    for (size_t i = 0; i < n_rounds; ++i) {
+        preprocess();
+    }
+}
+
+void Shuffle::run_online() {
+    /*
+    if (preproc.size() != n_rounds) {
+        throw std::length_error("Preprocessing has to be completed first.");
+        return;
+    }
+    */
     for (size_t i = 0; i < n_rounds; ++i) {
         evaluate(i);
     }
@@ -36,7 +93,7 @@ void Shuffle::evaluate(size_t shuffle_idx) {
 
     for (int i = 0; i < num_comm; ++i) {
         std::vector<Row> data_send_i;
-        data_send_i.reserve(seg_factor);
+        data_send_i.resize(seg_factor);
         for (int j = 0; j < seg_factor; ++j) {
             data_send_i[j] = vals[i * seg_factor + j];
         }
@@ -50,7 +107,7 @@ void Shuffle::evaluate(size_t shuffle_idx) {
     }
 
     std::vector<Row> data_send_last;
-    data_send_last.reserve(last_comm);
+    data_send_last.resize(last_comm);
     for (int j = 0; j < last_comm; j++) {
         data_send_last[j] = vals[num_comm * seg_factor + j];
     }
@@ -77,7 +134,7 @@ void Shuffle::evaluate_send(size_t shuffle_idx, std::vector<Row> &vec_A) {
         to_send[j] = wire[j] + (*mask)[j];
     }
     Permutation *perm = (pid == P0) ? &pp.pi_0_p : &pp.pi_1;
-    (*perm)(to_send);
+    to_send = (*perm)(to_send);
 
     for (size_t i = 0; i < n_rows; ++i) {
         vec_A.push_back(to_send[i]);
@@ -98,7 +155,7 @@ void Shuffle::evaluate_recv(size_t shuffle_idx, std::vector<Row> &vec_A) {
         wire[i] = vec_A[shuffle_idx * n_rows + i] - (*B)[i];
     }
 
-    (*perm)(wire);
+    wire = (*perm)(wire);
 }
 
 /**
@@ -116,8 +173,10 @@ void Shuffle::preprocess() {
         size_t arithmetic_comm_1 = shared_secret_D1.size();
 
         /* Send how many bytes of data should be received */
-        network->send(0, &shared_secret_D0, shared_secret_D0.size());
-        network->send(1, &shared_secret_D1, shared_secret_D1.size());
+        network->send(0, &arithmetic_comm_0, sizeof(size_t));
+        network->send(1, &arithmetic_comm_1, sizeof(size_t));
+        std::cout << "Sent the amount of data to receive to P0: " << arithmetic_comm_0 << " Bytes" << std::endl;
+        std::cout << "Sent the amount of data to receive to P1: " << arithmetic_comm_1 << " Bytes" << std::endl;
 
         /* Send the actual data */
         std::vector<Row> arithmetic_comm_0_offline(arithmetic_comm_0);
@@ -131,7 +190,7 @@ void Shuffle::preprocess() {
         int last_comm = arithmetic_comm_0 % BLOCK_SIZE;
         for (int i = 0; i < n_comm; i++) {
             std::vector<Row> data_send_i;
-            data_send_i.reserve(BLOCK_SIZE);
+            data_send_i.resize(BLOCK_SIZE);
             for (int j = 0; j < BLOCK_SIZE; j++) {
                 data_send_i[j] = arithmetic_comm_0_offline[i * BLOCK_SIZE + j];
             }
@@ -139,7 +198,7 @@ void Shuffle::preprocess() {
         }
 
         std::vector<Row> data_send_last;
-        data_send_last.reserve(last_comm);
+        data_send_last.resize(last_comm);
         for (int j = 0; j < last_comm; j++) {
             data_send_last[j] = arithmetic_comm_0_offline[n_comm * BLOCK_SIZE + j];
         }
@@ -150,7 +209,7 @@ void Shuffle::preprocess() {
         last_comm = arithmetic_comm_1 % BLOCK_SIZE;
         for (int i = 0; i < n_comm; i++) {
             std::vector<Row> data_send_i;
-            data_send_i.reserve(BLOCK_SIZE);
+            data_send_i.resize(BLOCK_SIZE);
             for (int j = 0; j < BLOCK_SIZE; j++) {
                 data_send_i[j] = arithmetic_comm_1_offline[i * BLOCK_SIZE + j];
             }
@@ -158,7 +217,7 @@ void Shuffle::preprocess() {
         }
 
         std::vector<Row> data_send_last_to_1;
-        data_send_last_to_1.reserve(last_comm);
+        data_send_last_to_1.resize(last_comm);
         for (int j = 0; j < last_comm; j++) {
             data_send_last_to_1[j] = arithmetic_comm_1_offline[n_comm * BLOCK_SIZE + j];
         }
@@ -168,6 +227,7 @@ void Shuffle::preprocess() {
         /* Receive length of data to receive */
         size_t arithmetic_comm;
         network->recv(2, &arithmetic_comm, sizeof(size_t));
+        std::cout << "Received size of data to receive: " << arithmetic_comm << " Bytes" << std::endl;
 
         /* Receive actual data */
         int n_comm = arithmetic_comm / BLOCK_SIZE;
@@ -255,8 +315,7 @@ void Shuffle::preprocess_compute(std::vector<Row> &shared_secret_D0, std::vector
         pis_1_p.push_back(std::shared_ptr<Permutation>(&pi_1_p));
 
         for (int i = 0; i < n_rows; ++i) {  // Send pi_1_p to P1's shared_secret_buffer
-            shared_secret_D1[shared_secret_D1_idx] = pi_1_p[i];
-            shared_secret_D1_idx++;
+            shared_secret_D1.push_back((Row)pi_1_p[i]);
         }
     } else if (pid == P1) {  // Receive pi_1_p from P1's shared_secret_buffer
         std::vector<size_t> pi_1_p_vec(n_rows);
@@ -286,10 +345,8 @@ void Shuffle::preprocess_compute(std::vector<Row> &shared_secret_D0, std::vector
         }
 
         for (int i = 0; i < n_rows; ++i) {  // Send B_0 and B_1 to the corresponding buffers
-            shared_secret_D0[shared_secret_D0_idx] = B_0[i];
-            shared_secret_D1[shared_secret_D1_idx] = B_1[i];
-            shared_secret_D0_idx++;
-            shared_secret_D1_idx++;
+            shared_secret_D0.push_back(B_0[i]);
+            shared_secret_D1.push_back(B_1[i]);
         }
     } else if (pid == P0) {  // Receive B_0 from shared_secret_D0
         for (int i = 0; i < n_rows; ++i) {
