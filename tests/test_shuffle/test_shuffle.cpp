@@ -1,3 +1,5 @@
+#include <cassert>
+
 #include "../../setup/setup.h"
 #include "../../src/shuffle.h"
 
@@ -23,24 +25,14 @@ void test_shuffle(const bpo::variables_map &opts) {
     }
     std::cout << std::endl;
 
-    std::vector<std::vector<Row>> input_vectors(3);
-    input_vectors[0].resize(vec_size);
-    input_vectors[1].resize(vec_size);
-    input_vectors[2].resize(vec_size);
-
-    assert(input_vectors.size() == 3);
-    for (size_t i = 0; i < 3; i++) assert(input_vectors[i].size() == vec_size);
-    // Set first vector to 0,1,...
-    for (size_t i = 0; i < vec_size; i++) input_vectors[0][i] = i;
-    // Set second vector to 0,1,...
-    for (size_t i = 0; i < vec_size; i++) input_vectors[1][i] = i;
-    // Set third vector to 0,2,4,6,...
-    for (size_t i = 0; i < vec_size; i++) input_vectors[2][i] = i << 1;
+    /* Setting up the input vector */
+    std::vector<Row> input_vector(vec_size);
+    for (size_t i = 0; i < vec_size; i++) input_vector[i] = i << 1;
 
     Party party = (pid == 0) ? P0 : ((pid == 1) ? P1 : D);
     RandomGenerators rngs(seeds_h, seeds_l);
     Shuffle shuffle(party, vec_size, 1, rngs, network);
-    shuffle.set_input(input_vectors[0]);
+    shuffle.set_input(input_vector);
 
     for (size_t r = 0; r < repeat; ++r) {
         std::cout << "--- Repetition " << r + 1 << " ---" << std::endl;
@@ -49,53 +41,72 @@ void test_shuffle(const bpo::variables_map &opts) {
         shuffle.run_offline();
         StatsPoint end_pre(*network);
         network->sync();
-
-        auto rbench_pre = end_pre - start_pre;
-        output_data["benchmarks_pre"].push_back(rbench_pre);
-        size_t bytes_sent_pre = 0;
-        for (const auto &val : rbench_pre["communication"]) {
-            bytes_sent_pre += val.get<int64_t>();
-        }
-        std::cout << "setup time: " << rbench_pre["time"] << " ms" << std::endl;
-        std::cout << "setup sent: " << bytes_sent_pre << " bytes" << std::endl;
-
+        /*
+                auto rbench_pre = end_pre - start_pre;
+                output_data["benchmarks_pre"].push_back(rbench_pre);
+                size_t bytes_sent_pre = 0;
+                for (const auto &val : rbench_pre["communication"]) {
+                    bytes_sent_pre += val.get<int64_t>();
+                }
+                std::cout << "setup time: " << rbench_pre["time"] << " ms" << std::endl;
+                std::cout << "setup sent: " << bytes_sent_pre << " bytes" << std::endl;
+        */
         StatsPoint start(*network);
         shuffle.run_online();
-        /* Run online */
         StatsPoint end(*network);
         std::vector<Row> res = shuffle.result();
 
-        std::cout << "Result of shuffle: ";
-        for (int i = 0; i < res.size() - 1; ++i) {
-            std::cout << res[i] << ", ";
+        /* Assertions */
+        if (pid != D) {
+            bool shuffled = false;
+            for (int i = 0; i < res.size(); ++i) {
+                Row elem = i << 2;
+                /* Check if vector contains all elements 0, 4, 8, 12, ... */
+                assert(std::find(res.begin(), res.end(), elem) != res.end());
+
+                /* Check if vector is shuffled */
+                shuffled = shuffled || (res[i] != elem);
+            }
+            assert(shuffled);
         }
-        std::cout << res[res.size() - 1] << std::endl;
 
-        auto rbench = end - start;
-        output_data["benchmarks"].push_back(rbench);
-
-        size_t bytes_sent = 0;
-        for (const auto &val : rbench["communication"]) {
-            bytes_sent += val.get<int64_t>();
+        /* Printing result */
+        if (pid != D) {
+            std::cout << std::endl << "Result of shuffle: ";
+            for (int i = 0; i < res.size() - 1; ++i) {
+                std::cout << res[i] << ", ";
+            }
+            std::cout << res[res.size() - 1] << std::endl;
+            std::cout << std::endl << std::endl;
         }
+        /*
+                auto rbench = end - start;
+                output_data["benchmarks"].push_back(rbench);
 
-        std::cout << "time: " << rbench["time"] << " ms" << std::endl;
-        std::cout << "sent: " << bytes_sent << " bytes" << std::endl;
+                size_t bytes_sent = 0;
+                for (const auto &val : rbench["communication"]) {
+                    bytes_sent += val.get<int64_t>();
+                }
 
+                std::cout << "online time: " << rbench["time"] << " ms" << std::endl;
+                std::cout << "online sent: " << bytes_sent << " bytes" << std::endl;
+
+                std::cout << std::endl;
+        */
+    }
+    /*
+        output_data["stats"] = {{"peak_virtual_memory", peakVirtualMemory()}, {"peak_resident_set_size", peakResidentSetSize()}};
+
+        std::cout << "--- Overall Statistics ---\n";
+        for (const auto &[key, value] : output_data["stats"].items()) {
+            std::cout << key << ": " << value << "\n";
+        }
         std::cout << std::endl;
-    }
 
-    output_data["stats"] = {{"peak_virtual_memory", peakVirtualMemory()}, {"peak_resident_set_size", peakResidentSetSize()}};
-
-    std::cout << "--- Overall Statistics ---\n";
-    for (const auto &[key, value] : output_data["stats"].items()) {
-        std::cout << key << ": " << value << "\n";
-    }
-    std::cout << std::endl;
-
-    if (save_output) {
-        saveJson(output_data, save_file);
-    }
+        if (save_output) {
+            saveJson(output_data, save_file);
+        }
+    */
     exit(0);
 }
 
