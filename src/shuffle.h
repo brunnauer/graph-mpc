@@ -16,6 +16,56 @@ template <class R>
 struct ShufflePreprocessing {
     Permutation pi_0, pi_1, pi_0_p, pi_1_p;
     std::vector<R> R_0, R_1, B_0, B_1;
+    void print() {
+        std::cout << "pi_0: ";
+        pi_0.print();
+        std::cout << std::endl;
+
+        std::cout << "pi_1: ";
+        pi_1.print();
+        std::cout << std::endl;
+
+        std::cout << "pi_0_p: ";
+        pi_0_p.print();
+        std::cout << std::endl;
+
+        std::cout << "pi_1_p: ";
+        pi_1_p.print();
+        std::cout << std::endl;
+
+        if (!R_0.empty()) {
+            std::cout << "R_0: ";
+            for (int i = 0; i < R_0.size(); ++i) {
+                std::cout << R_0[i];
+                if (i != R_0.size() - 1) std::cout << ", ";
+            }
+            std::cout << std::endl;
+        }
+        if (!R_1.empty()) {
+            std::cout << "R_1: ";
+            for (int i = 0; i < R_1.size(); ++i) {
+                std::cout << R_1[i];
+                if (i != R_1.size() - 1) std::cout << ", ";
+            }
+            std::cout << std::endl;
+        }
+        if (!B_0.empty()) {
+            std::cout << "B_0: ";
+            for (int i = 0; i < B_0.size(); ++i) {
+                std::cout << B_0[i];
+                if (i != B_0.size() - 1) std::cout << ", ";
+            }
+            std::cout << std::endl;
+        }
+        if (!B_1.empty()) {
+            std::cout << "B_1: ";
+            for (int i = 0; i < B_1.size(); ++i) {
+                std::cout << B_1[i];
+                if (i != B_1.size() - 1) std::cout << ", ";
+            }
+            std::cout << std::endl;
+        }
+    }
     ShufflePreprocessing() = default;
     ShufflePreprocessing(Permutation &pi_0, Permutation &pi_1, Permutation &pi_0_p, Permutation &pi_1_p, std::vector<R> R_0, std::vector<R> R_1,
                          std::vector<R> B_0, std::vector<R> B_1)

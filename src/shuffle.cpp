@@ -23,14 +23,9 @@ std::vector<Row> Shuffle::result() {
 
         std::copy(wire.begin(), wire.end(), output_share_self.begin());
 
-        if (pid == P0) {
-            network->send(1, output_share_self.data(), output_share_self.size() * sizeof(Row));
-            network->recv(1, output_share_other.data(), output_share_other.size() * sizeof(Row));
-        }
-        if (pid == P1) {
-            network->send(0, output_share_self.data(), output_share_self.size() * sizeof(Row));
-            network->recv(0, output_share_other.data(), output_share_other.size() * sizeof(Row));
-        }
+        size_t partner = (pid == P0) ? 1 : 0;
+        network->send(partner, output_share_self.data(), output_share_self.size() * sizeof(Row));
+        network->recv(partner, output_share_other.data(), output_share_other.size() * sizeof(Row));
 
         for (size_t i = 0; i < wire.size(); ++i) {
             Row outmask = output_share_other[i];
@@ -46,6 +41,7 @@ void Shuffle::set_input(std::vector<Row> &input) {
     if (input.size() != n_rows) {
         throw std::invalid_argument("Input vector has wrong size.");
     }
+    wire = input;
 }
 
 void Shuffle::run() {
@@ -118,6 +114,8 @@ void Shuffle::evaluate(size_t shuffle_idx) {
         data_recv[num_comm * seg_factor + j] = data_recv_last[j];
     }
 
+    std::copy(data_recv.begin(), data_recv.end(), vals.begin());
+
     evaluate_recv(shuffle_idx, vals);
 }
 
@@ -152,10 +150,14 @@ void Shuffle::evaluate_recv(size_t shuffle_idx, std::vector<Row> &vec_A) {
     Permutation *perm = (pid == P0) ? &pp.pi_0 : &pp.pi_1_p;
 
     for (size_t i = 0; i < n_rows; ++i) {
-        wire[i] = vec_A[shuffle_idx * n_rows + i] - (*B)[i];
+        wire[i] = vec_A[shuffle_idx * n_rows + i];
     }
 
     wire = (*perm)(wire);
+
+    for (size_t i = 0; i < n_rows; ++i) {
+        wire[i] -= (*B)[i];
+    }
 }
 
 /**
@@ -175,8 +177,6 @@ void Shuffle::preprocess() {
         /* Send how many bytes of data should be received */
         network->send(0, &arithmetic_comm_0, sizeof(size_t));
         network->send(1, &arithmetic_comm_1, sizeof(size_t));
-        std::cout << "Sent the amount of data to receive to P0: " << arithmetic_comm_0 << " Bytes" << std::endl;
-        std::cout << "Sent the amount of data to receive to P1: " << arithmetic_comm_1 << " Bytes" << std::endl;
 
         /* Send the actual data */
         std::vector<Row> arithmetic_comm_0_offline(arithmetic_comm_0);
@@ -227,7 +227,6 @@ void Shuffle::preprocess() {
         /* Receive length of data to receive */
         size_t arithmetic_comm;
         network->recv(2, &arithmetic_comm, sizeof(size_t));
-        std::cout << "Received size of data to receive: " << arithmetic_comm << " Bytes" << std::endl;
 
         /* Receive actual data */
         int n_comm = arithmetic_comm / BLOCK_SIZE;
@@ -289,6 +288,7 @@ void Shuffle::preprocess_compute(std::vector<Row> &shared_secret_D0, std::vector
         for (int i = 0; i < n_rows; ++i) {
             rngs.rng_D0().random_data(&rand, sizeof(Row));
             R_0.push_back(rand);
+            // R_0.push_back(i + 1);
         }
     }
 
@@ -296,14 +296,23 @@ void Shuffle::preprocess_compute(std::vector<Row> &shared_secret_D0, std::vector
         for (int i = 0; i < n_rows; ++i) {
             rngs.rng_D1().random_data(&rand, sizeof(Row));
             R_1.push_back(rand);
+            // R_1.push_back((i + 1) * 2);
         }
     }
 
     /* Sample pi_0, pi_1 and pi_0_p */
-    Permutation pi_0 = Permutation::random(n_rows, rngs.rng_D0());
-    Permutation pi_1 = Permutation::random(n_rows, rngs.rng_D1());
-    Permutation pi_0_p = Permutation::random(n_rows, rngs.rng_D0());
+    Permutation pi_0(n_rows);
+    Permutation pi_1(n_rows);
+    Permutation pi_0_p(n_rows);
     Permutation pi_1_p(n_rows);
+
+    if (pid != P1) {
+        pi_0 = Permutation::random(n_rows, rngs.rng_D0());
+        pi_0_p = Permutation::random(n_rows, rngs.rng_D0());
+    }
+    if (pid != P0) {
+        pi_1 = Permutation::random(n_rows, rngs.rng_D1());
+    }
 
     pis_0.push_back(std::shared_ptr<Permutation>(&pi_0));
     pis_1.push_back(std::shared_ptr<Permutation>(&pi_1));
@@ -333,15 +342,15 @@ void Shuffle::preprocess_compute(std::vector<Row> &shared_secret_D0, std::vector
         Row R;
         rngs.rng_D().random_data(&R, sizeof(Row));
 
-        B_0 = (pi_0 * pi_1)(R_1);
-        B_1 = pi_0_p(R_0);
+        B_0 = (pi_0 * pi_1)(R_0);
+        B_1 = (pi_0 * pi_1)(R_1);
 
-        for (auto &element : B_0) {
-            element -= R;
+        for (size_t i = 0; i < B_0.size(); ++i) {
+            B_0[i] -= R;
         }
 
-        for (auto &element : B_1) {
-            element += R;
+        for (size_t i = 0; i < B_1.size(); ++i) {
+            B_1[i] += R;
         }
 
         for (int i = 0; i < n_rows; ++i) {  // Send B_0 and B_1 to the corresponding buffers
@@ -362,4 +371,12 @@ void Shuffle::preprocess_compute(std::vector<Row> &shared_secret_D0, std::vector
 
     /* Save preprocessing results to global array */
     preproc.push_back(std::shared_ptr<ShufflePreprocessing<Row>>(new ShufflePreprocessing<Row>(pi_0, pi_1, pi_0_p, pi_1_p, R_0, R_1, B_0, B_1)));
+
+    if (pid == D) {
+        std::cout << "pi: ";
+        (pi_0 * pi_1).print();
+        std::cout << std::endl;
+        (*preproc[0]).print();
+        std::cout << std::endl;
+    }
 }
