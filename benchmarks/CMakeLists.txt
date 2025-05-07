@@ -13,10 +13,12 @@ macro(add_benchmark source_name)
     list(APPEND benchbin ${source_name})
 endmacro()
 
-add_benchmark(shuffle)
+add_benchmark(benchmark_shuffle)
+add_benchmark(benchmark_double_shuffle)
 
 add_custom_target(benchmarks)
 add_dependencies(benchmarks ${benchbin})
+
 
 file(COPY ../certs DESTINATION ${PROJECT_BINARY_DIR}/benchmarks)
 #file(COPY ../run_test.sh DESTINATION ${PROJECT_BINARY_DIR}/benchmarks)

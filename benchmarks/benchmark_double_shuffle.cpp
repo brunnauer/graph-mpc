@@ -1,4 +1,5 @@
 #include "../setup/setup.h"
+#include "../src/shuffle.h"
 
 void benchmark(const bpo::variables_map &opts) {
     auto vec_size = opts["vec-size"].as<size_t>();
@@ -22,25 +23,19 @@ void benchmark(const bpo::variables_map &opts) {
     }
     std::cout << std::endl;
 
-    std::vector<std::vector<Row>> input_vectors(3);
-    input_vectors[0].resize(vec_size);
-    input_vectors[1].resize(vec_size);
-    input_vectors[2].resize(vec_size);
+    std::vector<Row> input_vector(vec_size);
+    for (size_t i = 0; i < vec_size; i++) input_vector[i] = i;
 
-    assert(input_vectors.size() == 3);
-    for (size_t i = 0; i < 3; i++) assert(input_vectors[i].size() == vec_size);
-    // Set first vector to 0,1,...
-    for (size_t i = 0; i < vec_size; i++) input_vectors[0][i] = i;
-    // Set second vector to 0,1,...
-    for (size_t i = 0; i < vec_size; i++) input_vectors[1][i] = i;
-    // Set third vector to 0,2,4,6,...
-    for (size_t i = 0; i < vec_size; i++) input_vectors[2][i] = i << 1;
+    Party party = (pid == 0) ? P0 : ((pid == 1) ? P1 : D);
+    RandomGenerators rngs(seeds_h, seeds_l);
+    Shuffle shuffle(party, vec_size, 2, rngs, network);
+    shuffle.set_input(input_vector);
 
     for (size_t r = 0; r < repeat; ++r) {
         std::cout << "--- Repetition " << r + 1 << " ---" << std::endl;
 
         StatsPoint start_pre(*network);
-        /* Run offline */
+        shuffle.run_offline();
         StatsPoint end_pre(*network);
         network->sync();
 
@@ -54,9 +49,9 @@ void benchmark(const bpo::variables_map &opts) {
         std::cout << "setup sent: " << bytes_sent_pre << " bytes" << std::endl;
 
         StatsPoint start(*network);
-        /* Run online */
-        std::vector<Row> res(vec_size);
+        shuffle.run_online();
         StatsPoint end(*network);
+
         auto rbench = end - start;
         output_data["benchmarks"].push_back(rbench);
 
@@ -65,8 +60,8 @@ void benchmark(const bpo::variables_map &opts) {
             bytes_sent += val.get<int64_t>();
         }
 
-        std::cout << "time: " << rbench["time"] << " ms" << std::endl;
-        std::cout << "sent: " << bytes_sent << " bytes" << std::endl;
+        std::cout << "online time: " << rbench["time"] << " ms" << std::endl;
+        std::cout << "online sent: " << bytes_sent << " bytes" << std::endl;
 
         std::cout << std::endl;
     }
@@ -82,6 +77,8 @@ void benchmark(const bpo::variables_map &opts) {
     if (save_output) {
         saveJson(output_data, save_file);
     }
+
+    exit(0);
 }
 
 int main(int argc, char **argv) {
