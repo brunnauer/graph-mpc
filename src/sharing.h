@@ -35,6 +35,7 @@ class Share {
         Row share_other;
         network.send(partner, &share, sizeof(Row));
         network.recv(partner, &share_other, sizeof(Row));
+        network.sync();
         return share + share_other;
     }
 

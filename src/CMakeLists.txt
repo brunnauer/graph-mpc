@@ -4,6 +4,7 @@ target_sources(GraphMPC_lib
     utils/types.h
     random_generators.cpp 
     shuffle.cpp
+    sharing.h
     add_share.h
     io/tls_net_io_channel.h
     io/netmp.h
