@@ -6,7 +6,7 @@
 void test_shuffle(const bpo::variables_map &opts) {
     auto vec_size = opts["vec-size"].as<size_t>();
 
-    size_t pid, repeat, threads;
+    size_t pid, nP, repeat, threads;
     std::shared_ptr<io::NetIOMP> network = nullptr;
     uint64_t seeds_h[5];
     uint64_t seeds_l[5];
@@ -14,8 +14,9 @@ void test_shuffle(const bpo::variables_map &opts) {
     bool save_output;
     std::string save_file;
 
-    setup::setupExecution(opts, pid, repeat, threads, network, seeds_h, seeds_l, save_output, save_file);
-    output_data["details"] = {{"pid", pid}, {"threads", threads}, {"seeds_h", seeds_h}, {"seeds_l", seeds_l}, {"repeat", repeat}, {"vec-size", vec_size}};
+    setup::setupExecution(opts, pid, nP, repeat, threads, network, seeds_h, seeds_l, save_output, save_file);
+    output_data["details"] = {{"pid", pid},         {"num_parties", nP}, {"threads", threads},  {"seeds_h", seeds_h},
+                              {"seeds_l", seeds_l}, {"repeat", repeat},  {"vec-size", vec_size}};
 
     std::cout << "--- Details ---\n";
     for (const auto &[key, value] : output_data["details"].items()) {
