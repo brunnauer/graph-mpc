@@ -4,11 +4,7 @@
 
 #include <cstdint>
 
-enum Party {
-    P0,
-    P1,
-    D
-};
+enum Party { P0 = 0, P1 = 1, D = 2 };
 
 constexpr uint64_t FIELDSIZE = 4;  // bytes
 using Field = NTL::ZZ_p;

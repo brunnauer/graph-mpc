@@ -65,8 +65,6 @@ void Shuffle::run_online() {
     }
     for (size_t i = 0; i < n_rounds; ++i) {
         evaluate();
-        auto res = result();
-        set_input(res);
         shuffle_idx++;
     }
 }

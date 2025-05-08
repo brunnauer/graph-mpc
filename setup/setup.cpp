@@ -26,7 +26,8 @@ bpo::options_description setup::programOptions() {
         "private_key_path", bpo::value<std::string>()->default_value("certs/key1.pem"), "Path to private key for TLS server connections")(
         "trusted_cert_path", bpo::value<std::string>()->default_value("certs/cert_ca.pem"), "Path with trusted certificate for TLS client connections")(
         "port", bpo::value<int>()->default_value(10000), "Base port for networking.")("output,o", bpo::value<std::string>(), "File to save benchmarks.")(
-        "repeat,r", bpo::value<size_t>()->default_value(1), "Number of times to run benchmarks.");
+        "repeat,r", bpo::value<size_t>()->default_value(1), "Number of times to run benchmarks.")("num_parties,np", bpo::value<size_t>()->default_value(3),
+                                                                                                  "Number of parties running the protocol.");
 
     return desc;
 }
@@ -66,7 +67,7 @@ bpo::variables_map setup::parseOptions(bpo::options_description &cmdline, bpo::o
     return opts;
 }
 
-void setup::setupExecution(const bpo::variables_map &opts, size_t &pid, size_t &repeat, size_t &threads, std::shared_ptr<io::NetIOMP> &network,
+void setup::setupExecution(const bpo::variables_map &opts, size_t &pid, size_t &nP, size_t &repeat, size_t &threads, std::shared_ptr<io::NetIOMP> &network,
                            uint64_t *seeds_h, uint64_t *seeds_l, bool &save_output, std::string &save_file) {
     save_output = false;
     if (opts.count("output") != 0) {
@@ -75,6 +76,7 @@ void setup::setupExecution(const bpo::variables_map &opts, size_t &pid, size_t &
     }
 
     pid = opts["pid"].as<size_t>();
+    nP = opts["num_parties"].as<size_t>();
     threads = opts["threads"].as<size_t>();
 
     seeds_h[0] = opts["seed_self_h"].as<uint64_t>();
@@ -100,7 +102,7 @@ void setup::setupExecution(const bpo::variables_map &opts, size_t &pid, size_t &
     auto trusted_cert_path = opts["trusted_cert_path"].as<std::string>();
 
     if (opts["localhost"].as<bool>()) {
-        network = std::make_shared<io::NetIOMP>(pid, 3, port, nullptr, certificate_path, private_key_path, trusted_cert_path, true);
+        network = std::make_shared<io::NetIOMP>(pid, nP, port, nullptr, certificate_path, private_key_path, trusted_cert_path, true);
     } else {
         std::ifstream fnet(opts["net-config"].as<std::string>());
         if (!fnet.good()) {
@@ -118,6 +120,6 @@ void setup::setupExecution(const bpo::variables_map &opts, size_t &pid, size_t &
             ip[i] = ipaddress[i].data();
         }
 
-        network = std::make_shared<io::NetIOMP>(pid, 3, port, ip.data(), certificate_path, private_key_path, trusted_cert_path, false);
+        network = std::make_shared<io::NetIOMP>(pid, nP, port, ip.data(), certificate_path, private_key_path, trusted_cert_path, false);
     }
 }

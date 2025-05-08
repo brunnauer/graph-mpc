@@ -15,6 +15,7 @@ endmacro()
 
 add_benchmark(benchmark_shuffle)
 add_benchmark(benchmark_double_shuffle)
+add_benchmark(benchmark_sharing)
 
 add_custom_target(benchmarks)
 add_dependencies(benchmarks ${benchbin})

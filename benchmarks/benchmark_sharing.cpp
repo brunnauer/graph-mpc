@@ -1,4 +1,5 @@
 #include "../setup/setup.h"
+#include "../src/sharing.h"
 #include "../src/shuffle.h"
 
 void benchmark(const bpo::variables_map &opts) {
@@ -15,7 +16,6 @@ void benchmark(const bpo::variables_map &opts) {
     setup::setupExecution(opts, pid, nP, repeat, threads, network, seeds_h, seeds_l, save_output, save_file);
     output_data["details"] = {{"pid", pid},         {"num_parties", nP}, {"threads", threads},  {"seeds_h", seeds_h},
                               {"seeds_l", seeds_l}, {"repeat", repeat},  {"vec-size", vec_size}};
-    output_data["benchmarks_pre"] = json::array();
     output_data["benchmarks"] = json::array();
 
     std::cout << "--- Details ---\n";
@@ -24,48 +24,39 @@ void benchmark(const bpo::variables_map &opts) {
     }
     std::cout << std::endl;
 
-    std::vector<Row> input_vector(vec_size);
-    for (size_t i = 0; i < vec_size; i++) input_vector[i] = i;
-
-    Party party = (pid == 0) ? P0 : ((pid == 1) ? P1 : D);
     RandomGenerators rngs(seeds_h, seeds_l);
-    Shuffle shuffle(party, vec_size, 2, rngs, network);
-    shuffle.set_input(input_vector);
 
-    for (size_t r = 0; r < repeat; ++r) {
-        std::cout << "--- Repetition " << r + 1 << " ---" << std::endl;
+    std::vector<Row> share(vec_size);
+    std::vector<Row> input_table(vec_size);
 
-        StatsPoint start_pre(*network);
-        shuffle.run_offline();
-        StatsPoint end_pre(*network);
-        network->sync();
-
-        auto rbench_pre = end_pre - start_pre;
-        output_data["benchmarks_pre"].push_back(rbench_pre);
-        size_t bytes_sent_pre = 0;
-        for (const auto &val : rbench_pre["communication"]) {
-            bytes_sent_pre += val.get<int64_t>();
-        }
-        std::cout << "setup time: " << rbench_pre["time"] << " ms" << std::endl;
-        std::cout << "setup sent: " << bytes_sent_pre << " bytes" << std::endl;
-
-        StatsPoint start(*network);
-        shuffle.run_online();
-        StatsPoint end(*network);
-
-        auto rbench = end - start;
-        output_data["benchmarks"].push_back(rbench);
-
-        size_t bytes_sent = 0;
-        for (const auto &val : rbench["communication"]) {
-            bytes_sent += val.get<int64_t>();
-        }
-
-        std::cout << "online time: " << rbench["time"] << " ms" << std::endl;
-        std::cout << "online sent: " << bytes_sent << " bytes" << std::endl;
-
-        std::cout << std::endl;
+    for (size_t i = 0; i < vec_size; ++i) {
+        input_table[i] = i;
     }
+
+    Party partner = (pid == P0 ? P1 : P0);
+
+    StatsPoint start(*network);
+    if (pid == P0) {
+        Share::random_share_secret_vec_send(partner, rngs, *network, share, input_table);
+    } else if (pid == P1) {
+        Share::random_share_secret_vec_recv(partner, *network, share);
+    }
+
+    StatsPoint end(*network);
+    network->sync();
+
+    auto rbench = end - start;
+    output_data["benchmarks"].push_back(rbench);
+
+    size_t bytes_sent = 0;
+    for (const auto &val : rbench["communication"]) {
+        bytes_sent += val.get<int64_t>();
+    }
+
+    std::cout << "time: " << rbench["time"] << " ms" << std::endl;
+    std::cout << "sent: " << bytes_sent << " bytes" << std::endl;
+
+    std::cout << std::endl;
 
     output_data["stats"] = {{"peak_virtual_memory", peakVirtualMemory()}, {"peak_resident_set_size", peakResidentSetSize()}};
 
@@ -85,7 +76,7 @@ void benchmark(const bpo::variables_map &opts) {
 int main(int argc, char **argv) {
     auto prog_opts(setup::programOptions());
 
-    bpo::options_description cmdline("Benchmark a simple test for shuffling and unshuffling");
+    bpo::options_description cmdline("Benchmark a simple test for secret sharing a vector");
     cmdline.add(prog_opts);
 
     cmdline.add_options()("config,c", bpo::value<std::string>(), "configuration file for easy specification of cmd line arguments")("help,h",
