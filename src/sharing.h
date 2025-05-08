@@ -41,7 +41,7 @@ class Share {
 
     static std::vector<Row> reconstruct_vec(Party partner, io::NetIOMP &network, std::vector<Row> &share_vec) {
         std::vector<Row> res(share_vec.size());
-        for (int i = 0; i < res.size(); ++i) {
+        for (size_t i = 0; i < res.size(); ++i) {
             res[i] = reconstruct(partner, network, share_vec[i]);
         }
         return res;

@@ -39,7 +39,7 @@ class Permutation {
 
     [[nodiscard]] Permutation inverse() {
         std::vector<size_t> inverse_vec(perm_vec.size());
-        for (int i = 0; i < perm_vec.size(); ++i) {
+        for (size_t i = 0; i < perm_vec.size(); ++i) {
             inverse_vec[perm_vec[i]] = i;
         }
         return Permutation(inverse_vec);
@@ -81,7 +81,7 @@ class Permutation {
 
     void print() {
         std::cout << "{";
-        for (int i = 0; i < perm_vec.size() - 1; ++i) {
+        for (size_t i = 0; i < perm_vec.size() - 1; ++i) {
             std::cout << perm_vec[i] << ", ";
         }
         std::cout << perm_vec[perm_vec.size() - 1] << "}" << std::endl;
