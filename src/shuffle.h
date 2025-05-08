@@ -82,11 +82,6 @@ class Shuffle {
     void run();
     void run_offline();
     void run_online();
-    void evaluate();
-    void evaluate_send_vals(std::vector<Row> &vals);
-    void evaluate_recv_vals(std::vector<Row> &vals);
-    void preprocess();
-    void preprocess_compute(std::vector<Row> &shared_secret_D0, std::vector<Row> &shared_secret_D1);
     std::vector<Row> result();
 
    private:
@@ -95,8 +90,13 @@ class Shuffle {
     size_t shuffle_idx = 0;
     const size_t BLOCK_SIZE = 100000000;
     RandomGenerators rngs;
-    std::vector<std::shared_ptr<Permutation>> pis_0, pis_1, pis_0_p, pis_1_p;
     std::vector<std::shared_ptr<ShufflePreprocessing<Row>>> preproc;
     std::shared_ptr<io::NetIOMP> network;
     std::vector<Row> wire;
+
+    void evaluate();
+    void evaluate_send_vals(std::vector<Row> &vals);
+    void evaluate_recv_vals(std::vector<Row> &vals);
+    void preprocess();
+    void preprocess_compute(std::vector<Row> &shared_secret_D0, std::vector<Row> &shared_secret_D1);
 };

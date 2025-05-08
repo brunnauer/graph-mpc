@@ -2,10 +2,6 @@
 
 Shuffle::Shuffle(Party pid, size_t n_rows, size_t n_rounds, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network)
     : rngs(rngs), pid(pid), n_rows(n_rows), n_rounds(n_rounds), network(network) {
-    pis_0 = std::vector<std::shared_ptr<Permutation>>();
-    pis_1 = std::vector<std::shared_ptr<Permutation>>();
-    pis_0_p = std::vector<std::shared_ptr<Permutation>>();
-    pis_1_p = std::vector<std::shared_ptr<Permutation>>();
     wire = std::vector<Row>(n_rows);
 }
 
@@ -306,18 +302,14 @@ void Shuffle::preprocess_compute(std::vector<Row> &shared_secret_D0, std::vector
     if (pid != P1) {
         pi_0 = Permutation::random(n_rows, rngs.rng_D0());
         pi_0_p = Permutation::random(n_rows, rngs.rng_D0());
-        pis_0.push_back(std::shared_ptr<Permutation>(&pi_0));
-        pis_0_p.push_back(std::shared_ptr<Permutation>(&pi_0_p));
     }
     if (pid != P0) {
         pi_1 = Permutation::random(n_rows, rngs.rng_D1());
-        pis_1.push_back(std::shared_ptr<Permutation>(&pi_1));
     }
 
     if (pid == D) {  // Compute and send pi_1_p
         Permutation pi_0_p_inv = pi_0_p.inverse();
         pi_1_p = (pi_0 * pi_1 * pi_0_p_inv);
-        pis_1_p.push_back(std::shared_ptr<Permutation>(&pi_1_p));
 
         for (int i = 0; i < n_rows; ++i) {  // Send pi_1_p to P1's shared_secret_buffer
             shared_secret_D1.push_back((Row)pi_1_p[i]);
@@ -329,7 +321,6 @@ void Shuffle::preprocess_compute(std::vector<Row> &shared_secret_D0, std::vector
             shared_secret_D1_idx++;
         }
         pi_1_p = Permutation(pi_1_p_vec);
-        pis_1_p.push_back(std::shared_ptr<Permutation>(&pi_1_p));
     }
 
     std::vector<Row> B_0(n_rows);
@@ -366,15 +357,6 @@ void Shuffle::preprocess_compute(std::vector<Row> &shared_secret_D0, std::vector
         }
     }
 
-    /* Save preprocessing results to global array */
+    /* Save preprocessing results */
     preproc.push_back(std::shared_ptr<ShufflePreprocessing<Row>>(new ShufflePreprocessing<Row>(pi_0, pi_1, pi_0_p, pi_1_p, R_0, R_1, B_0, B_1)));
-    /*
-        if (pid == D) {
-            std::cout << "pi: ";
-            (pi_0 * pi_1).print();
-            std::cout << std::endl;
-            (*preproc[0]).print();
-            std::cout << std::endl;
-        }
-    */
 }
