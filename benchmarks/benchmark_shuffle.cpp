@@ -29,7 +29,7 @@ void benchmark(const bpo::variables_map &opts) {
 
     Party party = (pid == 0) ? P0 : ((pid == 1) ? P1 : D);
     RandomGenerators rngs(seeds_h, seeds_l);
-    Shuffle shuffle(party, vec_size, 1, rngs, network);
+    Shuffle shuffle(party, vec_size, shuffle_num, rngs, network);
     shuffle.set_input(input_vector);
 
     for (size_t r = 0; r < repeat; ++r) {
