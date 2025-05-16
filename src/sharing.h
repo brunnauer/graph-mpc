@@ -6,6 +6,50 @@
 
 class Share {
    public:
+    static Row get_random_share(Party pid, RandomGenerators &rngs) {
+        switch (pid) {
+            case P0: {
+                Row share;
+                rngs.rng_D0().random_data(&share, sizeof(Row));
+                return share;
+            }
+            case P1: {
+                Row share;
+                rngs.rng_D1().random_data(&share, sizeof(Row));
+                return share;
+            }
+            case D: {
+                Row share_1;
+                Row share_2;
+                rngs.rng_D0().random_data(&share_1, sizeof(Row));
+                rngs.rng_D1().random_data(&share_2, sizeof(Row));
+                return (share_1 + share_2);
+            }
+        }
+    }
+
+    static Row get_random_share_secret(Party pid, RandomGenerators &rngs, std::vector<Row> shared_secret_vec, size_t idx_shared_secret_vec, Row &secret) {
+        switch (pid) {
+            case P0: {
+                Row share;
+                rngs.rng_D0().random_data(&share, sizeof(Row));
+                return share;
+            }
+            case P1: {
+                Row share = shared_secret_vec[idx_shared_secret_vec];
+                idx_shared_secret_vec++;
+                return share;
+            }
+            case D: {
+                Row share_1;
+                rngs.rng_D0().random_data(&share_1, sizeof(Row));
+                Row share_2 = secret - share_1;
+                shared_secret_vec.push_back(share_2);
+                return secret;
+            }
+        }
+    }
+
     static void random_share_secret_send(Party dst_pid, RandomGenerators &rngs, io::NetIOMP &network, Row &share, Row &secret) {
         Row val_1;
         Row val_2;

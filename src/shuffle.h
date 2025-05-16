@@ -7,6 +7,7 @@
 #include <tuple>
 #include <vector>
 
+#include "io/comm.h"
 #include "io/netmp.h"
 #include "perm.h"
 #include "random_generators.h"
@@ -36,9 +37,6 @@ class Shuffle {
     std::vector<std::vector<Row>> B_vec;  // vector for storing preprocessed B_0/B_1's
     std::shared_ptr<io::NetIOMP> network;
     std::vector<Row> wire;
-
-    void send_vec(Party dest, size_t n_elems, std::vector<Row> &data, const size_t BLOCK_SIZE);
-    void recv_vec(Party src, std::vector<Row> &buffer, const size_t BLOCK_SIZE);
 
     void evaluate();
     void evaluate_compute_A(std::vector<Row> &vals);
