@@ -28,7 +28,6 @@ class Share {
         }
     }
 
-    // TODO: Instead of pushing and popping secret from vector, send and receive directly
     static Row get_random_share_secret(Party pid, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, Row &secret) {
         switch (pid) {
             case P0: {
@@ -42,10 +41,10 @@ class Share {
                 return share;
             }
             case D: {
-                Row share_1;
-                rngs.rng_D0().random_data(&share_1, sizeof(Row));
-                Row share_2 = secret - share_1;
-                network->send(1, &share_2, sizeof(Row));
+                Row share_0;
+                rngs.rng_D0().random_data(&share_0, sizeof(Row));
+                Row share_1 = secret - share_0;
+                network->send(1, &share_1, sizeof(Row));
                 return secret;
             }
         }
@@ -76,15 +75,19 @@ class Share {
         }
     }
 
-    static Row reconstruct(Party partner, io::NetIOMP &network, Row &share) {
+    static Row reconstruct(Party partner, std::shared_ptr<io::NetIOMP> network, Row &share) {
         Row share_other;
-        network.send(partner, &share, sizeof(Row));
-        network.recv(partner, &share_other, sizeof(Row));
-        network.sync();
+        if (partner == P0) {
+            network->send(partner, &share, sizeof(Row));
+            network->recv(partner, &share_other, sizeof(Row));
+        } else {
+            network->recv(partner, &share_other, sizeof(Row));
+            network->send(partner, &share, sizeof(Row));
+        }
         return share + share_other;
     }
 
-    static std::vector<Row> reconstruct_vec(Party partner, io::NetIOMP &network, std::vector<Row> &share_vec) {
+    static std::vector<Row> reconstruct_vec(Party partner, std::shared_ptr<io::NetIOMP> network, std::vector<Row> &share_vec) {
         std::vector<Row> res(share_vec.size());
         for (size_t i = 0; i < res.size(); ++i) {
             res[i] = reconstruct(partner, network, share_vec[i]);
