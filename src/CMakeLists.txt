@@ -7,8 +7,9 @@ target_sources(GraphMPC_lib
     sharing.h
     io/tls_net_io_channel.h
     io/netmp.h
-    compaction.h
     io/comm.h
+    sorting.h
+    compaction.h
     # Add further files if necessary
 )
 target_link_libraries(GraphMPC_lib PUBLIC OpenSSL::SSL EMPTool NTL GMP)
