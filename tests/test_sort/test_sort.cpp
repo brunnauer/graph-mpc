@@ -1,10 +1,10 @@
 #include <cassert>
 
 #include "../../setup/setup.h"
-#include "../../src/random_generators.h"
 #include "../../src/sharing.h"
+#include "../../src/sorting.h"
 
-void test_sharing(const bpo::variables_map &opts) {
+void test_shuffle(const bpo::variables_map &opts) {
     auto vec_size = opts["vec-size"].as<size_t>();
 
     size_t pid, nP, repeat, threads, shuffle_num;
@@ -25,36 +25,36 @@ void test_sharing(const bpo::variables_map &opts) {
     }
     std::cout << std::endl;
 
+    /* Setting up the input vector */
+    int input_bits[7] = {1, 1, 0, 0, 0, 1, 0};
+    std::vector<Row> input_vector(vec_size);
+
+    for (size_t i = 0; i < vec_size; i++) input_vector[i] = input_bits[i % 7];
+
+    Party party = (pid == 0) ? P0 : ((pid == 1) ? P1 : D);
     RandomGenerators rngs(seeds_h, seeds_l);
-
+    Sort sort(party, input_vector.size(), rngs, network);
     std::vector<Row> share(vec_size);
-    std::vector<Row> input_table(vec_size);
 
-    for (size_t i = 0; i < vec_size; ++i) {
-        input_table[i] = i;
+    if (pid == 0) {
+        Share::random_share_secret_vec_send(P1, rngs, *network, share, input_vector);
+    } else if (pid == 1) {
+        Share::random_share_secret_vec_recv(P0, *network, share);
     }
 
-    Party partner = (pid == P0 ? P1 : P0);
-    if (pid == P0) {
-        Share::random_share_secret_vec_send(partner, rngs, *network, share, input_table);
-    } else if (pid == P1) {
-        Share::random_share_secret_vec_recv(partner, *network, share);
-    }
+    /* Protocol run */
+    sort.set_input(share);
+    sort.sort_iteration();
+    std::vector<Row> res = sort.reveal();
 
-    std::cout << "Final share: ";
-    for (const auto &elem : share) {
-        std::cout << elem << ", ";
-    }
-    std::cout << std::endl;
+    std::cout << "Sorted bit_vec: ";
 
-    std::vector<Row> reconstructed = Share::reconstruct_vec(partner, network, share);
-    assert(input_table == reconstructed);
-
-    std::cout << "Reconstructed: ";
-    for (const auto &elem : reconstructed) {
-        std::cout << elem << ", ";
+    for (size_t i = 0; i < res.size() - 1; ++i) {
+        std::cout << res[i] << ", ";
     }
-    std::cout << std::endl;
+    std::cout << res[res.size() - 1] << std::endl;
+
+    exit(0);
 }
 
 int main(int argc, char **argv) {
@@ -69,7 +69,7 @@ int main(int argc, char **argv) {
     bpo::variables_map opts = setup::parseOptions(cmdline, prog_opts, argc, argv);
 
     try {
-        test_sharing(opts);
+        test_shuffle(opts);
     } catch (const std::exception &ex) {
         std::cerr << ex.what() << "\nFatal error" << std::endl;
         return 1;
