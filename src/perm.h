@@ -58,27 +58,31 @@ class Permutation {
         assert(input_vec.size() == perm_vec.size());
         std::vector<T> result(input_vec.size());
         for (size_t i = 0; i < perm_vec.size(); ++i) {
-            result[i] = input_vec[perm_vec[i]];
+            if (perm_vec[i] > input_vec.size()) throw std::logic_error("Cannot apply secret shared permutation.");
+            result[perm_vec[i]] = input_vec[i];
         }
         return result;
     }
 
     template <typename T>
-    std::vector<T> operator()(Permutation &perm) const {
+    Permutation operator()(const Permutation &perm) const {
         assert(perm.perm_vec.size() == perm_vec.size());
         std::vector<T> result(perm.perm_vec.size());
         for (size_t i = 0; i < perm_vec.size(); ++i) {
-            result[i] = perm.perm_vec[perm_vec[i]];
+            if (perm_vec[i] > perm.perm_vec.size()) throw std::logic_error("Cannot apply secret shared permutation.");
+            result[perm_vec[i]] = perm.perm_vec[i];
         }
         return result;
     }
 
-    [[nodiscard]] Permutation operator*(Permutation other) const {
+    [[nodiscard]] Permutation operator*(const Permutation &other) const {
         size_t n = perm_vec.size();
-        std::vector<Row> base(n);
-        std::iota(base.begin(), base.end(), 0);
+        std::vector<Row> result(n);
 
-        return Permutation(operator()(other(base)));
+        for (size_t i = 0; i < perm_vec.size(); ++i) {
+            result[i] = perm_vec[other.perm_vec[i]];
+        }
+        return Permutation(result);
     }
 
     bool operator==(Permutation other) const { return other.perm_vec == perm_vec; }
