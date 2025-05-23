@@ -42,12 +42,11 @@ void test_shuffle(const bpo::variables_map &opts) {
         share::random_share_secret_vec_recv(P0, *network, share);
     }
 
-    shuffle.set_input(share);
-
     for (size_t r = 0; r < repeat; ++r) {
         std::cout << "--- Repetition " << r + 1 << " ---" << std::endl;
 
         /* Protocol run */
+        shuffle.set_input(share);
         shuffle.run();
         std::vector<Row> res = shuffle.reveal();
 
@@ -95,6 +94,31 @@ void test_shuffle(const bpo::variables_map &opts) {
         /* Printing result */
         if (pid != D) {
             std::cout << std::endl << "Result of repeating shuffle: ";
+            for (int i = 0; i < res.size() - 1; ++i) {
+                std::cout << res[i] << ", ";
+            }
+            std::cout << res[res.size() - 1] << std::endl;
+            std::cout << std::endl << std::endl;
+        }
+
+        shuffle.unshuffle();
+        res = shuffle.reveal();
+
+        if (pid != D) {
+            std::cout << std::endl << "Result of reversing last shuffle: ";
+            for (int i = 0; i < res.size() - 1; ++i) {
+                std::cout << res[i] << ", ";
+            }
+            std::cout << res[res.size() - 1] << std::endl;
+            std::cout << std::endl << std::endl;
+        }
+
+        shuffle.set_input(share);
+        shuffle.run();
+        res = shuffle.reveal();
+
+        if (pid != D) {
+            std::cout << std::endl << "Result of new shuffle: ";
             for (int i = 0; i < res.size() - 1; ++i) {
                 std::cout << res[i] << ", ";
             }

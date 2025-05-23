@@ -19,6 +19,7 @@ class Shuffle {
     Shuffle(ProtocolConfig &conf, size_t n_rounds);
     ~Shuffle();
     void set_input(std::vector<Row> &input);
+    void set_input(Permutation &input);
     void run();
     void get_shuffle();
     void shuffle();

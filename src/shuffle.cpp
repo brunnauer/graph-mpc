@@ -39,6 +39,13 @@ void Shuffle::set_input(std::vector<Row> &input) {
     wire = input;
 }
 
+void Shuffle::set_input(Permutation &input) {
+    if (input.get_perm_vec().size() != n_rows) {
+        throw std::invalid_argument("Input permutation has wrong size.");
+    }
+    wire = input.get_perm_vec();
+}
+
 std::vector<Row> Shuffle::get_output() { return wire; }
 
 void Shuffle::run() {
@@ -83,9 +90,15 @@ void Shuffle::shuffle() {
     }
 
     if (pid == D) {
-        if (_reverse)
+        if (_reverse) {
             shuffle_idx -= n_rounds;
-        else
+            for (size_t i = 0; i < n_rounds; ++i) {
+                pi_0_vec.pop_back();
+                pi_1_vec.pop_back();
+                pi_0_p_vec.pop_back();
+                pi_1_p_vec.pop_back();
+            }
+        } else
             shuffle_idx += n_rounds;
         return;
     }
@@ -142,6 +155,17 @@ void Shuffle::evaluate() {
         /* Last step: subtract B_0 / B_1 */
         for (size_t i = 0; i < n_rows; ++i) {
             wire[i] -= B_vec[shuffle_idx][i];
+        }
+
+        B_vec.pop_back();
+        R_vec.pop_back();
+
+        if (pid == P0) {
+            pi_0_vec.pop_back();
+            pi_0_p_vec.pop_back();
+        } else {
+            pi_1_vec.pop_back();
+            pi_1_p_vec.pop_back();
         }
 
     } else {
