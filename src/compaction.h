@@ -5,6 +5,7 @@
 
 #include "./utils/types.h"
 #include "io/comm.h"
+#include "perm.h"
 #include "protocol_config.h"
 #include "sharing.h"
 
@@ -25,8 +26,7 @@ void preprocess(ProtocolConfig &conf, std::vector<Row> &triple_a, std::vector<Ro
     conf.network->sync();
 }
 
-std::vector<Row> evaluate(ProtocolConfig &conf, std::vector<Row> &triple_a, std::vector<Row> &triple_b, std::vector<Row> &triple_c,
-                          std::vector<Row> &input_share) {
+Permutation evaluate(ProtocolConfig &conf, std::vector<Row> &triple_a, std::vector<Row> &triple_b, std::vector<Row> &triple_c, std::vector<Row> &input_share) {
     auto pid = conf.pid;
     auto n_rows = conf.n_rows;
     auto BLOCK_SIZE = conf.BLOCK_SIZE;
@@ -117,17 +117,18 @@ std::vector<Row> evaluate(ProtocolConfig &conf, std::vector<Row> &triple_a, std:
             idx_mult++;
         }
     }
-    return output;
+    return Permutation(output);
 }
 
-std::vector<Row> get_compaction(ProtocolConfig &conf, std::vector<Row> &input_share) {
+Permutation get_compaction(ProtocolConfig &conf, std::vector<Row> &input_share) {
     std::vector<Row> triple_a, triple_b, triple_c;
     triple_a.resize(conf.n_rows);
     triple_b.resize(conf.n_rows);
     triple_c.resize(conf.n_rows);
 
     preprocess(conf, triple_a, triple_b, triple_c);
-    return evaluate(conf, triple_a, triple_b, triple_c, input_share);
+    Permutation inv_perm = evaluate(conf, triple_a, triple_b, triple_c, input_share);
+    return inv_perm;
 }
 
 };  // namespace compaction
