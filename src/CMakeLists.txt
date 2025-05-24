@@ -9,6 +9,7 @@ target_sources(GraphMPC_lib
     io/netmp.h
     io/comm.h
     sorting.h
+    shuffle_new.h
     compaction.h
     protocol_config.h
     # Add further files if necessary
