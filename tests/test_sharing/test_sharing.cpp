@@ -25,36 +25,64 @@ void test_sharing(const bpo::variables_map &opts) {
     }
     std::cout << std::endl;
 
+    Party party = (pid == 0) ? P0 : ((pid == 1) ? P1 : D);
     RandomGenerators rngs(seeds_h, seeds_l);
+    ProtocolConfig conf(party, rngs, network, vec_size, 1000000);
 
     std::vector<Row> share(vec_size);
     std::vector<Row> input_table(vec_size);
+    std::vector<Row> reconstructed;
 
     for (size_t i = 0; i < vec_size; ++i) {
         input_table[i] = i;
     }
 
-    Party partner = (pid == P0 ? P1 : P0);
     if (pid == P0) {
-        share::random_share_secret_vec_send(partner, rngs, *network, share, input_table);
+        share::random_share_secret_vec_send(P1, rngs, *network, share, input_table);
+        reconstructed = share::reconstruct_vec(P1, network, share);
     } else if (pid == P1) {
-        share::random_share_secret_vec_recv(partner, *network, share);
+        share::random_share_secret_vec_recv(P0, *network, share);
+        reconstructed = share::reconstruct_vec(P0, network, share);
     }
 
     std::cout << "Final share: ";
     for (const auto &elem : share) {
         std::cout << elem << ", ";
     }
-    std::cout << std::endl;
+    std::cout << std::endl << std::endl;
 
-    std::vector<Row> reconstructed = share::reconstruct_vec(partner, network, share);
     assert(input_table == reconstructed);
 
     std::cout << "Reconstructed: ";
     for (const auto &elem : reconstructed) {
         std::cout << elem << ", ";
     }
-    std::cout << std::endl;
+    std::cout << std::endl << std::endl;
+
+    /* Test Graph Sharing */
+    Graph g;
+    g.size = 8;
+    std::vector<Row> src({0, 1, 2, 3, 0, 1, 2, 3});
+    std::vector<Row> dst({0, 1, 2, 3, 1, 2, 0, 2});
+    std::vector<Row> isV({1, 1, 1, 1, 0, 0, 0, 0});
+    std::vector<Row> payload({1, 2, 3, 4, 0, 0, 0, 0});
+    g.src = src;
+    g.dst = dst;
+    g.isV = isV;
+    g.payload = payload;
+
+    SecretSharedGraph shared_graph = share::random_share_graph(conf, g);
+    Graph reconstructed_graph = share::reconstruct_shared_graph(conf, shared_graph);
+
+    std::cout << "Initial graph: " << std::endl;
+    g.print();
+    std::cout << "Reconstructed graph: " << std::endl;
+    reconstructed_graph.print();
+
+    assert(g.src == reconstructed_graph.src);
+    assert(g.dst == reconstructed_graph.dst);
+    assert(g.isV == reconstructed_graph.isV);
+    assert(g.payload == reconstructed_graph.payload);
 }
 
 int main(int argc, char **argv) {

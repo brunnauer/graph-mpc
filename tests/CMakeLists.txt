@@ -12,7 +12,7 @@ set(TEST_HEADERS
     ${PROJECT_SOURCE_DIR}/src/shuffle.h
     ${PROJECT_SOURCE_DIR}/src/sorting.h
     ${PROJECT_SOURCE_DIR}/src/perm.h
-    ${PROJECT_SOURCE_DIR}/src/graph/graph.h
+    ${PROJECT_SOURCE_DIR}/src/graph.h
     ${PROJECT_SOURCE_DIR}/src/sharing.h
 )
 

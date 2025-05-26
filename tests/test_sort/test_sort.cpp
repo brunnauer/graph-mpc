@@ -37,7 +37,6 @@ void test_shuffle(const bpo::variables_map &opts) {
     RandomGenerators rngs(seeds_h, seeds_l);
     ProtocolConfig conf(party, rngs, network, vec_size, 1000000);
 
-    std::vector<Row> bit_share(vec_size);
     std::vector<std::vector<Row>> bits(sizeof(Row) * 8);
     std::vector<std::vector<Row>> bit_shares(sizeof(Row) * 8);
 
