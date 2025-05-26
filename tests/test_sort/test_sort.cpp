@@ -28,12 +28,9 @@ void test_shuffle(const bpo::variables_map &opts) {
     std::cout << std::endl;
 
     /* Setting up the input vector */
-    int input_bits[7] = {1, 1, 0, 0, 0, 1, 0};
-    std::vector<Row> bit_vector(vec_size);
     std::vector<Row> input_vector(vec_size);
 
     for (size_t i = 0; i < vec_size; i++) {
-        bit_vector[i] = input_bits[i % 7];
         input_vector[i] = rand() % vec_size;
     }
 
@@ -54,12 +51,10 @@ void test_shuffle(const bpo::variables_map &opts) {
     }
 
     if (pid == 0) {
-        share::random_share_secret_vec_send(P1, rngs, *network, bit_share, bit_vector);
         for (size_t i = 0; i < bit_shares.size(); ++i) {
             share::random_share_secret_vec_send(P1, rngs, *network, bit_shares[i], bits[i]);
         }
     } else if (pid == 1) {
-        share::random_share_secret_vec_recv(P0, *network, bit_share);
         for (size_t i = 0; i < bit_shares.size(); ++i) {
             share::random_share_secret_vec_recv(P0, *network, bit_shares[i]);
         }
@@ -68,21 +63,10 @@ void test_shuffle(const bpo::variables_map &opts) {
     /* Test if sharing worked correctly */
     auto reveal_one = share::reveal(conf, bit_shares[3]);
 
-    /* Sorting a single bit_vec */
-    std::vector<Row> res_share = sort::sort_bit_vec(conf, bit_share);
-    std::vector<Row> res = share::reveal(conf, res_share);
-
     /* Sorting a vector with entries larger than one bit */
     Permutation sort_share = sort::get_sort(conf, bit_shares);
     Permutation sort = share::reveal(conf, sort_share);
     auto sorted_vector = sort(input_vector);
-
-    std::cout << "Sorted bit_vec: ";
-
-    for (size_t i = 0; i < res.size() - 1; ++i) {
-        std::cout << res[i] << ", ";
-    }
-    std::cout << res[res.size() - 1] << std::endl;
 
     std::cout << "Original input_vector: ";
 

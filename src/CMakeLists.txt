@@ -3,13 +3,12 @@ target_sources(GraphMPC_lib
     PRIVATE 
     utils/types.h
     random_generators.cpp 
-    shuffle.cpp
     sharing.h
     io/tls_net_io_channel.h
     io/netmp.h
     io/comm.h
     sorting.h
-    shuffle_new.h
+    shuffle.cpp
     compaction.h
     protocol_config.h
     # Add further files if necessary

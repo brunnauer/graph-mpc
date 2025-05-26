@@ -127,8 +127,7 @@ Permutation get_compaction(ProtocolConfig &conf, std::vector<Row> &input_share) 
     triple_c.resize(conf.n_rows);
 
     preprocess(conf, triple_a, triple_b, triple_c);
-    Permutation inv_perm = evaluate(conf, triple_a, triple_b, triple_c, input_share);
-    return inv_perm;
+    return evaluate(conf, triple_a, triple_b, triple_c, input_share);
 }
 
 };  // namespace compaction
