@@ -1,7 +1,9 @@
 set(TEST_SOURCES 
+    ${PROJECT_SOURCE_DIR}/src/compaction.cpp
     ${PROJECT_SOURCE_DIR}/src/random_generators.cpp
+    ${PROJECT_SOURCE_DIR}/src/sharing.cpp
     ${PROJECT_SOURCE_DIR}/src/shuffle.cpp
-
+    ${PROJECT_SOURCE_DIR}/src/sorting.cpp
 )
 
 set(TEST_HEADERS 
@@ -11,6 +13,7 @@ set(TEST_HEADERS
     ${PROJECT_SOURCE_DIR}/src/sorting.h
     ${PROJECT_SOURCE_DIR}/src/perm.h
     ${PROJECT_SOURCE_DIR}/src/graph/graph.h
+    ${PROJECT_SOURCE_DIR}/src/sharing.h
 )
 
 set(TEST_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/tests ${PROJECT_SOURCE_DIR}/setup)

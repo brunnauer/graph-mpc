@@ -3,7 +3,6 @@
 
 #include "../../setup/setup.h"
 #include "../../src/perm.h"
-#include "../../src/sharing.h"
 #include "../../src/sorting.h"
 
 void test_shuffle(const bpo::variables_map &opts) {

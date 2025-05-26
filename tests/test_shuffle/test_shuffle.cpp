@@ -41,15 +41,14 @@ void test_shuffle(const bpo::variables_map &opts) {
         share::random_share_secret_vec_recv(P0, *network, share);
     }
 
-    using namespace shuffle;
     /* Protocol run */
-    PermShare perm_share = get_shuffle(conf);
+    PermShare perm_share = shuffle::get_shuffle(conf);
     std::vector<Row> shuffle_share = shuffle::shuffle(conf, share, perm_share, true);
     std::vector<Row> repeat_share = shuffle::shuffle(conf, share, perm_share, false);
-    std::vector<Row> unshuffle_share = unshuffle(conf, repeat_share, perm_share);
-    PermShare perm_share_new = get_shuffle(conf);
+    std::vector<Row> unshuffle_share = shuffle::unshuffle(conf, repeat_share, perm_share);
+    PermShare perm_share_new = shuffle::get_shuffle(conf);
     std::vector<Row> new_shuffle_share = shuffle::shuffle(conf, share, perm_share_new, true);
-    std::vector<Row> second_unshuffle_share = unshuffle(conf, new_shuffle_share, perm_share_new);
+    std::vector<Row> second_unshuffle_share = shuffle::unshuffle(conf, new_shuffle_share, perm_share_new);
 
     std::vector<Row> res = share::reveal(conf, shuffle_share);
 

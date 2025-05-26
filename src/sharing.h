@@ -4,161 +4,24 @@
 #include "protocol_config.h"
 
 namespace share {
-Row get_random_share(Party pid, RandomGenerators &rngs) {
-    switch (pid) {
-        case P0: {
-            Row share;
-            rngs.rng_D0().random_data(&share, sizeof(Row));
-            return share;
-        }
-        case P1: {
-            Row share;
-            rngs.rng_D1().random_data(&share, sizeof(Row));
-            return share;
-        }
-        case D: {
-            Row share_1;
-            Row share_2;
-            rngs.rng_D0().random_data(&share_1, sizeof(Row));
-            rngs.rng_D1().random_data(&share_2, sizeof(Row));
-            return (share_1 + share_2);
-        }
-    }
-}
+Row get_random_share(Party pid, RandomGenerators &rngs);
 
-Row get_random_share_secret(Party pid, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, Row &secret) {
-    switch (pid) {
-        case P0: {
-            Row share;
-            rngs.rng_D0().random_data(&share, sizeof(Row));
-            return share;
-        }
-        case P1: {
-            Row share;
-            network->recv(2, &share, sizeof(Row));
-            return share;
-        }
-        case D: {
-            Row share_0;
-            rngs.rng_D0().random_data(&share_0, sizeof(Row));
-            Row share_1 = secret - share_0;
-            network->send(1, &share_1, sizeof(Row));
-            return secret;
-        }
-    }
-}
+Row get_random_share_secret(Party pid, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, Row &secret);
 
-void random_share_secret_send(Party dst_pid, RandomGenerators &rngs, io::NetIOMP &network, Row &share, Row &secret) {
-    Row val_1;
-    Row val_2;
+void random_share_secret_send(Party dst_pid, RandomGenerators &rngs, io::NetIOMP &network, Row &share, Row &secret);
 
-    rngs.rng_self().random_data(&val_1, sizeof(Row));
-    share = val_1;
-    val_2 = secret - val_1;
-    network.send(dst_pid, &val_2, sizeof(Row));
-}
+void random_share_secret_recv(Party src_pid, io::NetIOMP &network, Row &share);
 
-void random_share_secret_recv(Party src_pid, io::NetIOMP &network, Row &share) { network.recv(src_pid, &share, sizeof(Row)); }
+void random_share_secret_vec_send(Party dst_pid, RandomGenerators &rngs, io::NetIOMP &network, std::vector<Row> &share_vec, std::vector<Row> &secret_vec);
 
-void random_share_secret_vec_send(Party dst_pid, RandomGenerators &rngs, io::NetIOMP &network, std::vector<Row> &share_vec, std::vector<Row> &secret_vec) {
-    for (size_t i = 0; i < secret_vec.size(); ++i) {
-        random_share_secret_send(dst_pid, rngs, network, share_vec[i], secret_vec[i]);
-    }
-}
+void random_share_secret_vec_recv(Party src_pid, io::NetIOMP &network, std::vector<Row> &share_vec);
 
-void random_share_secret_vec_recv(Party src_pid, io::NetIOMP &network, std::vector<Row> &share_vec) {
-    for (size_t i = 0; i < share_vec.size(); ++i) {
-        random_share_secret_recv(src_pid, network, share_vec[i]);
-    }
-}
+Row reconstruct(Party partner, std::shared_ptr<io::NetIOMP> network, Row &share);
 
-Row reconstruct(Party partner, std::shared_ptr<io::NetIOMP> network, Row &share) {
-    Row share_other;
-    if (partner == P0) {
-        network->send(partner, &share, sizeof(Row));
-        network->recv(partner, &share_other, sizeof(Row));
-    } else {
-        network->recv(partner, &share_other, sizeof(Row));
-        network->send(partner, &share, sizeof(Row));
-    }
-    return share + share_other;
-}
+std::vector<Row> reconstruct_vec(Party partner, std::shared_ptr<io::NetIOMP> network, std::vector<Row> &share_vec);
 
-std::vector<Row> reconstruct_vec(Party partner, std::shared_ptr<io::NetIOMP> network, std::vector<Row> &share_vec) {
-    std::vector<Row> res(share_vec.size());
-    for (size_t i = 0; i < res.size(); ++i) {
-        res[i] = reconstruct(partner, network, share_vec[i]);
-    }
-    return res;
-}
+std::vector<Row> reveal(ProtocolConfig &conf, std::vector<Row> &share);
 
-std::vector<Row> reveal(ProtocolConfig &conf, std::vector<Row> &share) {
-    auto n_rows = conf.n_rows;
-    auto network = conf.network;
-    auto pid = conf.pid;
-
-    std::vector<Row> outvals(n_rows);
-
-    /* Don't throw error, as Dealer also has to execute this */
-    if (share.size() != n_rows) {
-        return outvals;
-    }
-
-    if (pid != D) {
-        std::vector<Row> output_share_self(share.size());
-        std::vector<Row> output_share_other(share.size());
-
-        std::copy(share.begin(), share.end(), output_share_self.begin());
-
-        size_t partner = (pid == P0) ? 1 : 0;
-        network->send(partner, output_share_self.data(), output_share_self.size() * sizeof(Row));
-        network->recv(partner, output_share_other.data(), output_share_other.size() * sizeof(Row));
-
-        for (size_t i = 0; i < n_rows; ++i) {
-            Row outmask = output_share_other[i];
-            outvals[i] = output_share_self[i] + outmask;
-        }
-        return outvals;
-    } else {
-        return outvals;
-    }
-}
-
-Permutation reveal(ProtocolConfig &conf, Permutation &share) {
-    auto n_rows = conf.n_rows;
-    auto network = conf.network;
-    auto pid = conf.pid;
-
-    std::vector<Row> outvals(n_rows);
-
-    /* Don't throw error, as Dealer also has to execute this */
-    if (share.size() != n_rows) {
-        return outvals;
-    }
-
-    if (pid != D) {
-        std::vector<Row> output_share_self(share.size());
-        std::vector<Row> output_share_other(share.size());
-
-        auto perm_vec = share.get_perm_vec();
-        std::copy(perm_vec.begin(), perm_vec.end(), output_share_self.begin());
-
-        if (pid == P0) {
-            network->send(P1, output_share_self.data(), output_share_self.size() * sizeof(Row));
-            network->recv(P1, output_share_other.data(), output_share_other.size() * sizeof(Row));
-        } else {
-            network->recv(P0, output_share_other.data(), output_share_other.size() * sizeof(Row));
-            network->send(P0, output_share_self.data(), output_share_self.size() * sizeof(Row));
-        }
-
-        for (size_t i = 0; i < n_rows; ++i) {
-            Row outmask = output_share_other[i];
-            outvals[i] = output_share_self[i] + outmask;
-        }
-        return Permutation(outvals);
-    } else {
-        return Permutation(outvals);
-    }
-}
+Permutation reveal(ProtocolConfig &conf, Permutation &share);
 
 };  // namespace share
