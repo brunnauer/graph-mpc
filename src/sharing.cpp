@@ -125,6 +125,10 @@ Graph share::reconstruct_graph(ProtocolConfig &conf, SecretSharedGraph &g) {
     auto pid = conf.pid;
     auto network = conf.network;
 
+    Graph g_new(g.size);
+
+    if (pid == D) return g_new;
+
     Party partner = pid == P0 ? P1 : P0;
     size_t n_bits = sizeof(Row) * 8;
 
@@ -169,7 +173,6 @@ Graph share::reconstruct_graph(ProtocolConfig &conf, SecretSharedGraph &g) {
         }
     }
 
-    Graph g_new(g.size);
     g_new.src = src;
     g_new.dst = dst;
     g_new.isV = isV;

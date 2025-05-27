@@ -13,6 +13,7 @@ macro(add_benchmark source_name)
     list(APPEND benchbin ${source_name})
 endmacro()
 
+add_benchmark(benchmark_bfs)
 add_benchmark(benchmark_shuffle)
 add_benchmark(benchmark_sharing)
 

@@ -19,6 +19,6 @@ target_link_libraries(GraphMPC_lib PUBLIC OpenSSL::SSL EMPTool NTL GMP)
 
 target_include_directories(GraphMPC_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-add_executable(GraphMPC_src)
-target_sources(GraphMPC_src PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
-target_link_libraries(GraphMPC_src PUBLIC GraphMPC_lib)
+#add_executable(GraphMPC_src)
+#target_sources(GraphMPC_src PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp)
+#target_link_libraries(GraphMPC_src PUBLIC GraphMPC_lib)

@@ -7,7 +7,7 @@
 void test_sharing(const bpo::variables_map &opts) {
     auto vec_size = opts["vec-size"].as<size_t>();
 
-    size_t pid, nP, repeat, threads, shuffle_num;
+    size_t pid, nP, repeat, threads, shuffle_num, nodes;
     std::shared_ptr<io::NetIOMP> network = nullptr;
     uint64_t seeds_h[5];
     uint64_t seeds_l[5];
@@ -15,7 +15,7 @@ void test_sharing(const bpo::variables_map &opts) {
     bool save_output;
     std::string save_file;
 
-    setup::setupExecution(opts, pid, nP, repeat, threads, shuffle_num, network, seeds_h, seeds_l, save_output, save_file);
+    setup::setupExecution(opts, pid, nP, repeat, threads, shuffle_num, nodes, network, seeds_h, seeds_l, save_output, save_file);
     output_data["details"] = {{"pid", pid},         {"num_parties", nP}, {"threads", threads},  {"seeds_h", seeds_h},
                               {"seeds_l", seeds_l}, {"repeat", repeat},  {"vec-size", vec_size}};
 

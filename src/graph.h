@@ -3,7 +3,7 @@
 #include <fstream>
 #include <iostream>
 
-#include "utils/types.h"
+#include "./utils/types.h"
 
 struct Graph {
     std::vector<Row> src;
@@ -72,15 +72,26 @@ struct SecretSharedGraph {
     std::vector<std::vector<Row>> payload_bits;
     size_t size = 0;
 
-    std::vector<Row> from_bits(std::vector<std::vector<Row>> &input_bits) {
-        std::vector<Row> result(size);
-        for (size_t i = 0; i < size; ++i) {
+    static std::vector<Row> from_bits(std::vector<std::vector<Row>> &input_bits, size_t n) {
+        std::vector<Row> result(n);
+        for (size_t i = 0; i < n; ++i) {
             result[i] = 0;
             for (size_t j = 0; j < input_bits.size(); j++) {
                 result[i] += input_bits[j][i] << j;
             }
         }
         return result;
+    }
+
+    static std::vector<std::vector<Row>> to_bits(std::vector<Row> &input_vec, size_t n_bits) {
+        std::vector<std::vector<Row>> bits(n_bits);
+        for (size_t i = 0; i < n_bits; ++i) {
+            bits[i].resize(input_vec.size());
+            for (size_t j = 0; j < input_vec.size(); ++j) {
+                bits[i][j] = (input_vec[j] & (1 << i)) >> i;
+            }
+        }
+        return bits;
     }
 };
 

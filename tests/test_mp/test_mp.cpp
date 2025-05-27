@@ -8,7 +8,7 @@
 void test_mp(const bpo::variables_map &opts) {
     auto vec_size = opts["vec-size"].as<size_t>();
 
-    size_t pid, nP, repeat, threads, shuffle_num;
+    size_t pid, nP, repeat, threads, shuffle_num, nodes;
     std::shared_ptr<io::NetIOMP> network = nullptr;
     uint64_t seeds_h[5];
     uint64_t seeds_l[5];
@@ -16,7 +16,7 @@ void test_mp(const bpo::variables_map &opts) {
     bool save_output;
     std::string save_file;
 
-    setup::setupExecution(opts, pid, nP, repeat, threads, shuffle_num, network, seeds_h, seeds_l, save_output, save_file);
+    setup::setupExecution(opts, pid, nP, repeat, threads, shuffle_num, nodes, network, seeds_h, seeds_l, save_output, save_file);
     output_data["details"] = {{"pid", pid},         {"num_parties", nP}, {"threads", threads},  {"seeds_h", seeds_h},
                               {"seeds_l", seeds_l}, {"repeat", repeat},  {"vec-size", vec_size}};
 
@@ -39,14 +39,17 @@ void test_mp(const bpo::variables_map &opts) {
 
     Graph g;
     g.size = 8;
-    g.src = std::vector<Row>({0, 1, 2, 3, 0, 1, 2, 3});
-    g.dst = std::vector<Row>({0, 1, 2, 3, 1, 2, 0, 2});
-    g.isV = std::vector<Row>({1, 1, 1, 1, 0, 0, 0, 0});
-    g.payload = std::vector<Row>({1, 2, 3, 4, 0, 0, 0, 0});
+    g.src = std::vector<Row>({0, 1, 2, 0, 1, 2, 2, 2});
+    g.dst = std::vector<Row>({0, 1, 2, 1, 0, 1, 0, 1});
+    g.isV = std::vector<Row>({1, 1, 1, 0, 0, 0, 0, 0});
+    g.payload = std::vector<Row>({1, 2, 3, 0, 0, 0, 0, 0});
 
     SecretSharedGraph g_shared = share::random_share_graph(conf, g);
 
-    mp::run(conf, g_shared, 1);
+    mp::run(conf, g_shared, 1, 3);
+
+    auto res_g = share::reconstruct_graph(conf, g_shared);
+    if (pid != D) res_g.print();
 
     exit(0);
 }
