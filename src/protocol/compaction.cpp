@@ -7,12 +7,11 @@ void compaction::preprocess(ProtocolConfig &conf, std::vector<Row> &triple_a, st
     auto network = conf.network;
 
     for (size_t i = 0; i < n_rows; ++i) {
-        triple_a[i] = share::random_share(pid, rngs);
-        triple_b[i] = share::random_share(pid, rngs);
+        triple_a[i] = share::random_share_3P(pid, rngs);
+        triple_b[i] = share::random_share_3P(pid, rngs);
         Row c = triple_a[i] * triple_b[i];
-        triple_c[i] = share::random_share_secret(pid, rngs, network, c);
+        triple_c[i] = share::random_share_secret_3P(pid, rngs, network, c);
     }
-    conf.network->sync();
 }
 
 Permutation compaction::evaluate(ProtocolConfig &conf, std::vector<Row> &triple_a, std::vector<Row> &triple_b, std::vector<Row> &triple_c,
@@ -61,7 +60,7 @@ Permutation compaction::evaluate(ProtocolConfig &conf, std::vector<Row> &triple_
         }
     }
 
-    std::vector<Row> data_recv(n_rows);
+    std::vector<Row> data_recv(2 * n_rows);
     if (pid == P0) {
         send_vec(P1, network, vals.size(), vals, BLOCK_SIZE);
         recv_vec(P1, network, data_recv, BLOCK_SIZE);
@@ -121,5 +120,6 @@ Permutation compaction::get_compaction(ProtocolConfig &conf, std::vector<Row> &i
     conf.n_rows = n;
 
     preprocess(conf, triple_a, triple_b, triple_c);
+    conf.network->sync();
     return evaluate(conf, triple_a, triple_b, triple_c, input_share);
 }

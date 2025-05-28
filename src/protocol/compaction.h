@@ -7,7 +7,7 @@
 #include "../utils/perm.h"
 #include "../utils/protocol_config.h"
 #include "../utils/sharing.h"
-#include "./utils/types.h"
+#include "../utils/types.h"
 
 namespace compaction {
 

@@ -6,10 +6,6 @@
 #include "netmp.h"
 
 static void send_vec(Party dest, std::shared_ptr<io::NetIOMP> network, size_t n_elems, std::vector<Row> &data, const size_t BLOCK_SIZE) {
-    /* Send amount of elements to receive */
-    network->send(dest, &n_elems, sizeof(size_t));
-
-    /* Send elements of the vector */
     size_t n_msgs = n_elems / BLOCK_SIZE;
     size_t last_msg_size = n_elems % BLOCK_SIZE;
     for (size_t i = 0; i < n_msgs; i++) {
@@ -30,13 +26,7 @@ static void send_vec(Party dest, std::shared_ptr<io::NetIOMP> network, size_t n_
 }
 
 static void recv_vec(Party src, std::shared_ptr<io::NetIOMP> network, std::vector<Row> &buffer, const size_t BLOCK_SIZE) {
-    /* Receive amount of elements */
-    size_t n_elems;
-    network->recv(src, &n_elems, sizeof(size_t));
-
-    buffer.resize(n_elems);
-
-    /* Receive actual data */
+    size_t n_elems = buffer.size();
     size_t n_msgs = n_elems / BLOCK_SIZE;
     size_t last_msg_size = n_elems % BLOCK_SIZE;
     for (size_t i = 0; i < n_msgs; i++) {
