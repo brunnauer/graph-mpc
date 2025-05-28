@@ -30,6 +30,16 @@ void test_bfs(const bpo::variables_map &opts) {
     RandomGenerators rngs(seeds_h, seeds_l);
     ProtocolConfig conf(party, rngs, network, vec_size, 1000000);
 
+    /**
+     *                      10        8
+     *                      /\     /\   /\
+     *                      |      |     |
+     *     0 <=> 6 -> 5 ->  4  <=> 2 <=> 1 <- 7
+     *                     / /\
+     *                    \/  \
+     *                    9    3
+     */
+
     Graph g;
     g.size = 25;
     g.src = std::vector<Row>({0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0, 1, 1, 2, 2, 2, 3, 4, 4, 4, 5, 6, 6, 7});
