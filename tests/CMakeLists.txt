@@ -21,6 +21,7 @@ set(TEST_HEADERS
 
 set(TEST_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/tests ${PROJECT_SOURCE_DIR}/setup)
 
+add_subdirectory(test_bfs)
 add_subdirectory(test_perm)
 add_subdirectory(test_mp)
 add_subdirectory(test_shuffle)
@@ -34,3 +35,4 @@ file(COPY ../certs DESTINATION ${PROJECT_BINARY_DIR}/tests/test_sharing)
 file(COPY ../certs DESTINATION ${PROJECT_BINARY_DIR}/tests/test_sort)
 file(COPY ../certs DESTINATION ${PROJECT_BINARY_DIR}/tests/test_sw_perm)
 file(COPY ../certs DESTINATION ${PROJECT_BINARY_DIR}/tests/test_mp)
+file(COPY ../certs DESTINATION ${PROJECT_BINARY_DIR}/tests/test_bfs)
