@@ -93,33 +93,3 @@ struct SecretSharedGraph {
         return bits;
     }
 };
-
-/*
-Graph from_file() {
-    Graph g;
-    std::ifstream g_file("graph.txt");
-    std::vector<Row> src_vec;
-    std::vector<Row> dst_vec;
-    std::vector<Row> payload_vec;
-    std::vector<Row> isV_vec;
-
-    int src, dst, payload;
-    bool isV;
-
-    while (g_file >> src >> dst >> isV >> payload) {
-        src_vec.push_back(src);
-        dst_vec.push_back(dst);
-        isV_vec.push_back(isV);
-        payload_vec.push_back(payload);
-    }
-
-    g.src = src_vec;
-    g.dst = dst_vec;
-    g.isV = isV_vec;
-    g.payload = payload_vec;
-    return g;
-}
-
-void print(Graph &graph) {
-}
-*/
