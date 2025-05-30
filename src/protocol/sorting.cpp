@@ -34,7 +34,6 @@ Permutation sort::sort_iteration_evaluate(ProtocolConfig &c, Permutation &perm, 
     auto [triple_a, triple_b, triple_c] = preproc.comp_triples[0];
     preproc.comp_triples.erase(preproc.comp_triples.begin());
     Permutation sigma_p = compaction::evaluate_one(c, triple_a, triple_b, triple_c, input_sorted);
-    auto sigma_p_rev = share::reveal_perm(c, sigma_p);
     auto sigma_p_vec = sigma_p.get_perm_vec();
     std::vector<Row> next_perm = perm_open.inverse()(sigma_p_vec);
 
@@ -49,12 +48,10 @@ Permutation sort::get_sort_evaluate(ProtocolConfig &c, std::vector<std::vector<R
     preproc.comp_triples.erase(preproc.comp_triples.begin());
 
     Permutation sigma = compaction::evaluate_one(c, triple_a, triple_b, triple_c, bit_shares[0]);
-    auto sigma_rev = share::reveal_perm(c, sigma);
 
     size_t n_bits = bit_shares.size();
     for (size_t i = 1; i < n_bits; ++i) {
         sigma = sort_iteration_evaluate(c, sigma, bit_shares[i], preproc);
-        sigma_rev = share::reveal_perm(c, sigma);
     }
     return sigma;
 }
@@ -75,8 +72,6 @@ Permutation sort::sort_iteration(ProtocolConfig &c, Permutation &perm, std::vect
 
     /* Compute compaction to stable sort bit_vec_share */
     Permutation sigma_p = compaction::get_compaction(c, sorted_share);
-    auto sigma_p_rev = share::reveal_perm(c, sigma_p);
-    sigma_p_rev.print();
     auto sigma_p_vec = sigma_p.get_perm_vec();
     std::vector<Row> next_perm = perm_open.inverse()(sigma_p_vec);
 
