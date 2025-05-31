@@ -36,7 +36,7 @@ void test_mp(const bpo::variables_map &opts) {
 
     Party party = (pid == 0) ? P0 : ((pid == 1) ? P1 : D);
     RandomGenerators rngs(seeds_h, seeds_l);
-    ProtocolConfig conf(party, rngs, network, vec_size, 1000000);
+    ProtocolConfig conf(party, rngs, network, 8, 1000000);
 
     /**
      *      0 == 1

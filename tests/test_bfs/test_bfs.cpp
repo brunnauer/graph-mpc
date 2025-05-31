@@ -30,7 +30,7 @@ void test_bfs(const bpo::variables_map &opts) {
 
     Party party = (pid == 0) ? P0 : ((pid == 1) ? P1 : D);
     RandomGenerators rngs(seeds_h, seeds_l);
-    ProtocolConfig conf(party, rngs, network, vec_size, 1000000);
+    ProtocolConfig conf(party, rngs, network, 25, 1000000);
 
     /**
      *                      10        8
