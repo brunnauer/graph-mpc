@@ -10,6 +10,8 @@ SortPreprocessing sort::get_sort_preprocess(ProtocolConfig &c, size_t n_bits) {
     for (size_t i = 0; i < n_bits - 1; ++i) {
         PermShare perm_share = shuffle::get_shuffle(c);
         preproc.perm_share_vec.push_back(perm_share);
+        std::vector<Row> unshuffle_B = shuffle::get_unshuffle(c, perm_share);
+        preproc.unshuffle_B_vec.push_back(unshuffle_B);
     }
 
     return preproc;
@@ -37,7 +39,11 @@ Permutation sort::sort_iteration_evaluate(ProtocolConfig &c, Permutation &perm, 
     auto sigma_p_vec = sigma_p.get_perm_vec();
     std::vector<Row> next_perm = perm_open.inverse()(sigma_p_vec);
 
-    Permutation next_perm_unshuffled = Permutation(shuffle::unshuffle(c, next_perm, perm_share));
+    std::vector<Row> unshuffle_B = preproc.unshuffle_B_vec[0];
+    preproc.unshuffle_B_vec.erase(preproc.unshuffle_B_vec.begin());
+
+    /* Unshuffle next_perm */
+    Permutation next_perm_unshuffled = Permutation(shuffle::unshuffle(c, perm_share, unshuffle_B, next_perm));
 
     return next_perm_unshuffled;
 }
@@ -76,7 +82,8 @@ Permutation sort::sort_iteration(ProtocolConfig &c, Permutation &perm, std::vect
     std::vector<Row> next_perm = perm_open.inverse()(sigma_p_vec);
 
     /* Unshuffle next */
-    return Permutation(shuffle::unshuffle(c, next_perm, perm_share));
+    std::vector<Row> B = shuffle::get_unshuffle(c, perm_share);
+    return Permutation(shuffle::unshuffle(c, perm_share, B, next_perm));
 }
 
 Permutation sort::get_sort(ProtocolConfig &c, std::vector<std::vector<Row>> &bit_shares) {
@@ -90,18 +97,51 @@ Permutation sort::get_sort(ProtocolConfig &c, std::vector<std::vector<Row>> &bit
     return sigma;
 }
 
-std::vector<Row> sort::apply_perm(ProtocolConfig &c, Permutation &perm, std::vector<Row> &input_share) {
+std::vector<Row> sort::apply_perm_evaluate(ProtocolConfig &c, Permutation &perm, PermShare &perm_share, std::vector<Row> &input_share) {
     /* Shuffle permutation and open it */
-    PermShare perm_share = shuffle::get_shuffle(c);
     auto perm_shuffled = shuffle::shuffle(c, perm, perm_share, true);
-    auto revealed = share::reveal_perm(c, perm_shuffled);
-    Permutation perm_opened = Permutation(revealed);
+    auto perm_opened = share::reveal_perm(c, perm_shuffled);
 
     /* Shuffle input_share with same perm */
     auto shuffled_input_share = shuffle::shuffle(c, input_share, perm_share, false);
 
     /* Apply opened perm to input_share */
     return perm_opened(shuffled_input_share);
+}
+
+std::vector<Row> sort::apply_perm(ProtocolConfig &c, Permutation &perm, std::vector<Row> &input_share) {
+    /* Shuffle permutation and open it */
+    PermShare perm_share = shuffle::get_shuffle(c);
+    auto perm_shuffled = shuffle::shuffle(c, perm, perm_share, true);
+    auto perm_opened = share::reveal_perm(c, perm_shuffled);
+
+    /* Shuffle input_share with same perm */
+    auto shuffled_input_share = shuffle::shuffle(c, input_share, perm_share, false);
+
+    /* Apply opened perm to input_share */
+    return perm_opened(shuffled_input_share);
+}
+
+std::tuple<PermShare, PermShare, PermShare> sort::switch_perm_preprocess(ProtocolConfig &c) {
+    PermShare pi = shuffle::get_shuffle(c);
+    PermShare omega = shuffle::get_shuffle(c);
+    PermShare merged = shuffle::get_merged_shuffle(c, pi, omega);
+    return {pi, omega, merged};
+}
+
+std::vector<Row> sort::switch_perm_evaluate(ProtocolConfig &c, Permutation &p1, Permutation &p2, PermShare &pi, PermShare &omega, PermShare &merged,
+                                            std::vector<Row> &input_share) {
+    auto shuffled_p1 = shuffle::shuffle(c, p1, pi, true);
+    auto shuffled_p2 = shuffle::shuffle(c, p2, omega, true);
+
+    auto revealed_p1 = share::reveal_perm(c, shuffled_p1);
+    auto revealed_p2 = share::reveal_perm(c, shuffled_p2);
+
+    auto permuted_input = revealed_p1.inverse()(input_share);
+    auto permuted_input_shuffled = shuffle::shuffle(c, permuted_input, merged, false);
+    auto switched = revealed_p2(permuted_input_shuffled);
+
+    return switched;
 }
 
 std::vector<Row> sort::switch_perm(ProtocolConfig &c, Permutation &p1, Permutation &p2, std::vector<Row> &input_share) {

@@ -53,17 +53,16 @@ void test_mp(const bpo::variables_map &opts) {
 
     SecretSharedGraph g_shared = share::random_share_graph(conf, g);
 
-    auto preproc = mp::run_preprocess(conf, 1);
-    mp::run_evaluate(conf, g_shared, 1, 3, preproc);
-    // mp::run(conf, g_shared, 1, 3);
+    auto preproc = mp::run_preprocess(conf, 2);
+    mp::run_evaluate(conf, g_shared, 2, 3, preproc);
 
     auto res_g = share::reveal_graph(conf, g_shared);
 
     if (pid != D) {
         res_g.print();
 
-        assert(res_g.payload[0] == 6);
-        assert(res_g.payload[1] == 9);
+        assert(res_g.payload[0] == 18);
+        assert(res_g.payload[1] == 21);
         assert(res_g.payload[2] == 3);
         assert(res_g.payload[3] == 0);
         assert(res_g.payload[4] == 0);

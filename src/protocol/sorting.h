@@ -7,8 +7,9 @@
 #include "shuffle.h"
 
 struct SortPreprocessing {
-    std::vector<PermShare> perm_share_vec;
     std::vector<std::tuple<std::vector<Row>, std::vector<Row>, std::vector<Row>>> comp_triples;
+    std::vector<PermShare> perm_share_vec;
+    std::vector<std::vector<Row>> unshuffle_B_vec;
 };
 
 namespace sort {
@@ -38,10 +39,32 @@ Permutation sort_iteration(ProtocolConfig &c, Permutation &perm, std::vector<Row
  */
 Permutation get_sort(ProtocolConfig &c, std::vector<std::vector<Row>> &bit_shares);
 
+/**
+ * Evaluates one apply_perm using a preprocessed perm_share
+ */
+std::vector<Row> apply_perm_evaluate(ProtocolConfig &c, Permutation &perm, PermShare &perm_share, std::vector<Row> &input_share);
+
+/**
+ * Interactively applies a secret-shared permutation on a secret shared input using ad-hoc preprocessing
+ */
 std::vector<Row> apply_perm(ProtocolConfig &c, Permutation &perm, std::vector<Row> &input_share);
 
-std::vector<Row> switch_perm(ProtocolConfig &c, Permutation &p1, Permutation &p2, std::vector<Row> &input_share);
+/**
+ * Runs preprocessing for evaluating one switch_perm later on
+ * Returns {pi, omega, merged}
+ */
+std::tuple<PermShare, PermShare, PermShare> switch_perm_preprocess(ProtocolConfig &c);
 
+/**
+ * Runs preprocessing for evaluating one switch_perm later on
+ * Returns {pi, omega, merged}
+ */
+std::vector<Row> switch_perm_evaluate(ProtocolConfig &c, Permutation &p1, Permutation &p2, PermShare &pi, PermShare &omega, PermShare &merged,
+                                      std::vector<Row> &input_share);
+
+/**
+ * Interactively computes p2(p1.inv) using ad-hoc preprocessing
+ */
 std::vector<Row> switch_perm(ProtocolConfig &c, Permutation &p1, Permutation &p2, std::vector<Row> &input_share);
 
 };  // namespace sort

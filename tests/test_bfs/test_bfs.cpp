@@ -53,7 +53,8 @@ void test_bfs(const bpo::variables_map &opts) {
 
     SecretSharedGraph g_shared = share::random_share_graph(conf, g);
 
-    mp::run(conf, g_shared, 4, 11);
+    auto preproc = mp::run_preprocess(conf, 4);
+    mp::run_evaluate(conf, g_shared, 4, 11, preproc);
 
     auto res_g = share::reveal_graph(conf, g_shared);
     for (auto &elem : res_g.payload) elem = std::min(elem, (Row)1);

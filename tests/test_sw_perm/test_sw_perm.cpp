@@ -79,7 +79,11 @@ void test_sw_perm(const bpo::variables_map &opts) {
 
     /* Generating and applying reverse sort */
     Permutation reverse_sort_share = sort::get_sort(conf, bit_shares);
-    auto reverse_sorted_input_share = sort::switch_perm(conf, sort_share, reverse_sort_share, sorted_input_share);
+    auto [pi, omega, merged] = sort::switch_perm_preprocess(conf);
+    auto [pi_1, omega_1, merged_1] = sort::switch_perm_preprocess(conf);
+
+    auto reverse_sorted_input_share = sort::switch_perm_evaluate(conf, sort_share, reverse_sort_share, pi, omega, merged, sorted_input_share);
+    auto inverse_share = sort::switch_perm_evaluate(conf, reverse_sort_share, sort_share, pi_1, omega_1, merged_1, reverse_sorted_input_share);
 
     std::cout << "Original input_vector: ";
     for (size_t i = 0; i < input_vector.size() - 1; ++i) {
@@ -111,6 +115,14 @@ void test_sw_perm(const bpo::variables_map &opts) {
         for (size_t i = 0; i < reverse_sorted.size() - 1; ++i) {
             assert(reverse_sorted[i] >= reverse_sorted[i + 1]);
         }
+
+        auto inverse = share::reveal_vec(conf, inverse_share);
+
+        std::cout << "Inverse switch perm applied: ";
+        for (size_t i = 0; i < inverse.size() - 1; ++i) {
+            std::cout << inverse[i] << ", ";
+        }
+        std::cout << inverse[input_vector.size() - 1] << std::endl;
     }
 
     exit(0);

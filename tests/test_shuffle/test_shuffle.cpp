@@ -39,15 +39,22 @@ void test_shuffle(const bpo::variables_map &opts) {
     /* Protocol run */
     PermShare perm_share_one = shuffle::get_shuffle(conf);
     PermShare perm_share_two = shuffle::get_shuffle(conf);
-    PermShare perm_share_merged = shuffle::get_merged_shuffle(conf, perm_share_one, perm_share_two);
-    std::vector<Row> shuffle_share = shuffle::shuffle(conf, share, perm_share_one, true);
-    std::vector<Row> repeat_share = shuffle::shuffle(conf, share, perm_share_one, false);
-    std::vector<Row> unshuffle_share = shuffle::unshuffle(conf, repeat_share, perm_share_one);
-    std::vector<Row> new_shuffle_share = shuffle::shuffle(conf, share, perm_share_two, true);
-    std::vector<Row> second_unshuffle_share = shuffle::unshuffle(conf, new_shuffle_share, perm_share_two);
-    std::vector<Row> merged_share = shuffle::shuffle(conf, share, perm_share_merged, true);
+    std::vector<Row> unshuffle_B_one = shuffle::get_unshuffle(conf, perm_share_one);
+    std::vector<Row> unshuffle_B_two = shuffle::get_unshuffle(conf, perm_share_two);
+    PermShare perm_share_merged_one = shuffle::get_merged_shuffle(conf, perm_share_one, perm_share_two);
+    PermShare perm_share_three = shuffle::get_shuffle(conf);
+    PermShare perm_share_merged_two = shuffle::get_merged_shuffle(conf, perm_share_two, perm_share_three);
 
-    std::vector<Row> res = share::reveal_vec(conf, shuffle_share);
+    std::vector<Row> shuffle_share_one = shuffle::shuffle(conf, share, perm_share_one, true);
+    std::vector<Row> repeat_share = shuffle::shuffle(conf, share, perm_share_one, false);
+    std::vector<Row> unshuffle_share_one = shuffle::unshuffle(conf, perm_share_one, unshuffle_B_one, repeat_share);
+    std::vector<Row> shuffle_share_two = shuffle::shuffle(conf, share, perm_share_two, true);
+    std::vector<Row> unshuffle_share_two = shuffle::unshuffle(conf, perm_share_two, unshuffle_B_two, shuffle_share_two);
+    std::vector<Row> merged_share_one = shuffle::shuffle(conf, share, perm_share_merged_one, false);
+    std::vector<Row> shuffle_share_three = shuffle::shuffle(conf, share, perm_share_three, false);
+    std::vector<Row> merged_share_two = shuffle::shuffle(conf, share, perm_share_merged_two, false);
+
+    std::vector<Row> res = share::reveal_vec(conf, shuffle_share_one);
 
     if (pid != D) {
         std::cout << std::endl << "Result of shuffle: ";
@@ -77,7 +84,7 @@ void test_shuffle(const bpo::variables_map &opts) {
         assert(res == repeat_res);
     }
 
-    res = share::reveal_vec(conf, unshuffle_share);
+    res = share::reveal_vec(conf, unshuffle_share_one);
 
     if (pid != D) {
         std::cout << std::endl << "Result of unshuffle: ";
@@ -90,10 +97,10 @@ void test_shuffle(const bpo::variables_map &opts) {
         assert(res == input_vector);
     }
 
-    auto new_shuffle = share::reveal_vec(conf, new_shuffle_share);
+    auto new_shuffle = share::reveal_vec(conf, shuffle_share_two);
 
     if (pid != D) {
-        std::cout << std::endl << "Result of new shuffle: ";
+        std::cout << std::endl << "Result of second shuffle: ";
         for (int i = 0; i < new_shuffle.size() - 1; ++i) {
             std::cout << new_shuffle[i] << ", ";
         }
@@ -108,7 +115,7 @@ void test_shuffle(const bpo::variables_map &opts) {
         assert(res != new_shuffle);
     }
 
-    res = share::reveal_vec(conf, second_unshuffle_share);
+    res = share::reveal_vec(conf, unshuffle_share_two);
 
     if (pid != D) {
         std::cout << std::endl << "Result of second unshuffle: ";
@@ -121,7 +128,7 @@ void test_shuffle(const bpo::variables_map &opts) {
         assert(res == input_vector);
     }
 
-    res = share::reveal_vec(conf, merged_share);
+    res = share::reveal_vec(conf, merged_share_one);
 
     if (pid != D) {
         std::cout << std::endl << "Result of merged shuffle: ";
@@ -138,6 +145,39 @@ void test_shuffle(const bpo::variables_map &opts) {
         assert(shuffled);
     }
 
+    auto third_shuffle = share::reveal_vec(conf, shuffle_share_three);
+
+    if (pid != D) {
+        std::cout << std::endl << "Result of third shuffle: ";
+        for (int i = 0; i < third_shuffle.size() - 1; ++i) {
+            std::cout << third_shuffle[i] << ", ";
+        }
+        std::cout << third_shuffle[third_shuffle.size() - 1] << std::endl;
+        std::cout << std::endl << std::endl;
+
+        bool shuffled = false;
+        for (size_t i = 0; i < third_shuffle.size(); ++i) {
+            if (third_shuffle[i] != i) shuffled = shuffled || true;
+        }
+        assert(shuffled);
+    }
+
+    auto merged_shuffle_two = share::reveal_vec(conf, merged_share_two);
+
+    if (pid != D) {
+        std::cout << std::endl << "Result of second merged shuffle: ";
+        for (int i = 0; i < merged_shuffle_two.size() - 1; ++i) {
+            std::cout << merged_shuffle_two[i] << ", ";
+        }
+        std::cout << merged_shuffle_two[merged_shuffle_two.size() - 1] << std::endl;
+        std::cout << std::endl << std::endl;
+
+        bool shuffled = false;
+        for (size_t i = 0; i < merged_shuffle_two.size(); ++i) {
+            if (merged_shuffle_two[i] != i) shuffled = shuffled || true;
+        }
+        assert(shuffled);
+    }
     exit(0);
 }
 

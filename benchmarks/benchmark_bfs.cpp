@@ -58,18 +58,30 @@ void benchmark(const bpo::variables_map &opts) {
 
         SecretSharedGraph g_shared = share::random_share_graph(conf, g);
 
-        StatsPoint start(*network);
-        mp::run(conf, g_shared, 1, nodes);
-        StatsPoint end(*network);
+        StatsPoint start_pre(*network);
+        auto preproc = mp::run_preprocess(conf, 1);
+        StatsPoint end_pre(*network);
+        network->sync();
 
-        auto res_g = share::reveal_graph(conf, g_shared);
-
-        for (auto &elem : res_g.payload) elem = std::min(elem, (Row)1);
-
-        auto rbench = end - start;
+        auto rbench = end_pre - start_pre;
         output_data["benchmarks"].push_back(rbench);
 
         size_t bytes_sent = 0;
+        for (const auto &val : rbench["communication"]) {
+            bytes_sent += val.get<int64_t>();
+        }
+
+        std::cout << "preprocessing time: " << rbench["time"] << " ms" << std::endl;
+        std::cout << "preprocessing sent: " << bytes_sent << " bytes" << std::endl;
+
+        StatsPoint start(*network);
+        mp::run_evaluate(conf, g_shared, 1, nodes, preproc);
+        StatsPoint end(*network);
+
+        rbench = end - start;
+        output_data["benchmarks"].push_back(rbench);
+
+        bytes_sent = 0;
         for (const auto &val : rbench["communication"]) {
             bytes_sent += val.get<int64_t>();
         }

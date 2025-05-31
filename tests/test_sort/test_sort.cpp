@@ -55,7 +55,6 @@ void test_sort(const bpo::variables_map &opts) {
 
     /* Sorting a vector with entries larger than one bit */
     auto sort_preproc = sort::get_sort_preprocess(conf, bit_shares.size());
-    auto reverse_sort_preproc = sort::get_sort_preprocess(conf, bit_shares.size());
 
     auto sort_share = sort::get_sort_evaluate(conf, bit_shares, sort_preproc);
 
@@ -68,14 +67,16 @@ void test_sort(const bpo::variables_map &opts) {
     for (size_t i = 0; i < bit_shares.size(); ++i) {
         bit_shares[i] = share::random_share_secret_vec_2P(conf, bits[i]);
     }
-
-    auto reverse_sort_share = sort::get_sort_evaluate(conf, bit_shares, reverse_sort_preproc);
+    /*
+        auto reverse_sort_preproc = sort::get_sort_preprocess(conf, bit_shares);
+        auto reverse_sort_share = sort::get_sort_evaluate(conf, bit_shares, reverse_sort_preproc);
+        Permutation reverse_sort = share::reveal_perm(conf, reverse_sort_share);
+    */
 
     Permutation sort = share::reveal_perm(conf, sort_share);
-    Permutation reverse_sort = share::reveal_perm(conf, reverse_sort_share);
 
     auto sorted_vector = sort(input_vector);
-    auto reverse_sorted_vector = reverse_sort(input_vector);
+    // auto reverse_sorted_vector = reverse_sort(input_vector);
 
     if (pid != D) {
         std::cout << "Original input_vector: ";
@@ -95,13 +96,14 @@ void test_sort(const bpo::variables_map &opts) {
         for (size_t i = 0; i < sorted_vector.size() - 1; ++i) {
             assert(sorted_vector[i] <= sorted_vector[i + 1]);
         }
+        /*
+                std::cout << "Reverse sorted input_vector: ";
 
-        std::cout << "Reverse sorted input_vector: ";
-
-        for (size_t i = 0; i < reverse_sorted_vector.size() - 1; ++i) {
-            std::cout << reverse_sorted_vector[i] << ", ";
-        }
-        std::cout << reverse_sorted_vector[input_vector.size() - 1] << std::endl;
+                for (size_t i = 0; i < reverse_sorted_vector.size() - 1; ++i) {
+                    std::cout << reverse_sorted_vector[i] << ", ";
+                }
+                std::cout << reverse_sorted_vector[input_vector.size() - 1] << std::endl;
+        */
     }
 
     exit(0);
