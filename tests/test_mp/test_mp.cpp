@@ -11,8 +11,8 @@ void test_mp(const bpo::variables_map &opts) {
 
     size_t pid, nP, repeat, threads, shuffle_num, nodes;
     std::shared_ptr<io::NetIOMP> network = nullptr;
-    uint64_t seeds_h[7];
-    uint64_t seeds_l[7];
+    uint64_t seeds_h[9];
+    uint64_t seeds_l[9];
     json output_data;
     bool save_output;
     std::string save_file;
@@ -53,7 +53,9 @@ void test_mp(const bpo::variables_map &opts) {
 
     SecretSharedGraph g_shared = share::random_share_graph(conf, g);
 
-    mp::run(conf, g_shared, 1, 3);
+    auto preproc = mp::run_preprocess(conf, 1);
+    mp::run_evaluate(conf, g_shared, 1, 3, preproc);
+    // mp::run(conf, g_shared, 1, 3);
 
     auto res_g = share::reveal_graph(conf, g_shared);
 

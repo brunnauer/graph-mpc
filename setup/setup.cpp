@@ -23,6 +23,10 @@ bpo::options_description setup::programOptions() {
         "seed_D0_unshuffle_l", bpo::value<uint64_t>()->default_value(11337), "Value of the D0-shared random seed for unshuffle, low bits.")(
         "seed_D1_unshuffle_h", bpo::value<uint64_t>()->default_value(1108), "Value of the D1-shared random seed for unshuffle, high bits.")(
         "seed_D1_unshuffle_l", bpo::value<uint64_t>()->default_value(11337), "Value of the D1-shared random seed for unshuffle, low bits.")(
+        "seed_D0_comp_h", bpo::value<uint64_t>()->default_value(11108), "Value of the D0-shared random seed for compaction, high bits.")(
+        "seed_D0_comp_l", bpo::value<uint64_t>()->default_value(111337), "Value of the D0-shared random seed for compaction, low bits.")(
+        "seed_D1_comp_h", bpo::value<uint64_t>()->default_value(11108), "Value of the D1-shared random seed for compaction, high bits.")(
+        "seed_D1_comp_l", bpo::value<uint64_t>()->default_value(111337), "Value of the D1-shared random seed for compaction, low bits.")(
         "net-config", bpo::value<std::string>(), "Path to JSON file containing network details of all parties.")(
         "localhost", bpo::bool_switch(), "All parties are on same machine.")("vec-size,v", bpo::value<size_t>()->default_value(10),
                                                                              "Number of vector elements.")(
@@ -94,6 +98,8 @@ void setup::setupExecution(const bpo::variables_map &opts, size_t &pid, size_t &
     seeds_h[4] = opts["seed_12_h"].as<uint64_t>();
     seeds_h[5] = opts["seed_D0_unshuffle_h"].as<uint64_t>();
     seeds_h[6] = opts["seed_D1_unshuffle_h"].as<uint64_t>();
+    seeds_h[7] = opts["seed_D0_comp_h"].as<uint64_t>();
+    seeds_h[8] = opts["seed_D1_comp_h"].as<uint64_t>();
     seeds_l[0] = opts["seed_self_l"].as<uint64_t>();
     if (seeds_l[0] == 0) {
         // Default value, but as this is own seed, make unique per party
@@ -105,6 +111,8 @@ void setup::setupExecution(const bpo::variables_map &opts, size_t &pid, size_t &
     seeds_l[4] = opts["seed_12_l"].as<uint64_t>();
     seeds_l[5] = opts["seed_D0_unshuffle_l"].as<uint64_t>();
     seeds_l[6] = opts["seed_D1_unshuffle_l"].as<uint64_t>();
+    seeds_l[7] = opts["seed_D0_comp_l"].as<uint64_t>();
+    seeds_l[8] = opts["seed_D1_comp_l"].as<uint64_t>();
 
     repeat = opts["repeat"].as<size_t>();
     auto port = opts["port"].as<int>();

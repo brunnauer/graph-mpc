@@ -11,8 +11,8 @@ void benchmark(const bpo::variables_map &opts) {
 
     size_t pid, nP, repeat, threads, shuffle_num, nodes;
     std::shared_ptr<io::NetIOMP> network = nullptr;
-    uint64_t seeds_h[7];
-    uint64_t seeds_l[7];
+    uint64_t seeds_h[9];
+    uint64_t seeds_l[9];
     json output_data;
     bool save_output;
     std::string save_file;

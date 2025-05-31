@@ -4,19 +4,19 @@ Row share::random_share_3P(ProtocolConfig &c) {
     switch (c.pid) {
         case P0: {
             Row share;
-            c.rngs.rng_D0().random_data(&share, sizeof(Row));
+            c.rngs.rng_D0_comp().random_data(&share, sizeof(Row));
             return share;
         }
         case P1: {
             Row share;
-            c.rngs.rng_D1().random_data(&share, sizeof(Row));
+            c.rngs.rng_D1_comp().random_data(&share, sizeof(Row));
             return share;
         }
         case D: {
             Row share_1;
             Row share_2;
-            c.rngs.rng_D0().random_data(&share_1, sizeof(Row));
-            c.rngs.rng_D1().random_data(&share_2, sizeof(Row));
+            c.rngs.rng_D0_comp().random_data(&share_1, sizeof(Row));
+            c.rngs.rng_D1_comp().random_data(&share_2, sizeof(Row));
             return (share_1 + share_2);
         }
     }
@@ -26,7 +26,7 @@ Row share::random_share_secret_3P(ProtocolConfig &c, Row &secret) {
     switch (c.pid) {
         case P0: {
             Row share;
-            c.rngs.rng_D0().random_data(&share, sizeof(Row));
+            c.rngs.rng_D0_comp().random_data(&share, sizeof(Row));
             return share;
         }
         case P1: {
@@ -36,7 +36,7 @@ Row share::random_share_secret_3P(ProtocolConfig &c, Row &secret) {
         }
         case D: {
             Row share_0;
-            c.rngs.rng_D0().random_data(&share_0, sizeof(Row));
+            c.rngs.rng_D0_comp().random_data(&share_0, sizeof(Row));
             Row share_1 = secret - share_0;
             c.network->send(1, &share_1, sizeof(Row));
             return secret;
