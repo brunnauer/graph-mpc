@@ -94,10 +94,10 @@ Row share::reveal(Party partner, std::shared_ptr<io::NetIOMP> network, Row &shar
     return share + share_other;
 }
 
-std::vector<Row> share::reveal_vec(ProtocolConfig &conf, std::vector<Row> &share) {
-    auto network = conf.network;
-    auto pid = conf.pid;
-    auto BLOCK_SIZE = conf.BLOCK_SIZE;
+std::vector<Row> share::reveal_vec(ProtocolConfig &c, std::vector<Row> &share) {
+    auto network = c.network;
+    auto pid = c.pid;
+    auto BLOCK_SIZE = c.BLOCK_SIZE;
 
     std::vector<Row> result(share.size());
 
@@ -129,16 +129,16 @@ std::vector<Row> share::reveal_vec(ProtocolConfig &conf, std::vector<Row> &share
     }
 }
 
-Permutation share::reveal_perm(ProtocolConfig &conf, Permutation &share) {
+Permutation share::reveal_perm(ProtocolConfig &c, Permutation &share) {
     auto perm_vec = share.get_perm_vec();
-    std::vector<Row> revealed_perm_vec = reveal_vec(conf, perm_vec);
+    std::vector<Row> revealed_perm_vec = reveal_vec(c, perm_vec);
     return Permutation(revealed_perm_vec);
 }
 
-SecretSharedGraph share::random_share_graph(ProtocolConfig &conf, Graph &graph) {
-    auto pid = conf.pid;
-    auto rngs = conf.rngs;
-    auto network = conf.network;
+SecretSharedGraph share::random_share_graph(ProtocolConfig &c, Graph &graph) {
+    auto pid = c.pid;
+    auto rngs = c.rngs;
+    auto network = c.network;
 
     auto src = graph.src;
     auto dst = graph.dst;
@@ -160,18 +160,12 @@ SecretSharedGraph share::random_share_graph(ProtocolConfig &conf, Graph &graph) 
         payload_bits_shared[i].resize(graph.size);
     }
 
-    std::cout << "Sharing the bits of the graph...";
-    StatsPoint start_sharing(*network);
     for (size_t i = 0; i < src_bits.size(); ++i) {
         src_bits_shared[i] = random_share_secret_vec_2P(pid, rngs, network, src_bits[i]);
         dst_bits_shared[i] = random_share_secret_vec_2P(pid, rngs, network, dst_bits[i]);
         payload_bits_shared[i] = random_share_secret_vec_2P(pid, rngs, network, payload_bits[i]);
     }
     isV_shared = random_share_secret_vec_2P(pid, rngs, network, isV);
-
-    StatsPoint end_sharing(*network);
-    auto time = (end_sharing - start_sharing)["time"];
-    std::cout << "Done. " << time << " ms" << std::endl << std::endl;
 
     SecretSharedGraph shared_graph;
     shared_graph.src_bits = src_bits_shared;
@@ -180,13 +174,13 @@ SecretSharedGraph share::random_share_graph(ProtocolConfig &conf, Graph &graph) 
     shared_graph.payload_bits = payload_bits_shared;
     shared_graph.size = graph.size;
 
-    conf.rngs = rngs;
+    c.rngs = rngs;
     return shared_graph;
 }
 
-Graph share::reveal_graph(ProtocolConfig &conf, SecretSharedGraph &g) {
-    auto pid = conf.pid;
-    auto network = conf.network;
+Graph share::reveal_graph(ProtocolConfig &c, SecretSharedGraph &g) {
+    auto pid = c.pid;
+    auto network = c.network;
 
     Graph g_new(g.size);
 
@@ -204,28 +198,19 @@ Graph share::reveal_graph(ProtocolConfig &conf, SecretSharedGraph &g) {
     std::vector<Row> isV(g.size);
     std::vector<Row> payload(g.size);
 
-    std::cout << "Reconstructing bit shares...";
-    StatsPoint re_bit_start(*network);
-
     for (size_t i = 0; i < n_bits; ++i) {
-        src_bits[i] = share::reveal_vec(conf, g.src_bits[i]);
+        src_bits[i] = share::reveal_vec(c, g.src_bits[i]);
     }
 
     for (size_t i = 0; i < n_bits; ++i) {
-        dst_bits[i] = share::reveal_vec(conf, g.dst_bits[i]);
+        dst_bits[i] = share::reveal_vec(c, g.dst_bits[i]);
     }
 
     for (size_t i = 0; i < n_bits; ++i) {
-        payload_bits[i] = share::reveal_vec(conf, g.payload_bits[i]);
+        payload_bits[i] = share::reveal_vec(c, g.payload_bits[i]);
     }
 
-    isV = share::reveal_vec(conf, g.isV_bits);
-
-    StatsPoint re_bit_end(*network);
-    auto time = (re_bit_end - re_bit_start)["time"];
-    std::cout << "Done. " << time << " ms" << std::endl << std::endl;
-
-    StatsPoint reconstruct_start(*network);
+    isV = share::reveal_vec(c, g.isV_bits);
 
     for (size_t i = 0; i < g.size; ++i) {
         src[i] = 0;

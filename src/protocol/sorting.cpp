@@ -79,13 +79,13 @@ Permutation sort::sort_iteration(ProtocolConfig &c, Permutation &perm, std::vect
     return Permutation(shuffle::unshuffle(c, next_perm, perm_share));
 }
 
-Permutation sort::get_sort(ProtocolConfig &conf, std::vector<std::vector<Row>> &bit_shares) {
+Permutation sort::get_sort(ProtocolConfig &c, std::vector<std::vector<Row>> &bit_shares) {
     /* Compute compaction of x_0 */
-    Permutation sigma = compaction::get_compaction(conf, bit_shares[0]);
+    Permutation sigma = compaction::get_compaction(c, bit_shares[0]);
     /* Proceed sorting with x_1, x_2, ... */
     size_t n_bits = bit_shares.size();
     for (size_t i = 1; i < n_bits; ++i) {
-        sigma = sort_iteration(conf, sigma, bit_shares[i]);
+        sigma = sort_iteration(c, sigma, bit_shares[i]);
     }
     return sigma;
 }
