@@ -109,6 +109,7 @@ std::vector<Ring> share::reveal_vec(ProtocolConfig &c, std::vector<Ring> &share)
             send_vec(P1, network, share.size(), share, BLOCK_SIZE);
             recv_vec(P1, network, share_other, BLOCK_SIZE);
 
+#pragma omp parallel for if (result.size() > 10000)
             for (size_t i = 0; i < result.size(); ++i) {
                 result[i] = share[i] + share_other[i];
             }
@@ -120,6 +121,7 @@ std::vector<Ring> share::reveal_vec(ProtocolConfig &c, std::vector<Ring> &share)
             recv_vec(P0, network, share_other, BLOCK_SIZE);
             send_vec(P0, network, share.size(), share, BLOCK_SIZE);
 
+#pragma omp parallel for if (result.size() > 10000)
             for (size_t i = 0; i < result.size(); ++i) {
                 result[i] = share[i] + share_other[i];
             }

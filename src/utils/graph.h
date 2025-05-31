@@ -1,5 +1,7 @@
 #pragma once
 
+#include <omp.h>
+
 #include <vector>
 
 #include "types.h"
@@ -73,6 +75,7 @@ struct SecretSharedGraph {
 
     static std::vector<Ring> from_bits(std::vector<std::vector<Ring>> &input_bits, size_t n) {
         std::vector<Ring> result(n);
+#pragma omp parallel for if (n > 10000)
         for (size_t i = 0; i < n; ++i) {
             result[i] = 0;
             for (size_t j = 0; j < input_bits.size(); j++) {

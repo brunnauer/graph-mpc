@@ -1,5 +1,7 @@
 #pragma once
 
+#include <omp.h>
+
 #include "../io/comm.h"
 #include "../setup/utils.h"
 #include "graph.h"

@@ -37,10 +37,12 @@ std::vector<Ring> mp::gather_1(std::vector<Ring> &input_vector) {
 std::vector<Ring> mp::gather_2(std::vector<Ring> &input_vector, size_t num_v) {
     std::vector<Ring> data(input_vector.size());
     Ring sum = 0;
+
     for (size_t i = 0; i < num_v; ++i) {
         data[i] = input_vector[i] - sum;
         sum += data[i];
     }
+#pragma omp_parallel for if (data.size() - num_v > 1000)
     for (size_t i = num_v; i < data.size(); ++i) {
         data[i] = 0;
     }
@@ -49,6 +51,8 @@ std::vector<Ring> mp::gather_2(std::vector<Ring> &input_vector, size_t num_v) {
 
 std::vector<Ring> mp::apply(std::vector<Ring> &old_payload, std::vector<Ring> &new_payload) {
     std::vector<Ring> result(old_payload.size());
+
+#pragma omp parallel for
     for (size_t i = 0; i < result.size(); ++i) {
         result[i] = old_payload[i] + new_payload[i];
     }

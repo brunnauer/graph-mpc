@@ -1,5 +1,7 @@
 #pragma once
 
+#include <omp.h>
+
 #include <algorithm>
 
 #include "../setup/utils.h"

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <omp.h>
+
 #include "../utils/perm.h"
 #include "../utils/protocol_config.h"
 #include "../utils/types.h"

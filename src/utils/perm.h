@@ -1,6 +1,7 @@
 #pragma once
 
 #include <emp-tool/emp-tool.h>
+#include <omp.h>
 
 #include <algorithm>
 #include <cassert>
@@ -41,6 +42,7 @@ class Permutation {
 
     [[nodiscard]] Permutation inverse() {
         std::vector<Ring> inverse_vec(perm_vec.size());
+#pragma omp parallel for if (perm_vec.size() > 10000)
         for (size_t i = 0; i < perm_vec.size(); ++i) {
             inverse_vec[perm_vec[i]] = i;
         }
@@ -57,6 +59,7 @@ class Permutation {
     std::vector<T> operator()(const std::vector<T> &input_vec) const {
         assert(input_vec.size() == perm_vec.size());
         std::vector<T> result(input_vec.size());
+#pragma omp parallel for if (perm_vec.size() > 10000)
         for (size_t i = 0; i < perm_vec.size(); ++i) {
             if (perm_vec[i] > input_vec.size()) throw std::logic_error("Cannot apply secret shared permutation.");
             result[perm_vec[i]] = input_vec[i];
@@ -79,6 +82,7 @@ class Permutation {
         size_t n = perm_vec.size();
         std::vector<Ring> result(n);
 
+#pragma omp parallel for if (perm_vec.size() > 10000)
         for (size_t i = 0; i < perm_vec.size(); ++i) {
             result[i] = perm_vec[other.perm_vec[i]];
         }

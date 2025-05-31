@@ -56,8 +56,10 @@ PermShare shuffle::get_shuffle_compute(ProtocolConfig &c, std::vector<Ring> &sha
             B_0 = (pi_0 * pi_1)(R_1);
             B_1 = (pi_0 * pi_1)(R_0);
 
+#pragma omp parallel for if (B_0.size() > 10000)
             for (size_t i = 0; i < B_0.size(); ++i) B_0[i] -= R;
 
+#pragma omp parallel for if (B_1.size() > 10000)
             for (size_t i = 0; i < B_1.size(); ++i) B_1[i] += R;
 
             for (int i = 0; i < c.n_rows; ++i) {
@@ -167,6 +169,7 @@ std::vector<Ring> shuffle::shuffle(ProtocolConfig &c, std::vector<Ring> &input_s
     }
 
     /* Compute input + R */
+#pragma omp parallel for if (c.n_rows > 10000)
     for (size_t j = 0; j < c.n_rows; ++j) {
         vec_A[j] = input_share[j] + R[j];
     }
@@ -203,6 +206,7 @@ std::vector<Ring> shuffle::shuffle(ProtocolConfig &c, std::vector<Ring> &input_s
 
     shuffled_share = perm(shuffled_share);
 
+#pragma omp parallel for if (c.n_rows > 10000)
     for (size_t i = 0; i < c.n_rows; ++i) {
         shuffled_share[i] -= perm_share.B[i];
     }
@@ -245,8 +249,10 @@ std::vector<Ring> shuffle::get_unshuffle(ProtocolConfig &c, PermShare &perm_shar
             B_0 = pi_inv(R_1);
             B_1 = pi_inv(R_0);
 
+#pragma omp parallel for if (B_0.size() > 10000)
             for (size_t i = 0; i < B_0.size(); ++i) B_0[i] -= R;
 
+#pragma omp parallel for if (B_1.size() > 10000)
             for (size_t i = 0; i < B_1.size(); ++i) B_1[i] += R;
 
             send_vec(P0, c.network, B_0.size(), B_0, c.BLOCK_SIZE);
@@ -281,6 +287,7 @@ std::vector<Ring> shuffle::unshuffle(ProtocolConfig &c, PermShare &shuffle_share
             R.push_back(rand);
         }
 
+#pragma omp parallel for if (c.n_rows > 10000)
         for (size_t i = 0; i < c.n_rows; ++i) vec_t[i] = input_share[i] + R[i];
 
         Permutation perm = c.pid == P0 ? shuffle_share.pi_0 : shuffle_share.pi_1_p;
@@ -302,6 +309,7 @@ std::vector<Ring> shuffle::unshuffle(ProtocolConfig &c, PermShare &shuffle_share
         output_share = perm.inverse()(vec_t);
 
         /* Last step: subtract B_0 / B_1 */
+#pragma omp parallel for if (c.n_rows > 10000)
         for (size_t i = 0; i < c.n_rows; ++i) output_share[i] -= B[i];
     }
 
