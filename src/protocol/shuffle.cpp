@@ -195,7 +195,10 @@ std::vector<Row> shuffle::shuffle(ProtocolConfig &c, std::vector<Row> &input_sha
             perm = Permutation::random(c.n_rows, c.rngs.rng_D0());
         if (save) perm_share.pi_0 = perm;
     } else {
-        perm = perm_share.pi_1_p;
+        if (perm_share.pi_1_p.not_null())
+            perm = perm_share.pi_1_p;
+        else
+            perm = Permutation::random(c.n_rows, c.rngs.rng_D1());
     }
 
     shuffled_share = perm(shuffled_share);
@@ -318,6 +321,19 @@ PermShare shuffle::get_merged_shuffle(ProtocolConfig &c, PermShare &pi_share, Pe
 
     switch (c.pid) {
         case D: {
+            Row rand;
+
+            /* Sampling 1: R_0 / R_1 */
+            for (int i = 0; i < c.n_rows; ++i) {
+                c.rngs.rng_D0().random_data(&rand, sizeof(Row));
+                R_0.push_back(rand);
+            }
+
+            for (int i = 0; i < c.n_rows; ++i) {
+                c.rngs.rng_D1().random_data(&rand, sizeof(Row));
+                R_1.push_back(rand);
+            }
+
             /* Computing / Sampling merged permutation */
             Permutation pi = pi_share.pi_0 * pi_share.pi_1;
             Permutation omega = omega_share.pi_0 * omega_share.pi_1;
@@ -337,19 +353,6 @@ PermShare shuffle::get_merged_shuffle(ProtocolConfig &c, PermShare &pi_share, Pe
             perm_share.pi_1 = sigma_1;
             perm_share.pi_0_p = sigma_0_p;
             perm_share.pi_1_p = sigma_1_p;
-
-            Row rand;
-
-            /* Sampling 1: R_0 / R_1 */
-            for (int i = 0; i < c.n_rows; ++i) {
-                c.rngs.rng_D0().random_data(&rand, sizeof(Row));
-                R_0.push_back(rand);
-            }
-
-            for (int i = 0; i < c.n_rows; ++i) {
-                c.rngs.rng_D1().random_data(&rand, sizeof(Row));
-                R_1.push_back(rand);
-            }
 
             Row R;
             c.rngs.rng_D().random_data(&R, sizeof(Row));
@@ -372,34 +375,18 @@ PermShare shuffle::get_merged_shuffle(ProtocolConfig &c, PermShare &pi_share, Pe
             recv_vec(D, c.network, sigma_0_p_vec, c.BLOCK_SIZE);
             recv_vec(D, c.network, B_0, c.BLOCK_SIZE);
             /* Sample sigma_0 */
-            perm_share.pi_0 = Permutation::random(c.n_rows, c.rngs.rng_D0());
+            // perm_share.pi_0 = Permutation::random(c.n_rows, c.rngs.rng_D0());
             perm_share.pi_0_p = Permutation(sigma_0_p_vec);
             perm_share.B = B_0;
-
-            /* Sampling R_0 */
-            Row rand;
-            for (int i = 0; i < c.n_rows; ++i) {
-                c.rngs.rng_D0().random_data(&rand, sizeof(Row));
-                R_0.push_back(rand);
-            }
-            perm_share.R = R_0;
             break;
         }
         case P1: {
             recv_vec(D, c.network, sigma_1_vec, c.BLOCK_SIZE);
             recv_vec(D, c.network, B_1, c.BLOCK_SIZE);
             /* Sample sigma_1 */
-            perm_share.pi_1_p = Permutation::random(c.n_rows, c.rngs.rng_D1());
             perm_share.pi_1 = Permutation(sigma_1_vec);
             perm_share.B = B_1;
 
-            /* Sampling R_1 */
-            Row rand;
-            for (int i = 0; i < c.n_rows; ++i) {
-                c.rngs.rng_D1().random_data(&rand, sizeof(Row));
-                R_1.push_back(rand);
-            }
-            perm_share.R = R_1;
             break;
         }
     }

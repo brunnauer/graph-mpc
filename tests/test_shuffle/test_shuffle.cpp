@@ -39,11 +39,13 @@ void test_shuffle(const bpo::variables_map &opts) {
     /* Protocol run */
     PermShare perm_share_one = shuffle::get_shuffle(conf);
     PermShare perm_share_two = shuffle::get_shuffle(conf);
+    PermShare perm_share_merged = shuffle::get_merged_shuffle(conf, perm_share_one, perm_share_two);
     std::vector<Row> shuffle_share = shuffle::shuffle(conf, share, perm_share_one, true);
     std::vector<Row> repeat_share = shuffle::shuffle(conf, share, perm_share_one, false);
     std::vector<Row> unshuffle_share = shuffle::unshuffle(conf, repeat_share, perm_share_one);
     std::vector<Row> new_shuffle_share = shuffle::shuffle(conf, share, perm_share_two, true);
     std::vector<Row> second_unshuffle_share = shuffle::unshuffle(conf, new_shuffle_share, perm_share_two);
+    std::vector<Row> merged_share = shuffle::shuffle(conf, share, perm_share_merged, true);
 
     std::vector<Row> res = share::reveal_vec(conf, shuffle_share);
 
@@ -117,6 +119,23 @@ void test_shuffle(const bpo::variables_map &opts) {
         std::cout << std::endl << std::endl;
 
         assert(res == input_vector);
+    }
+
+    res = share::reveal_vec(conf, merged_share);
+
+    if (pid != D) {
+        std::cout << std::endl << "Result of merged shuffle: ";
+        for (int i = 0; i < res.size() - 1; ++i) {
+            std::cout << res[i] << ", ";
+        }
+        std::cout << res[res.size() - 1] << std::endl;
+        std::cout << std::endl << std::endl;
+
+        bool shuffled = false;
+        for (size_t i = 0; i < res.size(); ++i) {
+            if (res[i] != i) shuffled = shuffled || true;
+        }
+        assert(shuffled);
     }
 
     exit(0);
