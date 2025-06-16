@@ -14,6 +14,7 @@ macro(add_test source_name)
 endmacro()
 
 add_test(test_bfs)
+add_test(test_eqz)
 add_test(test_mp)
 add_test(test_perm)
 add_test(test_processor)
