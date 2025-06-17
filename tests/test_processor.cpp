@@ -31,8 +31,8 @@ void test_processor(const bpo::variables_map &opts) {
 
     Party party = (pid == 0) ? P0 : ((pid == 1) ? P1 : D);
     RandomGenerators rngs(seeds_h, seeds_l);
-    const size_t BLOCK_SIZE = 100000;
-    Processor proc(party, rngs, network, 8, 100000);
+    const size_t BLOCK_SIZE = 1000000;
+    Processor proc(party, rngs, network, 8, BLOCK_SIZE);
 
     Graph g;
     g.size = 8;

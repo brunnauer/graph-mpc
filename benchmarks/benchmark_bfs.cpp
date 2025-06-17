@@ -4,6 +4,15 @@
 #include "../src/protocol/message_passing.h"
 #include "../src/utils/graph.h"
 
+std::vector<Ring> apply(std::vector<Ring> &old_payload, std::vector<Ring> &new_payload) {
+    std::vector<Ring> result(old_payload.size());
+
+    for (size_t i = 0; i < result.size(); ++i) {
+        result[i] = old_payload[i] + new_payload[i];
+    }
+    return result;
+}
+
 void benchmark(const bpo::variables_map &opts) {
     auto vec_size = opts["vec-size"].as<size_t>();
 
@@ -75,7 +84,7 @@ void benchmark(const bpo::variables_map &opts) {
         std::cout << "preprocessing sent: " << bytes_sent << " bytes" << std::endl;
 
         StatsPoint start(*network);
-        mp::evaluate(party, rngs, network, g.size, BLOCK_SIZE, g_shared, 1, nodes, preproc);
+        mp::evaluate(party, rngs, network, g.size, BLOCK_SIZE, g_shared, 1, nodes, preproc, apply);
         StatsPoint end(*network);
 
         rbench = end - start;

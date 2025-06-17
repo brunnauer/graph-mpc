@@ -5,6 +5,15 @@
 #include "../src/protocol/message_passing.h"
 #include "../src/utils/perm.h"
 
+std::vector<Ring> apply(std::vector<Ring> &old_payload, std::vector<Ring> &new_payload) {
+    std::vector<Ring> result(old_payload.size());
+
+    for (size_t i = 0; i < result.size(); ++i) {
+        result[i] = old_payload[i] + new_payload[i];
+    }
+    return result;
+}
+
 void test_mp(const bpo::variables_map &opts) {
     std::cout << "------ test_mp ------" << std::endl << std::endl;
     auto vec_size = opts["vec-size"].as<size_t>();
@@ -27,13 +36,6 @@ void test_mp(const bpo::variables_map &opts) {
     }
     std::cout << std::endl;
 
-    /* Setting up the input vector */
-    std::vector<Ring> input_vector(vec_size);
-
-    for (size_t i = 0; i < vec_size; i++) {
-        input_vector[i] = rand() % vec_size;
-    }
-
     Party party = (pid == 0) ? P0 : ((pid == 1) ? P1 : D);
     RandomGenerators rngs(seeds_h, seeds_l);
     const size_t BLOCK_SIZE = 100000;
@@ -54,7 +56,7 @@ void test_mp(const bpo::variables_map &opts) {
     SecretSharedGraph g_shared = share::random_share_graph(party, rngs, g);
 
     auto preproc = mp::preprocess(party, rngs, network, g.size, BLOCK_SIZE, 2);
-    mp::evaluate(party, rngs, network, g.size, BLOCK_SIZE, g_shared, 2, 3, preproc);
+    mp::evaluate(party, rngs, network, g.size, BLOCK_SIZE, g_shared, 2, 3, preproc, apply);
     auto res_g = share::reveal_graph(party, network, BLOCK_SIZE, g_shared);
 
     if (pid != D) {

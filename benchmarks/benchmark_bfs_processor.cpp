@@ -29,7 +29,7 @@ void benchmark(const bpo::variables_map &opts) {
 
     Party party = (pid == 0) ? P0 : ((pid == 1) ? P1 : D);
     RandomGenerators rngs(seeds_h, seeds_l);
-    const size_t BLOCK_SIZE = 100000;
+    const size_t BLOCK_SIZE = 1000000;
     const size_t n_iterations = 1;
 
     Graph g(vec_size);

@@ -3,6 +3,7 @@
 #include <omp.h>
 
 #include <algorithm>
+#include <functional>
 #include <tuple>
 
 #include "../setup/utils.h"
@@ -69,6 +70,8 @@ struct MPPreprocessing {
 
 namespace mp {
 
+using F_apply = std::function<std::vector<Ring>(std::vector<Ring> &, std::vector<Ring> &)>;
+
 std::vector<Ring> propagate_1(std::vector<Ring> &input_vector, size_t n_vertices);
 
 std::vector<Ring> propagate_2(std::vector<Ring> &input_vector, std::vector<Ring> &correction_vector);
@@ -76,8 +79,6 @@ std::vector<Ring> propagate_2(std::vector<Ring> &input_vector, std::vector<Ring>
 std::vector<Ring> gather_1(std::vector<Ring> &input_vector);
 
 std::vector<Ring> gather_2(std::vector<Ring> &input_vector, size_t n_vertices);
-
-std::vector<Ring> apply(std::vector<Ring> &in1, std::vector<Ring> &in2);
 
 std::tuple<std::vector<std::vector<Ring>>, std::vector<std::vector<Ring>>, std::vector<Ring>> init(Party id, SecretSharedGraph &g);
 
@@ -88,9 +89,9 @@ MPPreprocessing preprocess_Parties(Party id, RandomGenerators &rngs, size_t n, s
 MPPreprocessing preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, size_t n_iterations);
 
 void evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, SecretSharedGraph &g, size_t n_iterations,
-              size_t n_vertices, MPPreprocessing &preproc);
+              size_t n_vertices, MPPreprocessing &preproc, F_apply f_apply);
 
 void run(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, SecretSharedGraph &g, size_t n_iterations,
-         size_t n_vertices);
+         size_t n_vertices, F_apply f_apply);
 
 }  // namespace mp

@@ -1,5 +1,16 @@
 #include "processor.h"
 
+#include "../setup/utils.h"
+
+std::vector<Ring> apply(std::vector<Ring> &old_payload, std::vector<Ring> &new_payload) {
+    std::vector<Ring> result(old_payload.size());
+
+    for (size_t i = 0; i < result.size(); ++i) {
+        result[i] = old_payload[i] + new_payload[i];
+    }
+    return result;
+}
+
 void Processor::add(FunctionToken function) { queue.push_back(function); }
 
 void Processor::run_mp_preprocessing(size_t n_iterations) {
@@ -29,7 +40,7 @@ void Processor::run_mp_evaluation(size_t n_iterations, size_t n_vertices) {
 
     if (!pre_completed) throw std::logic_error("Preprocessing has to complete before evaluation.");
 
-    mp::evaluate(id, rngs, network, n, BLOCK_SIZE, g, n_iterations, n_vertices, mp_preproc);
+    mp::evaluate(id, rngs, network, n, BLOCK_SIZE, g, n_iterations, n_vertices, mp_preproc, apply);
 }
 
 size_t Processor::preprocessing_data_size(Party id) {

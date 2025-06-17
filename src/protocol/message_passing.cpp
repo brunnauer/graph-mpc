@@ -51,16 +51,6 @@ std::vector<Ring> mp::gather_2(std::vector<Ring> &input_vector, size_t n_vertice
     return data;
 }
 
-std::vector<Ring> mp::apply(std::vector<Ring> &old_payload, std::vector<Ring> &new_payload) {
-    std::vector<Ring> result(old_payload.size());
-
-#pragma omp parallel for
-    for (size_t i = 0; i < result.size(); ++i) {
-        result[i] = old_payload[i] + new_payload[i];
-    }
-    return result;
-}
-
 std::tuple<std::vector<std::vector<Ring>>, std::vector<std::vector<Ring>>, std::vector<Ring>> mp::init(Party id, SecretSharedGraph &g) {
     /* Generate vector containing { 1-isV, src[0], src[1], ..., src[n_bits - 1] } */
     std::vector<std::vector<Ring>> src_order_bits(g.src_bits.size() + 1);
@@ -143,7 +133,7 @@ MPPreprocessing mp::preprocess(Party id, RandomGenerators &rngs, std::shared_ptr
 }
 
 void mp::evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, SecretSharedGraph &g,
-                  size_t n_iterations, size_t n_vertices, MPPreprocessing &preproc) {
+                  size_t n_iterations, size_t n_vertices, MPPreprocessing &preproc, F_apply f_apply) {
     auto [src_order_bits, dst_order_bits, inverted_isV] = init(id, g);
     /* Compute the three permutations */
     Permutation src_order = sort::get_sort_evaluate(id, rngs, network, n, BLOCK_SIZE, src_order_bits, preproc.src_order_pre);
@@ -184,7 +174,7 @@ void mp::evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
         auto update = gather_2(payload_p, n_vertices);
 
         /* Apply */
-        payload_v = apply(payload_v, update);
+        payload_v = f_apply(payload_v, update);
     }
 
     std::vector<Ring> payload_v_eqz = clip::equals_zero_evaluate(id, rngs, network, BLOCK_SIZE, preproc.eqz_triples, payload_v);
@@ -197,7 +187,7 @@ void mp::evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
 }
 
 void mp::run(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, SecretSharedGraph &g, size_t n_iterations,
-             size_t n_vertices) {
+             size_t n_vertices, F_apply f_apply) {
     auto [src_order_bits, dst_order_bits, inverted_isV] = init(id, g);
 
     /* Compute the three permutations */
@@ -233,7 +223,7 @@ void mp::run(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> netw
         auto update = gather_2(payload_p, n_vertices);
 
         /* Apply */
-        payload_v = apply(payload_v, update);
+        payload_v = f_apply(payload_v, update);
     }
 
     std::vector<Ring> payload_v_eqz = clip::equals_zero(id, rngs, network, BLOCK_SIZE, payload_v);

@@ -1,9 +1,20 @@
+#include <omp.h>
+
 #include <algorithm>
 #include <cassert>
 
 #include "../setup/setup.h"
 #include "../src/protocol/message_passing.h"
 #include "../src/utils/perm.h"
+
+std::vector<Ring> apply(std::vector<Ring> &old_payload, std::vector<Ring> &new_payload) {
+    std::vector<Ring> result(old_payload.size());
+
+    for (size_t i = 0; i < result.size(); ++i) {
+        result[i] = old_payload[i] + new_payload[i];
+    }
+    return result;
+}
 
 void test_bfs(const bpo::variables_map &opts) {
     std::cout << "------ test_bfs ------" << std::endl << std::endl;
@@ -54,7 +65,7 @@ void test_bfs(const bpo::variables_map &opts) {
     SecretSharedGraph g_shared = share::random_share_graph(party, rngs, g);
 
     auto preproc = mp::preprocess(party, rngs, network, g.size, BLOCK_SIZE, 4);
-    mp::evaluate(party, rngs, network, g.size, BLOCK_SIZE, g_shared, 4, 11, preproc);
+    mp::evaluate(party, rngs, network, g.size, BLOCK_SIZE, g_shared, 4, 11, preproc, apply);
 
     auto res_g = share::reveal_graph(party, network, BLOCK_SIZE, g_shared);
 
