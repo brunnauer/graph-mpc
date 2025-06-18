@@ -14,7 +14,8 @@ namespace clip {
  */
 std::vector<Ring> equals_zero(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t BLOCK_SIZE, std::vector<Ring> &input_share);
 
-std::vector<Ring> equals_zero_two(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t BLOCK_SIZE, std::vector<Ring> &input_share);
+std::vector<Ring> equals_zero_two(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE,
+                                  std::vector<Ring> &input_share);
 
 std::vector<std::tuple<Ring, Ring, Ring>> equals_zero_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n,
                                                                  size_t BLOCK_SIZE);

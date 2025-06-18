@@ -52,14 +52,7 @@ std::vector<std::tuple<Ring, Ring, Ring>> clip::equals_zero_preprocess(Party id,
     const size_t n_layers = 5;
     const size_t n_triples = n_layers * n;
 
-    std::vector<Ring> vals_to_P1;
-    size_t idx = 0;
-
-    if (id == P1) recv_vec(D, network, n_triples, vals_to_P1, BLOCK_SIZE);
-    auto triples = mul::preprocess_bin(id, rngs, vals_to_P1, idx, n_triples);
-    if (id == D) send_vec(P1, network, n_triples, vals_to_P1, BLOCK_SIZE);
-
-    return triples;
+    return mul::preprocess_bin(id, rngs, network, n_triples, BLOCK_SIZE);
 }
 
 std::vector<Ring> clip::equals_zero_preprocess_Dealer(Party id, RandomGenerators &rngs, size_t n) {
@@ -122,14 +115,7 @@ std::vector<Ring> clip::equals_zero_evaluate(Party id, RandomGenerators &rngs, s
 std::vector<Ring> clip::B2A(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t BLOCK_SIZE, std::vector<Ring> &input_share) {
     const size_t n = input_share.size();
 
-    std::vector<Ring> vals_to_p1;
-    size_t idx = 0;
-
-    if (id == P1) recv_vec(D, network, n, vals_to_p1, BLOCK_SIZE);
-
-    auto triples = mul::preprocess(id, rngs, vals_to_p1, idx, n);
-
-    if (id == D) send_vec(P1, network, vals_to_p1.size(), vals_to_p1, BLOCK_SIZE);
+    auto triples = mul::preprocess(id, rngs, network, n, BLOCK_SIZE);
 
     std::vector<Ring> result(n);
     if (id == D) return result;
@@ -170,14 +156,7 @@ std::vector<Ring> clip::B2A(Party id, RandomGenerators &rngs, std::shared_ptr<io
 
 std::vector<std::tuple<Ring, Ring, Ring>> clip::B2A_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n,
                                                                size_t BLOCK_SIZE) {
-    std::vector<Ring> vals_to_P1;
-    size_t idx = 0;
-
-    if (id == P1) recv_vec(D, network, n, vals_to_P1, BLOCK_SIZE);
-    auto triples = mul::preprocess(id, rngs, vals_to_P1, idx, n);
-    if (id == D) send_vec(P1, network, n, vals_to_P1, BLOCK_SIZE);
-
-    return triples;
+    return mul::preprocess(id, rngs, network, n, BLOCK_SIZE);
 }
 
 std::vector<Ring> clip::B2A_preprocess_Dealer(Party id, RandomGenerators &rngs, size_t n) {
