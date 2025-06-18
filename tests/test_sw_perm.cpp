@@ -5,6 +5,7 @@
 #include "../src/protocol/sorting.h"
 #include "../src/utils/perm.h"
 #include "../src/utils/sharing.h"
+#include "constants.h"
 
 void test_sw_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE) {
     std::cout << "------ test_sw_perm ------" << std::endl << std::endl;
@@ -37,7 +38,6 @@ void test_sw_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
         bit_shares[i] = share::random_share_secret_vec_2P(id, rngs, bits[i]);
     }
 
-    /* Sorting a vector with entries larger than one bit */
     Permutation sort_share = sort::get_sort(id, rngs, network, n, BLOCK_SIZE, bit_shares);
     auto sorted_input_share = sort::apply_perm(id, rngs, network, n, BLOCK_SIZE, sort_share, input_share);
 
@@ -57,14 +57,53 @@ void test_sw_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
 
     /* Generating and applying reverse sort */
     Permutation reverse_sort_share = sort::get_sort(id, rngs, network, n, BLOCK_SIZE, bit_shares);
+
+    /* Preprocessing */
+    StatsPoint start_pre(*network);
     auto [pi, omega, merged] = sort::switch_perm_preprocess(id, rngs, network, n, BLOCK_SIZE);
+    StatsPoint end_pre(*network);
+
     auto [pi_1, omega_1, merged_1] = sort::switch_perm_preprocess(id, rngs, network, n, BLOCK_SIZE);
 
+    auto rbench_pre = end_pre - start_pre;
+    output_data["benchmarks_pre"].push_back(rbench_pre);
+    size_t bytes_sent_pre = 0;
+    for (const auto &val : rbench_pre["communication"]) {
+        bytes_sent_pre += val.get<int64_t>();
+    }
+
+    /* Preprocessing communication assertions */
+    if (id == D) {
+        /* n_elems * 4 Bytes per element */
+        size_t total_comm = 4 * switch_perm_comm_pre(n);
+        assert(bytes_sent_pre == total_comm);
+    }
+
+    /* Evaluation*/
+    StatsPoint start_online(*network);
     auto reverse_sorted_input_share =
         sort::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, sort_share, reverse_sort_share, pi, omega, merged, sorted_input_share);
+    StatsPoint end_online(*network);
+
     auto inverse_share =
         sort::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, reverse_sort_share, sort_share, pi_1, omega_1, merged_1, reverse_sorted_input_share);
 
+    /* Evaluation communication assertions */
+    auto rbench = end_online - start_online;
+    output_data["benchmarks"].push_back(rbench);
+
+    size_t bytes_sent = 0;
+    for (const auto &val : rbench["communication"]) {
+        bytes_sent += val.get<int64_t>();
+    }
+
+    /* Evaluation communication assertions */
+    if (id != D) {
+        size_t total_comm = 4 * switch_perm_comm_online(n);
+        assert(total_comm == bytes_sent);
+    }
+
+    /* Correctness assertions */
     std::cout << "Original input_vector: ";
     for (size_t i = 0; i < input_vector.size() - 1; ++i) {
         std::cout << input_vector[i] << ", ";

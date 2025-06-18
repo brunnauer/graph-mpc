@@ -6,7 +6,7 @@
  * List of functions that return the specified communication costs in #Ring-elements
  */
 
-/* Total offline communication for Dealer*/
+/* ----- Total offline communication for Dealer ----- */
 /* Multiplication, Compaction, etc. */
 constexpr const size_t mul_comm_pre(size_t n) { return n; }         // n: shares_P1
 constexpr const size_t compaction_comm_pre(size_t n) { return n; }  // n: shares_P1
@@ -25,8 +25,9 @@ constexpr const size_t sort_comm_pre(size_t n, size_t n_bits) {
 
 constexpr const size_t apply_perm_comm_pre(size_t n) { return shuffle_comm_pre(n); }
 constexpr const size_t reverse_perm_comm_pre(size_t n) { return shuffle_comm_pre(n) + unshuffle_comm_pre(n); }
+constexpr const size_t switch_perm_comm_pre(size_t n) { return 2 * shuffle_comm_pre(n) + merged_shuffle_comm_pre(n); }
 
-/* Online communication costs per party */
+/* ----- Online communication costs per party ----- */
 /* Multiplication, Compaction, etc. */
 constexpr const size_t mul_comm_online(size_t n) { return 2 * n; }                   // 2n: n xa's, n yb's
 constexpr const size_t compaction_comm_online(size_t n) { return 2 * n; }            // 2n: n xa's, n yb's
@@ -45,3 +46,4 @@ constexpr const size_t sort_comm_online(size_t n, size_t n_bits) {
 
 constexpr const size_t apply_perm_comm_online(size_t n) { return shuffle_comm_online(n) + n + shuffle_comm_online(n); }
 constexpr const size_t reverse_perm_comm_online(size_t n) { return shuffle_comm_online(n) + n + unshuffle_comm_online(n); }
+constexpr const size_t switch_perm_comm_online(size_t n) { return 2 * n + 3 * shuffle_comm_online(n); }  // 2 reveals, 3 shuffles
