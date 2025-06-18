@@ -221,6 +221,32 @@ std::vector<Ring> sort::apply_perm_evaluate(Party id, RandomGenerators &rngs, st
 }
 
 /**
+ * ----- F_reverse_perm -----
+ */
+std::vector<Ring> sort::reverse_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, Permutation &perm,
+                                     std::vector<Ring> &input_share) {
+    ShufflePre pi = shuffle::get_shuffle(id, rngs, network, n, BLOCK_SIZE, true);
+    auto unshuffle_B = shuffle::get_unshuffle(id, rngs, network, n, BLOCK_SIZE, pi);
+
+    Permutation perm_shuffled = shuffle::shuffle(id, rngs, network, perm, pi, n, BLOCK_SIZE);
+    Permutation perm_opened = share::reveal_perm(id, network, BLOCK_SIZE, perm_shuffled);
+    auto permuted_share = perm_opened.inverse()(input_share);
+
+    auto result = shuffle::unshuffle(id, rngs, network, pi, unshuffle_B, permuted_share, n, BLOCK_SIZE);
+    return result;
+}
+
+std::vector<Ring> sort::reverse_perm_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE,
+                                              Permutation &perm, ShufflePre &pi, std::vector<Ring> &unshuffle_B, std::vector<Ring> &input_share) {
+    Permutation perm_shuffled = shuffle::shuffle(id, rngs, network, perm, pi, n, BLOCK_SIZE);
+    Permutation perm_opened = share::reveal_perm(id, network, BLOCK_SIZE, perm_shuffled);
+    auto permuted_share = perm_opened.inverse()(input_share);
+
+    auto result = shuffle::unshuffle(id, rngs, network, pi, unshuffle_B, permuted_share, n, BLOCK_SIZE);
+    return result;
+}
+
+/**
  * ----- F_sw_perm -----
  */
 

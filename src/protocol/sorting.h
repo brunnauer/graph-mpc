@@ -143,6 +143,15 @@ std::vector<Ring> apply_perm_evaluate(Party id, RandomGenerators &rngs, std::sha
                                       ShufflePre &perm_share, std::vector<Ring> &input_share);
 
 /**
+ * ----- F_reverse_perm -----
+ */
+std::vector<Ring> reverse_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, Permutation &perm,
+                               std::vector<Ring> &input_share);
+
+std::vector<Ring> reverse_perm_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, Permutation &perm,
+                                        ShufflePre &pi, std::vector<Ring> &unshuffle_B, std::vector<Ring> &input_share);
+
+/**
  * ----- F_sw_perm -----
  */
 std::vector<Ring> switch_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, Permutation &p1,
