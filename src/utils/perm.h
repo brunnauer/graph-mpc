@@ -91,6 +91,14 @@ class Permutation {
 
     bool operator==(Permutation other) const { return other.perm_vec == perm_vec; }
 
+    bool is_null() {
+        bool null = true;
+        for (const auto elem : perm_vec) {
+            if (elem != 0) null = false;
+        }
+        return null;
+    }
+
     bool not_null() {
         bool null = true;
         for (const auto elem : perm_vec) {

@@ -39,10 +39,10 @@ void benchmark(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> ne
         g.add_list_entry(rand, (rand + 1) % n_vertices, 0, 0);
     }
 
-    const size_t n_iterations = 4;
+    const size_t n_iterations = 1;
     const size_t n_bits = sizeof(Ring) * 8;
 
-    std::vector<Ring> weights = {10000000, 100000, 1000, 1};
+    std::vector<Ring> weights = {0};
     SecretSharedGraph g_shared = share::random_share_graph(id, rngs, n_bits, g);
 
     for (size_t r = 0; r < repeat; ++r) {

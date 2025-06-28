@@ -34,9 +34,11 @@ struct SwitchPermPreprocessing_Dealer {
 };
 
 struct SwitchPermPreprocessing {
-    ShufflePre pi_share;      // size: n / 2n
-    ShufflePre omega_share;   // size: n / 2n
-    ShufflePre merged_share;  // size: n / 2n
+    ShufflePre pi;         // size: n / 2n
+    ShufflePre omega;      // size: n / 2n
+    ShufflePre merged;     // size: n / 2n
+    Permutation pi_p1;     // size: n
+    Permutation omega_p2;  // size: n
 };
 
 namespace permute {
@@ -72,6 +74,6 @@ SwitchPermPreprocessing_Dealer switch_perm_preprocess_Dealer(Party id, RandomGen
 SwitchPermPreprocessing switch_perm_preprocess_Parties(Party id, RandomGenerators &rngs, size_t n, std::vector<Ring> &vals, size_t &idx);
 
 std::vector<Ring> switch_perm_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, Permutation &p1,
-                                       Permutation &p2, ShufflePre &pi, ShufflePre &omega, ShufflePre &merged, std::vector<Ring> &input_share);
+                                       Permutation &p2, SwitchPermPreprocessing &preproc, std::vector<Ring> &input_share);
 
 };  // namespace permute

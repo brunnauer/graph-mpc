@@ -122,10 +122,8 @@ MPPreprocessing mp::preprocess(Party id, RandomGenerators &rngs, std::shared_ptr
 
     preproc.apply_perm_share = shuffle::get_shuffle(id, rngs, network, n, BLOCK_SIZE, true);
 
-    for (size_t i = 0; i < n_iterations; ++i) {
-        for (size_t j = 0; j < 4; ++j) {
-            preproc.sw_perm_pre.push_back(permute::switch_perm_preprocess(id, rngs, network, n, BLOCK_SIZE));
-        }
+    for (size_t j = 0; j < 3; ++j) {
+        preproc.sw_perm_pre.push_back(permute::switch_perm_preprocess(id, rngs, network, n, BLOCK_SIZE));
     }
 
     f_postprocess(id, rngs, network, n, BLOCK_SIZE, preproc);
@@ -163,24 +161,20 @@ void mp::evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
         auto payload_p = propagate_1(payload_v, n_vertices);
 
         /* Switch Perm to src order */
-        auto [pi, omega, merged] = preproc.sw_perm_pre[4 * i];
-        auto payload_src = permute::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, vtx_order, src_order, pi, omega, merged, payload_p);
-        auto [pi_1, omega_1, merged_1] = preproc.sw_perm_pre[4 * i + 1];
-        auto payload_corr = permute::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, vtx_order, src_order, pi_1, omega_1, merged_1, payload_v);
+        auto payload_src = permute::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, vtx_order, src_order, preproc.sw_perm_pre[0], payload_p);
+        auto payload_corr = permute::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, vtx_order, src_order, preproc.sw_perm_pre[0], payload_v);
 
         /* Propagate-2 */
         payload_p = propagate_2(payload_src, payload_corr);
 
         /* Switch Perm to dst order*/
-        auto [pi_2, omega_2, merged_2] = preproc.sw_perm_pre[4 * i + 2];
-        auto payload_dst = permute::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, src_order, dst_order, pi_2, omega_2, merged_2, payload_p);
+        auto payload_dst = permute::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, src_order, dst_order, preproc.sw_perm_pre[1], payload_p);
 
         /* Gather-1*/
         payload_p = gather_1(payload_dst);
 
         /* Switch Perm to vtx order */
-        auto [pi_3, omega_3, merged_3] = preproc.sw_perm_pre[4 * i + 3];
-        payload_p = permute::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, dst_order, vtx_order, pi_3, omega_3, merged_3, payload_p);
+        payload_p = permute::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, dst_order, vtx_order, preproc.sw_perm_pre[2], payload_p);
 
         /* Gather-2 */
         auto update = gather_2(payload_p, n_vertices);

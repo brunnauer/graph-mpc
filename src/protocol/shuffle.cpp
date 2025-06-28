@@ -247,6 +247,7 @@ ShufflePre shuffle::get_merged_shuffle(Party id, RandomGenerators &rngs, std::sh
     std::vector<Ring> R_0, R_1;
 
     ShufflePre perm_share;
+    perm_share.save = true;
 
     switch (id) {
         case D: {
@@ -280,8 +281,6 @@ ShufflePre shuffle::get_merged_shuffle(Party id, RandomGenerators &rngs, std::sh
 
             perm_share.pi_0 = sigma_0;
             perm_share.pi_1 = sigma_1;
-            perm_share.pi_0_p = sigma_0_p;
-            perm_share.pi_1_p = sigma_1_p;
 
             Ring R;
             rngs.rng_D().random_data(&R, sizeof(Ring));
@@ -304,8 +303,6 @@ ShufflePre shuffle::get_merged_shuffle(Party id, RandomGenerators &rngs, std::sh
         case P0: {
             recv_vec(D, network, sigma_0_p_vec, BLOCK_SIZE);
             recv_vec(D, network, B_0, BLOCK_SIZE);
-            /* Sample sigma_0 */
-            // perm_share.pi_0 = Permutation::random(c.n_rows, c.rngs.rng_D0());
             perm_share.pi_0_p = Permutation(sigma_0_p_vec);
             perm_share.B = B_0;
             break;
@@ -313,7 +310,6 @@ ShufflePre shuffle::get_merged_shuffle(Party id, RandomGenerators &rngs, std::sh
         case P1: {
             recv_vec(D, network, sigma_1_vec, BLOCK_SIZE);
             recv_vec(D, network, B_1, BLOCK_SIZE);
-            /* Sample sigma_1 */
             perm_share.pi_1 = Permutation(sigma_1_vec);
             perm_share.B = B_1;
 
@@ -633,6 +629,7 @@ std::vector<Ring> shuffle::shuffle(Party id, RandomGenerators &rngs, std::shared
             perm = perm_share.pi_1_p;
         else
             perm = Permutation::random(n, rngs.rng_D1());
+        if (perm_share.save) perm_share.pi_1_p = perm;
     }
 
     shuffled_share = perm(shuffled_share);

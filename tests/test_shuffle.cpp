@@ -56,6 +56,7 @@ void test_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
     std::vector<Ring> shuffle_share_two = shuffle::shuffle(id, rngs, network, share, perm_share_two, n, BLOCK_SIZE);
     std::vector<Ring> unshuffle_share_two = shuffle::unshuffle(id, rngs, network, perm_share_two, unshuffle_B_two, shuffle_share_two, n, BLOCK_SIZE);
     std::vector<Ring> merged_share_one = shuffle::shuffle(id, rngs, network, share, perm_share_merged_one, n, BLOCK_SIZE);
+    std::vector<Ring> repeat_merged_share = shuffle::shuffle(id, rngs, network, share, perm_share_merged_one, n, BLOCK_SIZE);
     std::vector<Ring> shuffle_share_three = shuffle::shuffle(id, rngs, network, share, perm_share_three, n, BLOCK_SIZE);
     std::vector<Ring> merged_share_two = shuffle::shuffle(id, rngs, network, share, perm_share_merged_two, n, BLOCK_SIZE);
 
@@ -72,7 +73,7 @@ void test_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
     /* Evaluation communication assertions */
     if (id != D) {
         size_t total_comm = 4 * (n_shuffles * shuffle_comm_online(n) + n_repeats * shuffle_comm_online(n) + n_unshuffles * unshuffle_comm_online(n) +
-                                 n_merged_shuffles * merged_shuffle_comm_online(n));
+                                 n_merged_shuffles * merged_shuffle_comm_online(n) + shuffle_comm_online(n));
         assert(total_comm == bytes_sent);
     }
 
@@ -154,6 +155,23 @@ void test_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
 
     if (id != D) {
         std::cout << std::endl << "Result of merged shuffle: ";
+        for (int i = 0; i < res.size() - 1; ++i) {
+            std::cout << res[i] << ", ";
+        }
+        std::cout << res[res.size() - 1] << std::endl;
+        std::cout << std::endl << std::endl;
+
+        bool shuffled = false;
+        for (size_t i = 0; i < res.size(); ++i) {
+            if (res[i] != i) shuffled = shuffled || true;
+        }
+        assert(shuffled);
+    }
+
+    res = share::reveal_vec(id, network, BLOCK_SIZE, repeat_merged_share);
+
+    if (id != D) {
+        std::cout << std::endl << "Result of repeating merged shuffle: ";
         for (int i = 0; i < res.size() - 1; ++i) {
             std::cout << res[i] << ", ";
         }

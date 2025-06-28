@@ -102,12 +102,11 @@ SortPreprocessing sort::get_sort_preprocess_Parties(Party id, RandomGenerators &
 Permutation sort::sort_iteration_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE,
                                           Permutation &perm, std::vector<Ring> &bit_shares, SortIterationPreprocessing &preproc) {
     if (id == D) return Permutation(n);
-    ShufflePre perm_share = preproc.perm_share;
-    Permutation perm_shuffled = shuffle::shuffle(id, rngs, network, perm, perm_share, n, BLOCK_SIZE);
+    Permutation perm_shuffled = shuffle::shuffle(id, rngs, network, perm, preproc.perm_share, n, BLOCK_SIZE);
 
     Permutation perm_open = share::reveal_perm(id, network, BLOCK_SIZE, perm_shuffled);
 
-    std::vector<Ring> input_shuffled = shuffle::shuffle(id, rngs, network, bit_shares, perm_share, n, BLOCK_SIZE);
+    std::vector<Ring> input_shuffled = shuffle::shuffle(id, rngs, network, bit_shares, preproc.perm_share, n, BLOCK_SIZE);
     std::vector<Ring> input_sorted = perm_open(input_shuffled);
 
     auto triples = preproc.triples;
@@ -117,7 +116,7 @@ Permutation sort::sort_iteration_evaluate(Party id, RandomGenerators &rngs, std:
     std::vector<Ring> next_perm = perm_open.inverse()(sigma_p_vec);
 
     auto unshuffle_B = preproc.unshuffle_B;
-    Permutation next_perm_shuffled = Permutation(shuffle::unshuffle(id, rngs, network, perm_share, unshuffle_B, next_perm, n, BLOCK_SIZE));
+    Permutation next_perm_shuffled = Permutation(shuffle::unshuffle(id, rngs, network, preproc.perm_share, unshuffle_B, next_perm, n, BLOCK_SIZE));
 
     return next_perm_shuffled;
 }

@@ -100,7 +100,7 @@ void test_pi_m(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> ne
     if (id == D) {
         /* n_elems * 4 Bytes per element */
         size_t total_comm = 4 * mp_comm_pre(g.size, n_iterations);
-        // assert(bytes_sent_pre == total_comm);
+        assert(bytes_sent_pre == total_comm);
     }
 
     StatsPoint start_online(*network);
@@ -119,14 +119,13 @@ void test_pi_m(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> ne
     /* Evaluation communication assertions */
     if (id != D) {
         size_t total_comm = 4 * mp_comm_online(g.size, n_iterations);
-        // assert(total_comm == bytes_sent);
+        assert(total_comm == bytes_sent);
     }
 
     auto res_g = share::reveal_graph(id, network, BLOCK_SIZE, n_bits, g_shared);
 
     if (id != D) {
         res_g.print();
-
         assert(res_g.payload[0] == 31030096);  // 3 of length 1, 10 of length 2, 30 of length 3,  96 of length 4
         assert(res_g.payload[1] == 41036100);  // 4 of length 1, 10 of length 2, 36 of length 3, 100 of length 4
         assert(res_g.payload[2] == 31030096);  // 3 of length 1, 10 of length 2, 30 of length 3,  96 of length 4

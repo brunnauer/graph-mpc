@@ -7,9 +7,9 @@ SwitchPermPreprocessing permute::switch_perm_preprocess(Party id, RandomGenerato
     ShufflePre omega = shuffle::get_shuffle(id, rngs, network, n, BLOCK_SIZE, true);
     ShufflePre merged = shuffle::get_merged_shuffle(id, rngs, network, n, BLOCK_SIZE, pi, omega);
 
-    preproc.pi_share = pi;
-    preproc.omega_share = omega;
-    preproc.merged_share = merged;
+    preproc.pi = pi;
+    preproc.omega = omega;
+    preproc.merged = merged;
 
     return preproc;
 }
@@ -40,9 +40,9 @@ SwitchPermPreprocessing permute::switch_perm_preprocess_Parties(Party id, Random
     ShufflePre omega_share = shuffle::get_shuffle_2(id, rngs, n, vals, idx, true);
     ShufflePre merged_share = shuffle::get_merged_shuffle_2(id, n, vals, idx);
 
-    preproc.pi_share = pi_share;
-    preproc.omega_share = omega_share;
-    preproc.merged_share = merged_share;
+    preproc.pi = pi_share;
+    preproc.omega = omega_share;
+    preproc.merged = merged_share;
     return preproc;
 }
 
@@ -69,18 +69,24 @@ std::vector<Ring> permute::reverse_perm_evaluate(Party id, RandomGenerators &rng
 }
 
 std::vector<Ring> permute::switch_perm_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE,
-                                                Permutation &p1, Permutation &p2, ShufflePre &pi, ShufflePre &omega, ShufflePre &merged,
-                                                std::vector<Ring> &input_share) {
+                                                Permutation &p1, Permutation &p2, SwitchPermPreprocessing &preproc, std::vector<Ring> &input_share) {
     if (id == D) return std::vector<Ring>(n);
-    auto shuffled_p1 = shuffle::shuffle(id, rngs, network, p1, pi, n, BLOCK_SIZE);
-    auto shuffled_p2 = shuffle::shuffle(id, rngs, network, p2, omega, n, BLOCK_SIZE);
 
-    auto revealed_p1 = share::reveal_perm(id, network, BLOCK_SIZE, shuffled_p1);
-    auto revealed_p2 = share::reveal_perm(id, network, BLOCK_SIZE, shuffled_p2);
+    if (preproc.pi_p1.is_null()) {
+        auto shuffled_p1 = shuffle::shuffle(id, rngs, network, p1, preproc.pi, n, BLOCK_SIZE);
+        auto pi_p1 = share::reveal_perm(id, network, BLOCK_SIZE, shuffled_p1);
+        preproc.pi_p1 = pi_p1;
+    }
 
-    auto permuted_input = revealed_p1.inverse()(input_share);
-    auto permuted_input_shuffled = shuffle::shuffle(id, rngs, network, permuted_input, merged, n, BLOCK_SIZE);
-    auto switched = revealed_p2(permuted_input_shuffled);
+    if (preproc.omega_p2.is_null()) {
+        auto shuffled_p2 = shuffle::shuffle(id, rngs, network, p2, preproc.omega, n, BLOCK_SIZE);
+        auto omega_p2 = share::reveal_perm(id, network, BLOCK_SIZE, shuffled_p2);
+        preproc.omega_p2 = omega_p2;
+    }
+
+    auto permuted_input = preproc.pi_p1.inverse()(input_share);
+    auto permuted_input_shuffled = shuffle::shuffle(id, rngs, network, permuted_input, preproc.merged, n, BLOCK_SIZE);
+    auto switched = preproc.omega_p2(permuted_input_shuffled);
 
     return switched;
 }

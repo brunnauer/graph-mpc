@@ -61,10 +61,10 @@ void test_sw_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
 
     /* Preprocessing */
     StatsPoint start_pre(*network);
-    auto [pi, omega, merged] = permute::switch_perm_preprocess(id, rngs, network, n, BLOCK_SIZE);
+    auto preproc = permute::switch_perm_preprocess(id, rngs, network, n, BLOCK_SIZE);
     StatsPoint end_pre(*network);
 
-    auto [pi_1, omega_1, merged_1] = permute::switch_perm_preprocess(id, rngs, network, n, BLOCK_SIZE);
+    auto preproc_1 = permute::switch_perm_preprocess(id, rngs, network, n, BLOCK_SIZE);
 
     auto rbench_pre = end_pre - start_pre;
     output_data["benchmarks_pre"].push_back(rbench_pre);
@@ -80,14 +80,15 @@ void test_sw_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
         assert(bytes_sent_pre == total_comm);
     }
 
+    network->sync();
+
     /* Evaluation*/
     StatsPoint start_online(*network);
     auto reverse_sorted_input_share =
-        permute::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, sort_share, reverse_sort_share, pi, omega, merged, sorted_input_share);
+        permute::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, sort_share, reverse_sort_share, preproc, sorted_input_share);
     StatsPoint end_online(*network);
 
-    auto inverse_share =
-        permute::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, reverse_sort_share, sort_share, pi_1, omega_1, merged_1, reverse_sorted_input_share);
+    auto inverse_share = permute::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, reverse_sort_share, sort_share, preproc_1, reverse_sorted_input_share);
 
     /* Evaluation communication assertions */
     auto rbench = end_online - start_online;
@@ -100,7 +101,7 @@ void test_sw_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
 
     /* Evaluation communication assertions */
     if (id != D) {
-        size_t total_comm = 4 * switch_perm_comm_online(n);
+        size_t total_comm = 4 * first_switch_perm_comm_online(n);
         assert(total_comm == bytes_sent);
     }
 
