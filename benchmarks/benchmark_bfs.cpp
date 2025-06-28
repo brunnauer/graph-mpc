@@ -12,41 +12,57 @@ std::vector<Ring> apply(std::vector<Ring> &old_payload, std::vector<Ring> &new_p
     }
     return result;
 }
+void pre_mp_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, MPPreprocessing &preproc) {
+    return;
+}
+
+void post_mp_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, MPPreprocessing &preproc) {
+    preproc.eqz_triples = clip::equals_zero_preprocess(id, rngs, network, n, BLOCK_SIZE);
+    preproc.B2A_triples = clip::B2A_preprocess(id, rngs, network, n, BLOCK_SIZE);
+}
+
+void pre_mp_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, MPPreprocessing &preproc,
+                     SecretSharedGraph &g) {
+    return;
+}
+
+void post_mp_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, SecretSharedGraph &g,
+                      MPPreprocessing &preproc, std::vector<Ring> &payload) {
+    std::vector<Ring> payload_v_eqz = clip::equals_zero_evaluate(id, rngs, network, BLOCK_SIZE, preproc.eqz_triples, payload);
+    std::vector<Ring> payload_v_B2A = clip::B2A_evaluate(id, rngs, network, BLOCK_SIZE, preproc.B2A_triples, payload_v_eqz);
+    auto payload_v_flip = clip::flip(id, payload_v_B2A);
+    g.payload = payload_v_flip;
+    g.payload_bits = to_bits(payload_v_flip, sizeof(Ring) * 8);
+}
 
 void benchmark(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, size_t repeat, size_t n_vertices,
                bool save_output, std::string save_file) {
     json output_data;
 
     Graph g(n);
-    std::vector<Ring> src, dst, isV, payload;
 
     for (size_t i = 0; i < n_vertices; ++i) {
-        src.push_back(i);
-        dst.push_back(i);
-        isV.push_back(1);
-        payload.push_back(0);
+        g.add_list_entry(i, i, 1, 0);
     }
+
     for (size_t i = n_vertices; i < n; ++i) {
         Ring rand = std::rand() % n_vertices;
-        src.push_back(rand);
-        dst.push_back((rand + 1) % n_vertices);
-        isV.push_back(0);
-        payload.push_back(0);
+        g.add_list_entry(rand, (rand + 1) % n_vertices, 0, 0);
     }
-    payload[0] = 1;
 
-    g.src = src;
-    g.dst = dst;
-    g.isV = isV;
-    g.payload = payload;
+    g.payload[0] = 1;
 
-    SecretSharedGraph g_shared = share::random_share_graph(id, rngs, g);
+    const size_t n_bits = sizeof(Ring) * 1;
+    const size_t n_iterations = 1;
+    std::vector<Ring> weights(n_iterations);
+
+    SecretSharedGraph g_shared = share::random_share_graph(id, rngs, n_bits, g);
 
     for (size_t r = 0; r < repeat; ++r) {
         std::cout << "--- Repetition " << r + 1 << " ---" << std::endl;
 
         StatsPoint start_pre(*network);
-        auto preproc = mp::preprocess(id, rngs, network, g.size, BLOCK_SIZE, 1);
+        auto preproc = mp::preprocess(id, rngs, network, g.size, BLOCK_SIZE, n_bits, 1, pre_mp_preprocess, post_mp_preprocess);
         StatsPoint end_pre(*network);
         network->sync();
 
@@ -62,7 +78,8 @@ void benchmark(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> ne
         std::cout << "preprocessing sent: " << bytes_sent << " bytes" << std::endl;
 
         StatsPoint start(*network);
-        mp::evaluate(id, rngs, network, g.size, BLOCK_SIZE, g_shared, 1, n_vertices, preproc, apply);
+        mp::evaluate(id, rngs, network, g.size, BLOCK_SIZE, n_bits, n_iterations, n_vertices, g_shared, weights, apply, pre_mp_evaluate, post_mp_evaluate,
+                     preproc);
         StatsPoint end(*network);
 
         rbench = end - start;

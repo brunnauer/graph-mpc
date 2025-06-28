@@ -1,10 +1,11 @@
 #pragma once
 
+#include <omp.h>
+
 #include <tuple>
 #include <vector>
 
 #include "../utils/mul.h"
-#include "../utils/protocol_config.h"
 #include "../utils/sharing.h"
 #include "../utils/types.h"
 

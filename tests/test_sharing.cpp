@@ -60,21 +60,23 @@ void test_sharing(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
 
     /* Test Graph Sharing */
     Graph g;
-    g.size = 8;
-    std::vector<Ring> src({0, 1, 2, 3, 0, 1, 2, 3});
-    std::vector<Ring> dst({0, 1, 2, 3, 1, 2, 0, 2});
-    std::vector<Ring> isV({1, 1, 1, 1, 0, 0, 0, 0});
-    std::vector<Ring> payload({1, 2, 3, 4, 0, 0, 0, 0});
-    g.src = src;
-    g.dst = dst;
-    g.isV = isV;
-    g.payload = payload;
-
-    SecretSharedGraph shared_graph = share::random_share_graph(id, rngs, g);
-    Graph reconstructed_graph = share::reveal_graph(id, network, BLOCK_SIZE, shared_graph);
+    g.add_list_entry(0, 0, 1, 1);
+    g.add_list_entry(1, 1, 1, 2);
+    g.add_list_entry(2, 2, 1, 3);
+    g.add_list_entry(3, 0, 1, 4);
+    g.add_list_entry(0, 1, 0, 0);
+    g.add_list_entry(1, 2, 0, 0);
+    g.add_list_entry(2, 0, 0, 0);
+    g.add_list_entry(3, 2, 0, 0);
 
     std::cout << "Initial graph: " << std::endl;
+    auto src_bits = to_bits(g.src, 32);
+    g.src = from_bits(src_bits, g.size);
     g.print();
+
+    SecretSharedGraph shared_graph = share::random_share_graph(id, rngs, 32, g);
+    Graph reconstructed_graph = share::reveal_graph(id, network, BLOCK_SIZE, 32, shared_graph);
+
     std::cout << "Reconstructed graph: " << std::endl;
     reconstructed_graph.print();
 

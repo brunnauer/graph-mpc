@@ -2,6 +2,7 @@
 
 #include "../utils/types.h"
 #include "clip.h"
+#include "permute.h"
 #include "sort.h"
 
 struct DeduplicationPreprocessing {

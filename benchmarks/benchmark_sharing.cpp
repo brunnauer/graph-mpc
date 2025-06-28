@@ -1,6 +1,6 @@
 #include "../setup/setup.h"
 #include "../src/protocol/shuffle.h"
-#include "../src/utils/protocol_config.h"
+#include "../src/utils/random_generators.h"
 #include "../src/utils/sharing.h"
 
 void benchmark(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, size_t repeat, size_t n_vertices,

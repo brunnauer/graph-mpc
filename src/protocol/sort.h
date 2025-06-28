@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../utils/perm.h"
-#include "../utils/protocol_config.h"
+#include "../utils/random_generators.h"
 #include "../utils/sharing.h"
 #include "compaction.h"
 #include "shuffle.h"
@@ -66,40 +66,6 @@ struct SortPreprocessing {
     std::vector<SortIterationPreprocessing> sort_iteration_pre;  // size: (n_bits-1) * (5n resp. 6n)
 };
 
-struct SwitchPermPreprocessing_Dealer {
-    std::vector<Ring> pi_B_0;
-    std::vector<Ring> pi_shares_P1;
-    std::vector<Ring> omega_B_0;
-    std::vector<Ring> omega_shares_P1;
-    std::vector<Ring> merged_B_0;
-    std::vector<Ring> merged_B_1;
-    std::vector<Ring> sigma_0_p;
-    std::vector<Ring> sigma_1;
-
-    std::tuple<std::vector<Ring>, std::vector<Ring>> to_vals() {
-        std::vector<Ring> vals_P0;
-        std::vector<Ring> vals_P1;
-
-        vals_P0.insert(vals_P0.end(), pi_B_0.begin(), pi_B_0.end());
-        vals_P0.insert(vals_P0.end(), omega_B_0.begin(), omega_B_0.end());
-        vals_P0.insert(vals_P0.end(), merged_B_0.begin(), merged_B_0.end());
-        vals_P0.insert(vals_P0.end(), sigma_0_p.begin(), sigma_0_p.end());
-
-        vals_P1.insert(vals_P1.end(), pi_shares_P1.begin(), pi_shares_P1.end());
-        vals_P1.insert(vals_P1.end(), omega_shares_P1.begin(), omega_shares_P1.end());
-        vals_P1.insert(vals_P1.end(), merged_B_1.begin(), merged_B_1.end());
-        vals_P1.insert(vals_P1.end(), sigma_1.begin(), sigma_1.end());
-
-        return {vals_P0, vals_P1};
-    }
-};
-
-struct SwitchPermPreprocessing {
-    ShufflePre pi_share;      // size: n / 2n
-    ShufflePre omega_share;   // size: n / 2n
-    ShufflePre merged_share;  // size: n / 2n
-};
-
 namespace sort {
 
 /**
@@ -132,38 +98,5 @@ SortIterationPreprocessing sort_iteration_preprocess_Parties(Party id, RandomGen
 
 Permutation sort_iteration_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, Permutation &perm,
                                     std::vector<Ring> &bit_shares, SortIterationPreprocessing &preproc);
-
-/**
- * ----- F_apply_perm -----
- */
-std::vector<Ring> apply_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, Permutation &perm,
-                             std::vector<Ring> &input_share);
-
-std::vector<Ring> apply_perm_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, Permutation &perm,
-                                      ShufflePre &perm_share, std::vector<Ring> &input_share);
-
-/**
- * ----- F_reverse_perm -----
- */
-std::vector<Ring> reverse_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, Permutation &perm,
-                               std::vector<Ring> &input_share);
-
-std::vector<Ring> reverse_perm_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, Permutation &perm,
-                                        ShufflePre &pi, std::vector<Ring> &unshuffle_B, std::vector<Ring> &input_share);
-
-/**
- * ----- F_sw_perm -----
- */
-std::vector<Ring> switch_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, Permutation &p1,
-                              Permutation &p2, std::vector<Ring> &input_share);
-
-SwitchPermPreprocessing switch_perm_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE);
-
-SwitchPermPreprocessing_Dealer switch_perm_preprocess_Dealer(Party id, RandomGenerators &rngs, size_t n);
-
-SwitchPermPreprocessing switch_perm_preprocess_Parties(Party id, RandomGenerators &rngs, size_t n, std::vector<Ring> &vals, size_t &idx);
-
-std::vector<Ring> switch_perm_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, Permutation &p1,
-                                       Permutation &p2, ShufflePre &pi, ShufflePre &omega, ShufflePre &merged, std::vector<Ring> &input_share);
 
 };  // namespace sort

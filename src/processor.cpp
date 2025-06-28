@@ -11,6 +11,25 @@ std::vector<Ring> apply(std::vector<Ring> &old_payload, std::vector<Ring> &new_p
     return result;
 }
 
+void pre_mp_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, MPPreprocessing &preproc) {
+    return;
+}
+
+void post_mp_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, MPPreprocessing &preproc) {
+    return;
+}
+
+void pre_mp_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, MPPreprocessing &preproc,
+                     SecretSharedGraph &g) {
+    return;
+}
+
+void post_mp_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, SecretSharedGraph &g,
+                      MPPreprocessing &preproc, std::vector<Ring> &payload) {
+    g.payload = payload;
+    g.payload_bits = to_bits(payload, sizeof(Ring) * 8);
+}
+
 void Processor::add(FunctionToken function) { queue.push_back(function); }
 
 void Processor::run_mp_preprocessing(size_t n_iterations) {
@@ -40,7 +59,9 @@ void Processor::run_mp_evaluation(size_t n_iterations, size_t n_vertices) {
 
     if (!pre_completed) throw std::logic_error("Preprocessing has to complete before evaluation.");
 
-    mp::evaluate(id, rngs, network, n, BLOCK_SIZE, g, n_iterations, n_vertices, mp_preproc, apply);
+    std::vector<Ring> weights(n_iterations);
+    size_t n_bits = sizeof(Ring) * 8;
+    mp::evaluate(id, rngs, network, g.size, BLOCK_SIZE, n_bits, n_iterations, n_vertices, g, weights, apply, pre_mp_evaluate, post_mp_evaluate, mp_preproc);
 }
 
 size_t Processor::preprocessing_data_size(Party id) {
@@ -120,13 +141,11 @@ void Processor::run_preprocessing_parties() {
                 break;
             }
             case SWITCH_PERM: {
-                SwitchPermPreprocessing sw_perm_preproc = sort::switch_perm_preprocess_Parties(id, rngs, n, vals, idx);
+                SwitchPermPreprocessing sw_perm_preproc = permute::switch_perm_preprocess_Parties(id, rngs, n, vals, idx);
                 mp_preproc.sw_perm_pre.push_back(sw_perm_preproc);
                 break;
             }
             case APPLY_PERM: {
-                ShufflePre perm_share = shuffle::get_shuffle_2(id, rngs, n, vals, idx, true);
-                mp_preproc.apply_perm_pre = perm_share;
                 break;
             }
             case CLIP: {
@@ -188,7 +207,7 @@ void Processor::run_preprocessing_dealer() {
                 break;
             }
             case SWITCH_PERM: {
-                SwitchPermPreprocessing_Dealer preproc = sort::switch_perm_preprocess_Dealer(id, rngs, n);
+                SwitchPermPreprocessing_Dealer preproc = permute::switch_perm_preprocess_Dealer(id, rngs, n);
                 auto [sw_perm_vals_P0, sw_perm_vals_P1] = preproc.to_vals();
                 vals_P0.insert(vals_P0.end(), sw_perm_vals_P0.begin(), sw_perm_vals_P0.end());
                 vals_P1.insert(vals_P1.end(), sw_perm_vals_P1.begin(), sw_perm_vals_P1.end());

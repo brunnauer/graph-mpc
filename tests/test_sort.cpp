@@ -49,7 +49,7 @@ void test_sort(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> ne
 
     /* Preprocessing communication assertions */
     if (id == D) {
-        size_t total_comm = 4 * (n_compactions * compaction_comm_pre(n) + n_shuffles * shuffle_comm_pre(n) + n_unshuffles * unshuffle_comm_pre(n));
+        size_t total_comm = 4 * sort_comm_pre(n, n_bits);
         assert(bytes_sent_pre == total_comm);
     }
 
@@ -68,8 +68,7 @@ void test_sort(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> ne
 
     /* Evaluation communication assertions */
     if (id != D) {
-        size_t total_comm = 4 * (n_shuffles * shuffle_comm_online(n) + n_repeats * shuffle_comm_online(n) + n_unshuffles * unshuffle_comm_online(n) +
-                                 n_compactions * compaction_comm_online(n) + n_reveals * n);
+        size_t total_comm = 4 * sort_comm_online(n, n_bits);
         assert(total_comm == bytes_sent);
     }
 

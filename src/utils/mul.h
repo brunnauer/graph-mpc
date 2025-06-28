@@ -3,7 +3,7 @@
 #include <tuple>
 #include <vector>
 
-#include "protocol_config.h"
+#include "random_generators.h"
 #include "sharing.h"
 #include "types.h"
 

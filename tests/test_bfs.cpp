@@ -6,6 +6,7 @@
 #include "../setup/setup.h"
 #include "../src/protocol/message_passing.h"
 #include "../src/utils/perm.h"
+#include "constants.h"
 
 std::vector<Ring> apply(std::vector<Ring> &old_payload, std::vector<Ring> &new_payload) {
     std::vector<Ring> result(old_payload.size());
@@ -14,6 +15,29 @@ std::vector<Ring> apply(std::vector<Ring> &old_payload, std::vector<Ring> &new_p
         result[i] = old_payload[i] + new_payload[i];
     }
     return result;
+}
+
+void pre_mp_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, MPPreprocessing &preproc) {
+    return;
+}
+
+void post_mp_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, MPPreprocessing &preproc) {
+    preproc.eqz_triples = clip::equals_zero_preprocess(id, rngs, network, n, BLOCK_SIZE);
+    preproc.B2A_triples = clip::B2A_preprocess(id, rngs, network, n, BLOCK_SIZE);
+}
+
+void pre_mp_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, MPPreprocessing &preproc,
+                     SecretSharedGraph &g) {
+    return;
+}
+
+void post_mp_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, SecretSharedGraph &g,
+                      MPPreprocessing &preproc, std::vector<Ring> &payload) {
+    std::vector<Ring> payload_v_eqz = clip::equals_zero_evaluate(id, rngs, network, BLOCK_SIZE, preproc.eqz_triples, payload);
+    std::vector<Ring> payload_v_B2A = clip::B2A_evaluate(id, rngs, network, BLOCK_SIZE, preproc.B2A_triples, payload_v_eqz);
+    auto payload_v_flip = clip::flip(id, payload_v_B2A);
+    g.payload = payload_v_flip;
+    g.payload_bits = to_bits(payload_v_flip, sizeof(Ring) * 8);
 }
 
 void test_bfs(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE) {
@@ -36,15 +60,54 @@ void test_bfs(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> net
     g.dst = std::vector<Ring>({0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 6, 2, 8, 1, 4, 8, 4, 2, 9, 10, 4, 0, 5, 1});
     g.isV = std::vector<Ring>({1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
     g.payload = std::vector<Ring>({1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
+    n = 25;
+
+    const size_t n_bits = sizeof(Ring) * 8;
+    const size_t n_iterations = 4;
+    std::vector<Ring> weights(n_iterations);
 
     if (id != D) g.print();
 
-    SecretSharedGraph g_shared = share::random_share_graph(id, rngs, g);
+    SecretSharedGraph g_shared = share::random_share_graph(id, rngs, n_bits, g);
 
-    auto preproc = mp::preprocess(id, rngs, network, g.size, BLOCK_SIZE, 4);
-    mp::evaluate(id, rngs, network, g.size, BLOCK_SIZE, g_shared, 4, 11, preproc, apply);
+    /* Preprocessing */
+    StatsPoint start_pre(*network);
+    auto preproc = mp::preprocess(id, rngs, network, g.size, BLOCK_SIZE, n_bits, 4, pre_mp_preprocess, post_mp_preprocess);
+    StatsPoint end_pre(*network);
 
-    auto res_g = share::reveal_graph(id, network, BLOCK_SIZE, g_shared);
+    auto rbench_pre = end_pre - start_pre;
+    output_data["benchmarks_pre"].push_back(rbench_pre);
+    size_t bytes_sent_pre = 0;
+    for (const auto &val : rbench_pre["communication"]) {
+        bytes_sent_pre += val.get<int64_t>();
+    }
+
+    /* Preprocessing communication assertions */
+    if (id == D) {
+        /* n_elems * 4 Bytes per element */
+        size_t total_comm = 4 * bfs_comm_pre(n, n_iterations);
+        assert(bytes_sent_pre == total_comm);
+    }
+
+    StatsPoint start_online(*network);
+    mp::evaluate(id, rngs, network, g.size, BLOCK_SIZE, n_bits, n_iterations, 11, g_shared, weights, apply, pre_mp_evaluate, post_mp_evaluate, preproc);
+    StatsPoint end_online(*network);
+
+    auto rbench = end_online - start_online;
+    output_data["benchmarks"].push_back(rbench);
+
+    size_t bytes_sent = 0;
+    for (const auto &val : rbench["communication"]) {
+        bytes_sent += val.get<int64_t>();
+    }
+
+    /* Evaluation communication assertions */
+    if (id != D) {
+        size_t total_comm = 4 * bfs_comm_online(n, n_iterations);
+        assert(total_comm == bytes_sent);
+    }
+
+    auto res_g = share::reveal_graph(id, network, BLOCK_SIZE, n_bits, g_shared);
 
     if (id != D) res_g.print();
 

@@ -4,9 +4,10 @@
 
 #include "../io/comm.h"
 #include "../setup/utils.h"
+#include "bits.h"
 #include "graph.h"
 #include "perm.h"
-#include "protocol_config.h"
+#include "random_generators.h"
 #include "types.h"
 
 namespace share {
@@ -26,7 +27,7 @@ Ring random_share_secret_3P(Party id, RandomGenerators &rngs, std::vector<Ring> 
 
 Ring random_share_secret_3P_bin(Party id, RandomGenerators &rngs, std::vector<Ring> &vals_to_p1, size_t &idx, Ring &secret);
 
-SecretSharedGraph random_share_graph(Party id, RandomGenerators &rngs, Graph &g);
+SecretSharedGraph random_share_graph(Party id, RandomGenerators &rngs, size_t n_bits, Graph &g);
 
 Ring reveal(Party id, std::shared_ptr<io::NetIOMP> network, Ring &share);
 
@@ -38,6 +39,6 @@ std::vector<Ring> reveal_vec_bin(Party id, std::shared_ptr<io::NetIOMP> network,
 
 Permutation reveal_perm(Party id, std::shared_ptr<io::NetIOMP> network, size_t BLOCK_SIZE, Permutation &share);
 
-Graph reveal_graph(Party id, std::shared_ptr<io::NetIOMP> network, size_t BLOCK_SIZE, SecretSharedGraph &g);
+Graph reveal_graph(Party id, std::shared_ptr<io::NetIOMP> network, size_t BLOCK_SIZE, size_t n_bits, SecretSharedGraph &g);
 
 };  // namespace share

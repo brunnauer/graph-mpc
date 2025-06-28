@@ -2,6 +2,7 @@
 #include <random>
 
 #include "../setup/setup.h"
+#include "../src/protocol/permute.h"
 #include "../src/protocol/sort.h"
 #include "../src/utils/perm.h"
 #include "../src/utils/sharing.h"
@@ -39,7 +40,7 @@ void test_sw_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
     }
 
     Permutation sort_share = sort::get_sort(id, rngs, network, n, BLOCK_SIZE, bit_shares);
-    auto sorted_input_share = sort::apply_perm(id, rngs, network, n, BLOCK_SIZE, sort_share, input_share);
+    auto sorted_input_share = permute::apply_perm(id, rngs, network, n, BLOCK_SIZE, sort_share, input_share);
 
     /* Inverting the bits */
     for (size_t i = 0; i < sizeof(Ring) * 8; ++i) {
@@ -60,10 +61,10 @@ void test_sw_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
 
     /* Preprocessing */
     StatsPoint start_pre(*network);
-    auto [pi, omega, merged] = sort::switch_perm_preprocess(id, rngs, network, n, BLOCK_SIZE);
+    auto [pi, omega, merged] = permute::switch_perm_preprocess(id, rngs, network, n, BLOCK_SIZE);
     StatsPoint end_pre(*network);
 
-    auto [pi_1, omega_1, merged_1] = sort::switch_perm_preprocess(id, rngs, network, n, BLOCK_SIZE);
+    auto [pi_1, omega_1, merged_1] = permute::switch_perm_preprocess(id, rngs, network, n, BLOCK_SIZE);
 
     auto rbench_pre = end_pre - start_pre;
     output_data["benchmarks_pre"].push_back(rbench_pre);
@@ -82,11 +83,11 @@ void test_sw_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
     /* Evaluation*/
     StatsPoint start_online(*network);
     auto reverse_sorted_input_share =
-        sort::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, sort_share, reverse_sort_share, pi, omega, merged, sorted_input_share);
+        permute::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, sort_share, reverse_sort_share, pi, omega, merged, sorted_input_share);
     StatsPoint end_online(*network);
 
     auto inverse_share =
-        sort::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, reverse_sort_share, sort_share, pi_1, omega_1, merged_1, reverse_sorted_input_share);
+        permute::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, reverse_sort_share, sort_share, pi_1, omega_1, merged_1, reverse_sorted_input_share);
 
     /* Evaluation communication assertions */
     auto rbench = end_online - start_online;

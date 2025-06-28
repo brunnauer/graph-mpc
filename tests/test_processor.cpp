@@ -15,14 +15,14 @@ void test_processor(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOM
     g.isV = std::vector<Ring>({1, 1, 1, 0, 0, 0, 0, 0});
     g.payload = std::vector<Ring>({1, 2, 3, 0, 0, 0, 0, 0});
 
-    SecretSharedGraph g_shared = share::random_share_graph(id, rngs, g);
+    SecretSharedGraph g_shared = share::random_share_graph(id, rngs, 32, g);
 
     proc.set_graph(g_shared);
     proc.run_mp_preprocessing(2);
     proc.run_mp_evaluation(2, 3);
 
     auto g_new = proc.get_graph();
-    auto g_revealed = share::reveal_graph(id, network, BLOCK_SIZE, g_new);
+    auto g_revealed = share::reveal_graph(id, network, BLOCK_SIZE, 32, g_new);
 
     if (id != D) {
         g_revealed.print();

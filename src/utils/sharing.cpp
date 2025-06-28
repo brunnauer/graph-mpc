@@ -165,36 +165,34 @@ Ring share::random_share_secret_3P_bin(Party id, RandomGenerators &rngs, std::ve
     }
 }
 
-SecretSharedGraph share::random_share_graph(Party id, RandomGenerators &rngs, Graph &g) {
-    auto src_bits = g.src_bits();
-    auto dst_bits = g.dst_bits();
-    auto payload_bits = g.payload_bits();
+SecretSharedGraph share::random_share_graph(Party id, RandomGenerators &rngs, size_t n_bits, Graph &g) {
+    auto src_bits = to_bits(g.src, n_bits);
+    auto dst_bits = to_bits(g.dst, n_bits);
+    auto payload_bits = to_bits(g.payload, n_bits);
 
-    std::vector<std::vector<Ring>> src_bits_shared(sizeof(Ring) * 8);
-    std::vector<std::vector<Ring>> dst_bits_shared(sizeof(Ring) * 8);
+    std::vector<std::vector<Ring>> src_bits_shared(n_bits);
+    std::vector<std::vector<Ring>> dst_bits_shared(n_bits);
     std::vector<Ring> isV_shared(g.isV.size());
-    std::vector<std::vector<Ring>> payload_bits_shared(sizeof(Ring) * 8);
+    std::vector<std::vector<Ring>> payload_bits_shared(n_bits);
 
-    for (size_t i = 0; i < sizeof(Ring) * 8; ++i) {
+    for (size_t i = 0; i < n_bits; ++i) {
         src_bits_shared[i].resize(g.size);
         dst_bits_shared[i].resize(g.size);
         payload_bits_shared[i].resize(g.size);
     }
 
-    for (size_t i = 0; i < src_bits.size(); ++i) {
+    for (size_t i = 0; i < n_bits; ++i) {
         src_bits_shared[i] = random_share_secret_vec_2P(id, rngs, src_bits[i]);
         dst_bits_shared[i] = random_share_secret_vec_2P(id, rngs, dst_bits[i]);
         payload_bits_shared[i] = random_share_secret_vec_2P(id, rngs, payload_bits[i]);
     }
     isV_shared = random_share_secret_vec_2P(id, rngs, g.isV);
 
-    SecretSharedGraph shared_graph;
-    shared_graph.src_bits = src_bits_shared;
-    shared_graph.dst_bits = dst_bits_shared;
-    shared_graph.isV_bits = isV_shared;
-    shared_graph.payload_bits = payload_bits_shared;
-    shared_graph.size = g.size;
-
+    SecretSharedGraph shared_graph(src_bits_shared, dst_bits_shared, isV_shared, payload_bits_shared);
+    shared_graph.src = share::random_share_secret_vec_2P(id, rngs, g.src);
+    shared_graph.dst = share::random_share_secret_vec_2P(id, rngs, g.dst);
+    shared_graph.isV = share::random_share_secret_vec_2P(id, rngs, g.isV);
+    shared_graph.payload = share::random_share_secret_vec_2P(id, rngs, g.payload);
     return shared_graph;
 }
 
@@ -230,7 +228,7 @@ std::vector<Ring> share::reveal_vec(Party id, std::shared_ptr<io::NetIOMP> netwo
             std::vector<Ring> share_other(share.size());
 
             send_vec(P1, network, share.size(), share, BLOCK_SIZE);
-            recv_vec(P1, network, share_other, BLOCK_SIZE);
+            recv_vec(P1, network, share.size(), share_other, BLOCK_SIZE);
 
             for (size_t i = 0; i < result.size(); ++i) {
                 result[i] = share[i] + share_other[i];
@@ -240,7 +238,7 @@ std::vector<Ring> share::reveal_vec(Party id, std::shared_ptr<io::NetIOMP> netwo
         case P1: {
             std::vector<Ring> share_other(share.size());
 
-            recv_vec(P0, network, share_other, BLOCK_SIZE);
+            recv_vec(P0, network, share.size(), share_other, BLOCK_SIZE);
             send_vec(P0, network, share.size(), share, BLOCK_SIZE);
 
             for (size_t i = 0; i < result.size(); ++i) {
@@ -283,13 +281,10 @@ Permutation share::reveal_perm(Party id, std::shared_ptr<io::NetIOMP> network, s
     return Permutation(revealed_perm_vec);
 }
 
-Graph share::reveal_graph(Party id, std::shared_ptr<io::NetIOMP> network, size_t BLOCK_SIZE, SecretSharedGraph &g) {
+Graph share::reveal_graph(Party id, std::shared_ptr<io::NetIOMP> network, size_t BLOCK_SIZE, size_t n_bits, SecretSharedGraph &g) {
     Graph g_new(g.size);
 
     if (id == D) return g_new;
-
-    Party partner = id == P0 ? P1 : P0;
-    size_t n_bits = sizeof(Ring) * 8;
 
     std::vector<std::vector<Ring>> src_bits(n_bits);
     std::vector<std::vector<Ring>> dst_bits(n_bits);
@@ -314,31 +309,10 @@ Graph share::reveal_graph(Party id, std::shared_ptr<io::NetIOMP> network, size_t
 
     isV = share::reveal_vec(id, network, BLOCK_SIZE, g.isV_bits);
 
-    for (size_t i = 0; i < g.size; ++i) {
-        src[i] = 0;
-        for (size_t j = 0; j < n_bits; j++) {
-            src[i] += src_bits[j][i] << j;
-        }
-    }
-
-    for (size_t i = 0; i < g.size; ++i) {
-        dst[i] = 0;
-        for (size_t j = 0; j < n_bits; j++) {
-            dst[i] += dst_bits[j][i] << j;
-        }
-    }
-
-    for (size_t i = 0; i < g.size; ++i) {
-        payload[i] = 0;
-        for (size_t j = 0; j < n_bits; j++) {
-            payload[i] += payload_bits[j][i] << j;
-        }
-    }
-
-    g_new.src = src;
-    g_new.dst = dst;
+    g_new.src = from_bits(src_bits, g.size);
+    g_new.dst = from_bits(dst_bits, g.size);
     g_new.isV = isV;
-    g_new.payload = payload;
+    g_new.payload = from_bits(payload_bits, g.size);
 
     return g_new;
 }

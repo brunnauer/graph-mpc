@@ -2,6 +2,7 @@
 
 #include <omp.h>
 
+#include <cassert>
 #include <vector>
 
 #include "types.h"
@@ -12,6 +13,7 @@ struct Graph {
     std::vector<Ring> isV;
     std::vector<Ring> payload;
     size_t size = 0;
+    size_t n_vertices = 0;
 
     Graph() = default;
     Graph(size_t n_rows) {
@@ -22,40 +24,24 @@ struct Graph {
         size = n_rows;
     }
 
-    std::vector<std::vector<Ring>> src_bits() {
-        size_t n_bits = sizeof(Ring) * 8;
-        std::vector<std::vector<Ring>> bits(n_bits);
-        for (size_t i = 0; i < n_bits; ++i) {
-            bits[i].resize(size);
-            for (size_t j = 0; j < size; ++j) {
-                bits[i][j] = (src[j] & (1 << i)) >> i;
-            }
-        }
-        return bits;
+    void add_list_entry(Ring _src, Ring _dst, Ring _isV, Ring _payload) {
+        src.push_back(_src);
+        dst.push_back(_dst);
+        isV.push_back(_isV);
+        payload.push_back(_payload);
+        size++;
+
+        if (_isV) n_vertices++;
     }
 
-    std::vector<std::vector<Ring>> dst_bits() {
-        size_t n_bits = sizeof(Ring) * 8;
-        std::vector<std::vector<Ring>> bits(n_bits);
-        for (size_t i = 0; i < n_bits; ++i) {
-            bits[i].resize(size);
-            for (size_t j = 0; j < size; ++j) {
-                bits[i][j] = (dst[j] & (1 << i)) >> i;
-            }
-        }
-        return bits;
-    }
+    void add_list_entry(Ring _src, Ring _dst, Ring _isV) {
+        src.push_back(_src);
+        dst.push_back(_dst);
+        isV.push_back(_isV);
+        payload.push_back(0);
+        size++;
 
-    std::vector<std::vector<Ring>> payload_bits() {
-        size_t n_bits = sizeof(Ring) * 8;
-        std::vector<std::vector<Ring>> bits(n_bits);
-        for (size_t i = 0; i < n_bits; ++i) {
-            bits[i].resize(size);
-            for (size_t j = 0; j < size; ++j) {
-                bits[i][j] = (payload[j] & (1 << i)) >> i;
-            }
-        }
-        return bits;
+        if (_isV) n_vertices++;
     }
 
     void print() {
@@ -67,32 +53,34 @@ struct Graph {
 };
 
 struct SecretSharedGraph {
+    std::vector<Ring> src;
+    std::vector<Ring> dst;
+    std::vector<Ring> isV;
+    std::vector<Ring> payload;
+
     std::vector<std::vector<Ring>> src_bits;
     std::vector<std::vector<Ring>> dst_bits;
     std::vector<Ring> isV_bits;
     std::vector<std::vector<Ring>> payload_bits;
+
     size_t size = 0;
 
-    static std::vector<Ring> from_bits(std::vector<std::vector<Ring>> &input_bits, size_t n) {
-        std::vector<Ring> result(n);
-#pragma omp parallel for if (n > 10000)
-        for (size_t i = 0; i < n; ++i) {
-            result[i] = 0;
-            for (size_t j = 0; j < input_bits.size(); j++) {
-                result[i] += input_bits[j][i] << j;
-            }
-        }
-        return result;
-    }
+    SecretSharedGraph() = default;
+    SecretSharedGraph(std::vector<std::vector<Ring>> &src_bits, std::vector<std::vector<Ring>> &dst_bits, std::vector<Ring> &isV_bits,
+                      std::vector<std::vector<Ring>> &payload_bits)
+        : src_bits(src_bits), dst_bits(dst_bits), isV_bits(isV_bits), payload_bits(payload_bits) {
+        size_t n_bits = src_bits.size();
+        size_t n = isV_bits.size();
 
-    static std::vector<std::vector<Ring>> to_bits(std::vector<Ring> &input_vec, size_t n_bits) {
-        std::vector<std::vector<Ring>> bits(n_bits);
+        assert(dst_bits.size() == n_bits);
+        assert(payload_bits.size() == n_bits);
+
         for (size_t i = 0; i < n_bits; ++i) {
-            bits[i].resize(input_vec.size());
-            for (size_t j = 0; j < input_vec.size(); ++j) {
-                bits[i][j] = (input_vec[j] & (1 << i)) >> i;
-            }
+            assert(src_bits[i].size() == n);
+            assert(dst_bits[i].size() == n);
+            assert(payload_bits[i].size() == n);
         }
-        return bits;
+
+        size = n;
     }
 };

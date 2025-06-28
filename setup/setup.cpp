@@ -177,7 +177,6 @@ void setup::run_benchmark(const bpo::variables_map &opts,
                           std::function<void(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, size_t repeat,
                                              size_t n_vertices, bool save_output, std::string save_file)>
                               func) {
-    std::cout << "------ test_shuffle ------" << std::endl << std::endl;
     auto n = opts["vec-size"].as<size_t>();
 
     size_t pid, nP, repeat, threads, shuffle_num, nodes;

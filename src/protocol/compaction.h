@@ -1,5 +1,8 @@
 #pragma once
 
+#include <omp.h>
+
+#include <cassert>
 #include <memory>
 #include <tuple>
 #include <vector>
@@ -7,7 +10,6 @@
 #include "../io/comm.h"
 #include "../utils/mul.h"
 #include "../utils/perm.h"
-#include "../utils/protocol_config.h"
 #include "../utils/sharing.h"
 #include "../utils/types.h"
 

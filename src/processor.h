@@ -8,6 +8,7 @@
 #include "protocol/clip.h"
 #include "protocol/compaction.h"
 #include "protocol/message_passing.h"
+#include "protocol/permute.h"
 #include "protocol/shuffle.h"
 #include "protocol/sort.h"
 #include "utils/graph.h"

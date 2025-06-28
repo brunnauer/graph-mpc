@@ -147,18 +147,19 @@ std::vector<std::tuple<Ring, Ring, Ring>> mul::preprocess_bin(Party id, RandomGe
 
 std::vector<Ring> mul::evaluate_bin(Party id, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE,
                                     std::vector<std::tuple<Ring, Ring, Ring>> &triples, std::vector<Ring> x, std::vector<Ring> y) {
-    std::vector<Ring> vals_send;
-    std::vector<Ring> vals_receive(n * 2);
+    std::vector<Ring> vals_send(2 * n);
+    std::vector<Ring> vals_receive(2 * n);
     std::vector<Ring> output(n);
 
     if (id == D) return output;
 
+#pragma omp parallel for if (n > 10000)
     for (size_t i = 0; i < n; ++i) {
         auto [a, b, _] = triples[i];
         auto xa = x[i] ^ a;
         auto yb = y[i] ^ b;
-        vals_send.push_back(xa);
-        vals_send.push_back(yb);
+        vals_send[2 * i] = xa;
+        vals_send[2 * i + 1] = yb;
     }
 
     if (id == P0) {
@@ -169,8 +170,10 @@ std::vector<Ring> mul::evaluate_bin(Party id, std::shared_ptr<io::NetIOMP> netwo
         send_vec(P0, network, vals_send.size(), vals_send, BLOCK_SIZE);
     }
 
+#pragma omp parallel for if (n > 10000)
     for (size_t i = 0; i < vals_send.size(); ++i) vals_send[i] ^= vals_receive[i];
 
+#pragma omp parallel for if (n > 10000)
     for (size_t i = 0; i < n; ++i) {
         auto [a, b, mul] = triples[i];
 

@@ -3,6 +3,7 @@
 #include "../setup/setup.h"
 #include "../src/protocol/clip.h"
 #include "../src/protocol/deduplication.h"
+#include "../src/utils/bits.h"
 #include "../src/utils/random_generators.h"
 #include "../src/utils/sharing.h"
 #include "constants.h"
@@ -12,46 +13,31 @@ void test_deduplication(Party id, RandomGenerators &rngs, std::shared_ptr<io::Ne
     json output_data;
     size_t n_bits = sizeof(Ring) * 8;
 
-    std::vector<Ring> src(n);
-    std::vector<Ring> dst(n);
+    Graph g;
+    g.add_list_entry(1, 1, 1);
+    g.add_list_entry(2, 2, 1);
+    g.add_list_entry(1, 2, 0);
+    g.add_list_entry(2, 1, 0);
+    g.add_list_entry(1, 3, 0);
+    g.add_list_entry(1, 3, 0);
+    g.add_list_entry(3, 1, 0);
+    g.add_list_entry(4, 4, 1);
+    g.add_list_entry(3, 3, 1);
+    g.add_list_entry(3, 1, 0);
+    g.add_list_entry(3, 2, 0);
+    g.add_list_entry(2, 3, 0);
+    g.add_list_entry(2, 4, 0);
+    g.add_list_entry(4, 2, 0);
+    g.add_list_entry(2, 4, 0);
+    g.add_list_entry(4, 2, 0);
 
-    std::vector<std::vector<Ring>> src_bits(n_bits);
-    std::vector<std::vector<Ring>> dst_bits(n_bits);
-    std::vector<std::vector<Ring>> src_bits_share(n_bits);
-    std::vector<std::vector<Ring>> dst_bits_share(n_bits);
+    n = g.size;
 
-    /* First half: Random values */
-    for (size_t i = 0; i < n / 2; ++i) {
-        src[i] = rand() % n;
-        dst[i] = rand() % n;
-    }
-
-    /* Second half: duplicates*/
-    for (size_t i = n / 2; i < n; ++i) {
-        src[i] = 0;
-        dst[i] = 1;
-    }
-
-    auto src_share = share::random_share_secret_vec_2P(id, rngs, src);
-    auto dst_share = share::random_share_secret_vec_2P(id, rngs, dst);
-
-    for (size_t i = 0; i < n_bits; ++i) {
-        src_bits[i].resize(n);
-        dst_bits[i].resize(n);
-        for (size_t j = 0; j < n; ++j) {
-            src_bits[i][j] = (src[j] & (1 << i)) >> i;
-            dst_bits[i][j] = (dst[j] & (1 << i)) >> i;
-        }
-    }
-
-    for (size_t i = 0; i < n_bits; ++i) {
-        src_bits_share[i] = share::random_share_secret_vec_2P(id, rngs, src_bits[i]);
-        dst_bits_share[i] = share::random_share_secret_vec_2P(id, rngs, dst_bits[i]);
-    }
+    SecretSharedGraph g_shared = share::random_share_graph(id, rngs, n_bits, g);
 
     /* Preprocessing */
     StatsPoint start_pre(*network);
-    auto preproc = deduplication_preprocess(id, rngs, network, n, BLOCK_SIZE);
+    auto preproc = deduplication_preprocess(id, rngs, network, g.size, BLOCK_SIZE);
     StatsPoint end_pre(*network);
 
     auto rbench_pre = end_pre - start_pre;
@@ -64,13 +50,12 @@ void test_deduplication(Party id, RandomGenerators &rngs, std::shared_ptr<io::Ne
     /* Preprocessing communication assertions */
     if (id == D) {
         /* n_elems * 4 Bytes per element */
-        size_t total_comm =
-            4 * (sort_comm_pre(n, 2 * n_bits) + apply_perm_comm_pre(n) + 2 * eqz_comm_pre(n) + mul_comm_pre(n) + B2A_comm_pre(n) + unshuffle_comm_pre(n));
+        size_t total_comm = 4 * deduplication_comm_pre(n, n_bits);
         assert(bytes_sent_pre == total_comm);
     }
 
     StatsPoint start_online(*network);
-    deduplication_evaluate(id, rngs, network, n, BLOCK_SIZE, preproc, src_bits_share, dst_bits_share, src_share, dst_share);
+    deduplication_evaluate(id, rngs, network, g.size, BLOCK_SIZE, preproc, g_shared.src_bits, g_shared.dst_bits, g_shared.src, g_shared.dst);
     StatsPoint end_online(*network);
 
     auto rbench = end_online - start_online;
@@ -83,21 +68,14 @@ void test_deduplication(Party id, RandomGenerators &rngs, std::shared_ptr<io::Ne
 
     /* Evaluation communication assertions */
     if (id != D) {
-        size_t total_comm = 4 * (sort_comm_online(n, 2 * n_bits) + 2 * apply_perm_comm_online(n) + 2 * eqz_comm_online(n) + mul_comm_online(n) +
-                                 B2A_comm_online(n) + reverse_perm_comm_online(n));
+        size_t total_comm = 4 * deduplication_comm_online(n, n_bits);
         assert(total_comm == bytes_sent);
     }
 
-    auto MSB_src_rev = share::reveal_vec(id, network, BLOCK_SIZE, src_bits_share[n_bits]);
-    auto MSB_dst_rev = share::reveal_vec(id, network, BLOCK_SIZE, dst_bits_share[n_bits]);
+    auto res_g = share::reveal_graph(id, network, BLOCK_SIZE, n_bits, g_shared);
 
-    /* Assertions for correctnes */
-    if (id != D) {
-        for (size_t i = n / 2 + 1; i < n; ++i) {
-            assert(MSB_src_rev[i] == 1);
-            assert(MSB_dst_rev[i] == 1);
-        }
-    }
+    /* Assertions for correctness */
+    if (id != D) res_g.print();
 }
 
 int main(int argc, char **argv) {

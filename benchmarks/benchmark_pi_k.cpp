@@ -1,46 +1,64 @@
 #include <algorithm>
 
 #include "../setup/setup.h"
-#include "../src/processor.h"
+#include "../src/protocol/message_passing.h"
 #include "../src/utils/graph.h"
+
+std::vector<Ring> apply(std::vector<Ring> &old_payload, std::vector<Ring> &new_payload) {
+    std::vector<Ring> result(old_payload.size());
+
+    for (size_t i = 0; i < result.size(); ++i) {
+        result[i] = old_payload[i] + new_payload[i];
+    }
+    return result;
+}
+
+void pre_mp_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, MPPreprocessing &preproc) {
+    return;
+}
+
+void post_mp_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, MPPreprocessing &preproc) {
+    return;
+}
+
+void pre_mp_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, MPPreprocessing &preproc,
+                     SecretSharedGraph &g) {
+    return;
+}
+
+void post_mp_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, SecretSharedGraph &g,
+                      MPPreprocessing &preproc, std::vector<Ring> &payload) {
+    g.payload = payload;
+    g.payload_bits = to_bits(payload, sizeof(Ring) * 8);
+}
 
 void benchmark(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, size_t repeat, size_t n_vertices,
                bool save_output, std::string save_file) {
     json output_data;
 
-    const size_t n_iterations = 1;
-
     Graph g(n);
-    std::vector<Ring> src, dst, isV, payload;
+
     for (size_t i = 0; i < n_vertices; ++i) {
-        src.push_back(i);
-        dst.push_back(i);
-        isV.push_back(1);
-        payload.push_back(0);
+        g.add_list_entry(i, i, 1, 0);
     }
-    for (size_t i = n / 2; i < n; ++i) {
+
+    for (size_t i = n_vertices; i < n; ++i) {
         Ring rand = std::rand() % n_vertices;
-        src.push_back(rand);
-        dst.push_back((rand + 1) % n_vertices);
-        isV.push_back(0);
-        payload.push_back(0);
+        g.add_list_entry(rand, (rand + 1) % n_vertices, 0, 0);
     }
-    payload[0] = 1;
+    g.payload[0] = 1;
 
-    g.src = src;
-    g.dst = dst;
-    g.isV = isV;
-    g.payload = payload;
+    size_t n_bits = sizeof(Ring) * 8 + 1;
+    size_t n_iterations = 1;
+    std::vector<Ring> weights(n_iterations);
 
-    Processor proc(id, rngs, network, g.size, BLOCK_SIZE);
-    SecretSharedGraph g_shared = share::random_share_graph(id, rngs, 32, g);
-    proc.set_graph(g_shared);
+    SecretSharedGraph g_shared = share::random_share_graph(id, rngs, n_bits, g);
 
     for (size_t r = 0; r < repeat; ++r) {
         std::cout << "--- Repetition " << r + 1 << " ---" << std::endl;
 
         StatsPoint start_pre(*network);
-        proc.run_mp_preprocessing(n_iterations);
+        auto preproc = mp::preprocess(id, rngs, network, g.size, BLOCK_SIZE, n_bits, 1, pre_mp_preprocess, post_mp_preprocess);
         StatsPoint end_pre(*network);
         network->sync();
 
@@ -56,7 +74,8 @@ void benchmark(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> ne
         std::cout << "preprocessing sent: " << bytes_sent << " bytes" << std::endl;
 
         StatsPoint start(*network);
-        proc.run_mp_evaluation(n_iterations, n_vertices);
+        mp::evaluate(id, rngs, network, g.size, BLOCK_SIZE, n_bits, n_iterations, n_vertices, g_shared, weights, apply, pre_mp_evaluate, post_mp_evaluate,
+                     preproc);
         StatsPoint end(*network);
 
         rbench = end - start;
