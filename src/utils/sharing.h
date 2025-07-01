@@ -29,16 +29,12 @@ Ring random_share_secret_3P_bin(Party id, RandomGenerators &rngs, std::vector<Ri
 
 SecretSharedGraph random_share_graph(Party id, RandomGenerators &rngs, size_t n_bits, Graph &g);
 
-Ring reveal(Party id, std::shared_ptr<io::NetIOMP> network, Ring &share);
+std::vector<Ring> reveal_vec(Party id, std::shared_ptr<NetworkInterface> network, std::vector<Ring> &share);
 
-Ring reveal_bin(Party id, std::shared_ptr<io::NetIOMP> network, Ring &share);
+std::vector<Ring> reveal_vec_bin(Party id, std::shared_ptr<NetworkInterface> network, std::vector<Ring> &share);
 
-std::vector<Ring> reveal_vec(Party id, std::shared_ptr<io::NetIOMP> network, size_t BLOCK_SIZE, std::vector<Ring> &share);
+Permutation reveal_perm(Party id, std::shared_ptr<NetworkInterface> network, Permutation &share);
 
-std::vector<Ring> reveal_vec_bin(Party id, std::shared_ptr<io::NetIOMP> network, size_t BLOCK_SIZE, std::vector<Ring> &share);
-
-Permutation reveal_perm(Party id, std::shared_ptr<io::NetIOMP> network, size_t BLOCK_SIZE, Permutation &share);
-
-Graph reveal_graph(Party id, std::shared_ptr<io::NetIOMP> network, size_t BLOCK_SIZE, size_t n_bits, SecretSharedGraph &g);
+Graph reveal_graph(Party id, std::shared_ptr<NetworkInterface> network, size_t n_bits, SecretSharedGraph &g);
 
 };  // namespace share

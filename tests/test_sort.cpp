@@ -6,7 +6,7 @@
 #include "../src/utils/perm.h"
 #include "constants.h"
 
-void test_sort(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE) {
+void test_sort(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, size_t BLOCK_SIZE) {
     std::cout << "------ test_sort ------" << std::endl << std::endl;
     json output_data;
 
@@ -35,9 +35,11 @@ void test_sort(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> ne
         bit_shares[i] = share::random_share_secret_vec_2P(id, rngs, bits[i]);
     }
 
+    network->init();
+
     /* Preprocessing */
     StatsPoint start_pre(*network);
-    auto sort_preproc = sort::get_sort_preprocess(id, rngs, network, n, BLOCK_SIZE, bit_shares.size());
+    auto sort_preproc = sort::get_sort_preprocess(id, rngs, network, n, bit_shares.size());
     StatsPoint end_pre(*network);
 
     auto rbench_pre = end_pre - start_pre;
@@ -55,7 +57,7 @@ void test_sort(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> ne
 
     /* Evaluation */
     StatsPoint start_online(*network);
-    auto sort_share = sort::get_sort_evaluate(id, rngs, network, n, BLOCK_SIZE, bit_shares, sort_preproc);
+    auto sort_share = sort::get_sort_evaluate(id, rngs, network, n, bit_shares, sort_preproc);
     StatsPoint end_online(*network);
 
     auto rbench = end_online - start_online;
@@ -72,25 +74,8 @@ void test_sort(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> ne
         assert(total_comm == bytes_sent);
     }
 
-    for (size_t i = 0; i < sizeof(Ring) * 8; ++i) {
-        for (size_t j = 0; j < n; ++j) {
-            bits[i][j] = 1 - bits[i][j];
-        }
-    }
-
-    for (size_t i = 0; i < bit_shares.size(); ++i) {
-        bit_shares[i] = share::random_share_secret_vec_2P(id, rngs, bits[i]);
-    }
-    // auto reverse_sort_preproc = sort::get_sort_preprocess(party, rngs, network, vec_size, BLOCK_SIZE, bit_shares.size());
-    // auto reverse_sort_share = sort::get_sort_evaluate(party, rngs, network, vec_size, BLOCK_SIZE, bit_shares, reverse_sort_preproc);
-
-    auto reverse_sort_share = sort::get_sort(id, rngs, network, n, BLOCK_SIZE, bit_shares);
-
-    Permutation reverse_sort = share::reveal_perm(id, network, BLOCK_SIZE, reverse_sort_share);
-    Permutation sort = share::reveal_perm(id, network, BLOCK_SIZE, sort_share);
-
+    Permutation sort = share::reveal_perm(id, network, sort_share);
     auto sorted_vector = sort(input_vector);
-    auto reverse_sorted_vector = reverse_sort(input_vector);
 
     if (id != D) {
         std::cout << "Original input_vector: ";
@@ -110,13 +95,6 @@ void test_sort(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> ne
         for (size_t i = 0; i < sorted_vector.size() - 1; ++i) {
             assert(sorted_vector[i] <= sorted_vector[i + 1]);
         }
-
-        std::cout << "Reverse sorted input_vector: ";
-
-        for (size_t i = 0; i < reverse_sorted_vector.size() - 1; ++i) {
-            std::cout << reverse_sorted_vector[i] << ", ";
-        }
-        std::cout << reverse_sorted_vector[input_vector.size() - 1] << std::endl << std::endl;
     }
 }
 

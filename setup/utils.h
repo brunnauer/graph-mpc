@@ -6,6 +6,7 @@
 #include <string>
 
 #include "../src/io/netmp.h"
+#include "../src/io/network_interface.h"
 
 struct TimePoint {
     using timepoint_t = std::chrono::high_resolution_clock::time_point;
@@ -20,7 +21,7 @@ struct TimePoint {
 struct CommPoint {
     std::vector<uint64_t> stats;
 
-    explicit CommPoint(io::NetIOMP &network);
+    explicit CommPoint(NetworkInterface &network);
     std::vector<uint64_t> operator-(const CommPoint &rhs) const;
 };
 
@@ -29,7 +30,7 @@ class StatsPoint {
     CommPoint cpoint_;
 
    public:
-    explicit StatsPoint(io::NetIOMP &network);
+    explicit StatsPoint(NetworkInterface &network);
     nlohmann::json operator-(const StatsPoint &rhs);
 };
 

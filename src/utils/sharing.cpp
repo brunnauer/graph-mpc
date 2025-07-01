@@ -196,39 +196,15 @@ SecretSharedGraph share::random_share_graph(Party id, RandomGenerators &rngs, si
     return shared_graph;
 }
 
-Ring share::reveal(Party id, std::shared_ptr<io::NetIOMP> network, Ring &share) {
-    Ring share_other;
-    if (id == P0) {
-        network->send(P1, &share, sizeof(Ring));
-        network->recv(P1, &share_other, sizeof(Ring));
-    } else if (id == P1) {
-        network->recv(P0, &share_other, sizeof(Ring));
-        network->send(P0, &share, sizeof(Ring));
-    }
-    return share + share_other;
-}
-
-Ring share::reveal_bin(Party id, std::shared_ptr<io::NetIOMP> network, Ring &share) {
-    Ring share_other;
-    if (id == P0) {
-        network->send(P1, &share, sizeof(Ring));
-        network->recv(P1, &share_other, sizeof(Ring));
-    } else if (id == P1) {
-        network->recv(P0, &share_other, sizeof(Ring));
-        network->send(P0, &share, sizeof(Ring));
-    }
-    return share ^ share_other;
-}
-
-std::vector<Ring> share::reveal_vec(Party id, std::shared_ptr<io::NetIOMP> network, size_t BLOCK_SIZE, std::vector<Ring> &share) {
+std::vector<Ring> share::reveal_vec(Party id, std::shared_ptr<NetworkInterface> network, std::vector<Ring> &share) {
     std::vector<Ring> result(share.size());
 
     switch (id) {
         case P0: {
             std::vector<Ring> share_other(share.size());
 
-            send_vec(P1, network, share.size(), share, BLOCK_SIZE);
-            recv_vec(P1, network, share.size(), share_other, BLOCK_SIZE);
+            network->send_now(P1, share);
+            share_other = network->recv(P1, share.size());
 
             for (size_t i = 0; i < result.size(); ++i) {
                 result[i] = share[i] + share_other[i];
@@ -238,8 +214,8 @@ std::vector<Ring> share::reveal_vec(Party id, std::shared_ptr<io::NetIOMP> netwo
         case P1: {
             std::vector<Ring> share_other(share.size());
 
-            recv_vec(P0, network, share.size(), share_other, BLOCK_SIZE);
-            send_vec(P0, network, share.size(), share, BLOCK_SIZE);
+            share_other = network->recv(P0, share.size());
+            network->send_now(P0, share);
 
             for (size_t i = 0; i < result.size(); ++i) {
                 result[i] = share[i] + share_other[i];
@@ -250,19 +226,20 @@ std::vector<Ring> share::reveal_vec(Party id, std::shared_ptr<io::NetIOMP> netwo
             return result;
     }
 }
-std::vector<Ring> share::reveal_vec_bin(Party id, std::shared_ptr<io::NetIOMP> network, size_t BLOCK_SIZE, std::vector<Ring> &share) {
+
+std::vector<Ring> share::reveal_vec_bin(Party id, std::shared_ptr<NetworkInterface> network, std::vector<Ring> &share) {
     std::vector<Ring> result(share.size());
     std::vector<Ring> share_other(share.size());
 
     switch (id) {
         case P0: {
-            send_vec(P1, network, share.size(), share, BLOCK_SIZE);
-            recv_vec(P1, network, share_other, BLOCK_SIZE);
+            network->send_now(P1, share);
+            share_other = network->recv(P1, share.size());
             break;
         }
         case P1: {
-            recv_vec(P0, network, share_other, BLOCK_SIZE);
-            send_vec(P0, network, share.size(), share, BLOCK_SIZE);
+            share_other = network->recv(P0, share.size());
+            network->send_now(P0, share);
             break;
         }
         default:
@@ -275,13 +252,13 @@ std::vector<Ring> share::reveal_vec_bin(Party id, std::shared_ptr<io::NetIOMP> n
     return result;
 }
 
-Permutation share::reveal_perm(Party id, std::shared_ptr<io::NetIOMP> network, size_t BLOCK_SIZE, Permutation &share) {
+Permutation share::reveal_perm(Party id, std::shared_ptr<NetworkInterface> network, Permutation &share) {
     auto perm_vec = share.get_perm_vec();
-    std::vector<Ring> revealed_perm_vec = reveal_vec(id, network, BLOCK_SIZE, perm_vec);
+    std::vector<Ring> revealed_perm_vec = reveal_vec(id, network, perm_vec);
     return Permutation(revealed_perm_vec);
 }
 
-Graph share::reveal_graph(Party id, std::shared_ptr<io::NetIOMP> network, size_t BLOCK_SIZE, size_t n_bits, SecretSharedGraph &g) {
+Graph share::reveal_graph(Party id, std::shared_ptr<NetworkInterface> network, size_t n_bits, SecretSharedGraph &g) {
     Graph g_new(g.size);
 
     if (id == D) return g_new;
@@ -296,18 +273,18 @@ Graph share::reveal_graph(Party id, std::shared_ptr<io::NetIOMP> network, size_t
     std::vector<Ring> payload(g.size);
 
     for (size_t i = 0; i < n_bits; ++i) {
-        src_bits[i] = share::reveal_vec(id, network, BLOCK_SIZE, g.src_bits[i]);
+        src_bits[i] = share::reveal_vec(id, network, g.src_bits[i]);
     }
 
     for (size_t i = 0; i < n_bits; ++i) {
-        dst_bits[i] = share::reveal_vec(id, network, BLOCK_SIZE, g.dst_bits[i]);
+        dst_bits[i] = share::reveal_vec(id, network, g.dst_bits[i]);
     }
 
     for (size_t i = 0; i < n_bits; ++i) {
-        payload_bits[i] = share::reveal_vec(id, network, BLOCK_SIZE, g.payload_bits[i]);
+        payload_bits[i] = share::reveal_vec(id, network, g.payload_bits[i]);
     }
 
-    isV = share::reveal_vec(id, network, BLOCK_SIZE, g.isV_bits);
+    isV = share::reveal_vec(id, network, g.isV_bits);
 
     g_new.src = from_bits(src_bits, g.size);
     g_new.dst = from_bits(dst_bits, g.size);

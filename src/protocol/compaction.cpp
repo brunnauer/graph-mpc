@@ -14,9 +14,8 @@ std::vector<std::tuple<Ring, Ring, Ring>> compaction::preprocess_Parties(Party i
     return mul::preprocess(id, rngs, shares_P1, idx, n);
 }
 
-std::vector<std::tuple<Ring, Ring, Ring>> compaction::preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n,
-                                                                 size_t BLOCK_SIZE) {
-    return mul::preprocess(id, rngs, network, n, BLOCK_SIZE);
+std::vector<std::tuple<Ring, Ring, Ring>> compaction::preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n) {
+    return mul::preprocess(id, rngs, network, n);
 }
 
 /* ----- Evaluation ----- */
@@ -90,7 +89,7 @@ Permutation compaction::evaluate_2(Party id, size_t n, std::vector<std::tuple<Ri
     return Permutation(output);
 }
 
-Permutation compaction::evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE,
+Permutation compaction::evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n,
                                  std::vector<std::tuple<Ring, Ring, Ring>> &triples, std::vector<Ring> &input_share) {
     std::vector<Ring> output(n);
     std::vector<Ring> vals_send(2 * n);
@@ -131,11 +130,15 @@ Permutation compaction::evaluate(Party id, RandomGenerators &rngs, std::shared_p
 
         std::vector<Ring> vals_receive(n * 2);
         if (id == P0) {
-            send_vec(P1, network, vals_send.size(), vals_send, BLOCK_SIZE);
-            recv_vec(P1, network, vals_receive, BLOCK_SIZE);
+            network->send_now(P1, vals_send);
+            vals_receive = network->recv(P1, 2 * n);
+            // send_vec(P1, network, vals_send.size(), vals_send, BLOCK_SIZE);
+            // recv_vec(P1, network, vals_receive, BLOCK_SIZE);
         } else {
-            recv_vec(P0, network, vals_receive, BLOCK_SIZE);
-            send_vec(P0, network, vals_send.size(), vals_send, BLOCK_SIZE);
+            vals_receive = network->recv(P0, 2 * n);
+            network->send_now(P0, vals_send);
+            // recv_vec(P0, network, vals_receive, BLOCK_SIZE);
+            // send_vec(P0, network, vals_send.size(), vals_send, BLOCK_SIZE);
         }
 
 #pragma omp parallel for if (n > 10000)
@@ -163,9 +166,8 @@ Permutation compaction::evaluate(Party id, RandomGenerators &rngs, std::shared_p
 }
 
 /* ----- Ad-Hoc Preprocessing ----- */
-Permutation compaction::get_compaction(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE,
-                                       std::vector<Ring> &input_share) {
-    auto triples = preprocess(id, rngs, network, n, BLOCK_SIZE);
+Permutation compaction::get_compaction(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, std::vector<Ring> &input_share) {
+    auto triples = preprocess(id, rngs, network, n);
     network->sync();
-    return evaluate(id, rngs, network, n, BLOCK_SIZE, triples, input_share);
+    return evaluate(id, rngs, network, n, triples, input_share);
 }

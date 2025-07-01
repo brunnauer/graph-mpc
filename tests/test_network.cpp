@@ -1,6 +1,19 @@
-#include "setup.h"
+#include <boost/program_options.hpp>
+#include <cstdint>
+#include <cstring>
+#include <fstream>
+#include <functional>
+#include <iostream>
+#include <nlohmann/json.hpp>
 
-bpo::options_description setup::programOptions() {
+#include "../src/io/network_interface.h"
+#include "../src/utils/random_generators.h"
+#include "utils.h"
+
+namespace bpo = boost::program_options;
+using json = nlohmann::json;
+
+bpo::options_description programOptions() {
     bpo::options_description desc(
         "Following options are supported by config file too. Regarding seeds, "
         "all, 01, 02, and 12 need to be equal among the parties using them. "
@@ -43,7 +56,7 @@ bpo::options_description setup::programOptions() {
     return desc;
 }
 
-bpo::variables_map setup::parseOptions(bpo::options_description &cmdline, bpo::options_description &prog_opts, int argc, char *argv[]) {
+bpo::variables_map parseOptions(bpo::options_description &cmdline, bpo::options_description &prog_opts, int argc, char *argv[]) {
     bpo::variables_map opts;
     bpo::store(bpo::command_line_parser(argc, argv).options(cmdline).run(), opts);
 
@@ -78,8 +91,8 @@ bpo::variables_map setup::parseOptions(bpo::options_description &cmdline, bpo::o
     return opts;
 }
 
-void setup::setupExecution(const bpo::variables_map &opts, size_t &pid, size_t &nP, size_t &repeat, size_t &threads, size_t &shuffle_num, size_t &nodes,
-                           std::shared_ptr<NetworkInterface> &network, uint64_t *seeds_h, uint64_t *seeds_l, bool &save_output, std::string &save_file) {
+void setupExecution(const bpo::variables_map &opts, size_t &pid, size_t &nP, size_t &repeat, size_t &threads, size_t &shuffle_num, size_t &nodes,
+                    std::shared_ptr<NetworkInterface> &network, uint64_t *seeds_h, uint64_t *seeds_l, bool &save_output, std::string &save_file) {
     save_output = false;
     if (opts.count("output") != 0) {
         save_output = true;
@@ -146,8 +159,50 @@ void setup::setupExecution(const bpo::variables_map &opts, size_t &pid, size_t &
     }
 }
 
-void setup::run_test(const bpo::variables_map &opts,
-                     std::function<void(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, size_t BLOCK_SIZE)> func) {
+void test_network(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, size_t BLOCK_SIZE) {
+    switch (id) {
+        case P0: {
+            std::vector<Ring> to_P1 = std::vector<Ring>({1, 1, 1, 1, 1});
+            network->add_to_queue(P1, to_P1);
+            network->send_queue(P1);
+
+            auto data_recv_D = network->recv(D, 5);
+
+            for (auto &elem : data_recv_D) {
+                std::cout << elem << ", ";
+            }
+            std::cout << std::endl;
+            break;
+        }
+        case P1: {
+            auto data_recv_P0 = network->recv(P0, 5);
+            auto data_recv_D = network->recv(D, 5);
+
+            for (auto &elem : data_recv_P0) {
+                std::cout << elem << ", ";
+            }
+            std::cout << std::endl;
+
+            for (auto &elem : data_recv_D) {
+                std::cout << elem << ", ";
+            }
+            std::cout << std::endl;
+            break;
+        }
+        case D: {
+            std::vector<Ring> to_P0 = std::vector<Ring>({2, 2, 2, 2, 2});
+            std::vector<Ring> to_P1 = std::vector<Ring>({3, 3, 3, 3, 3});
+            network->add_to_queue(P0, to_P0);
+            network->add_to_queue(P1, to_P1);
+            network->send_queue(P0);
+            network->send_queue(P1);
+            break;
+        }
+    }
+}
+
+void run_test(const bpo::variables_map &opts,
+              std::function<void(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, size_t BLOCK_SIZE)> func) {
     auto n = opts["vec-size"].as<size_t>();
 
     size_t pid, nP, repeat, threads, shuffle_num, nodes;
@@ -158,10 +213,13 @@ void setup::run_test(const bpo::variables_map &opts,
     bool save_output;
     std::string save_file;
 
-    setup::setupExecution(opts, pid, nP, repeat, threads, shuffle_num, nodes, network, seeds_h, seeds_l, save_output, save_file);
+    setupExecution(opts, pid, nP, repeat, threads, shuffle_num, nodes, network, seeds_h, seeds_l, save_output, save_file);
+
+    // network =
+    //    std::make_shared<NetworkInterface>((Party)pid, (int)nP, port, (char **)nullptr, certificate_path, private_key_path, trusted_cert_path, true, 1000000);
+
     output_data["details"] = {{"pid", pid},         {"num_parties", nP}, {"threads", threads}, {"seeds_h", seeds_h},
                               {"seeds_l", seeds_l}, {"repeat", repeat},  {"vec-size", n}};
-
     std::cout << "--- Details ---\n";
     for (const auto &[key, value] : output_data["details"].items()) {
         std::cout << key << ": " << value << "\n";
@@ -175,33 +233,23 @@ void setup::run_test(const bpo::variables_map &opts,
     func(id, rngs, network, n, BLOCK_SIZE);
 }
 
-void setup::run_benchmark(const bpo::variables_map &opts,
-                          std::function<void(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, size_t BLOCK_SIZE,
-                                             size_t repeat, size_t n_vertices, bool save_output, std::string save_file)>
-                              func) {
-    auto n = opts["vec-size"].as<size_t>();
+int main(int argc, char **argv) {
+    auto prog_opts(programOptions());
 
-    size_t pid, nP, repeat, threads, shuffle_num, nodes;
-    std::shared_ptr<NetworkInterface> network = nullptr;
-    uint64_t seeds_h[9];
-    uint64_t seeds_l[9];
-    json output_data;
-    bool save_output;
-    std::string save_file;
+    bpo::options_description cmdline("Benchmark a simple test for shuffling and unshuffling");
+    cmdline.add(prog_opts);
 
-    setup::setupExecution(opts, pid, nP, repeat, threads, shuffle_num, nodes, network, seeds_h, seeds_l, save_output, save_file);
-    output_data["details"] = {{"pid", pid},         {"num_parties", nP}, {"threads", threads}, {"seeds_h", seeds_h},
-                              {"seeds_l", seeds_l}, {"repeat", repeat},  {"vec-size", n}};
+    cmdline.add_options()("config,c", bpo::value<std::string>(), "configuration file for easy specification of cmd line arguments")("help,h",
+                                                                                                                                    "produce help message");
 
-    std::cout << "--- Details ---\n";
-    for (const auto &[key, value] : output_data["details"].items()) {
-        std::cout << key << ": " << value << "\n";
+    bpo::variables_map opts = parseOptions(cmdline, prog_opts, argc, argv);
+
+    try {
+        run_test(opts, test_network);
+    } catch (const std::exception &ex) {
+        std::cerr << ex.what() << "\nFatal error" << std::endl;
+        return 1;
     }
-    std::cout << std::endl;
 
-    Party id = (pid == 0) ? P0 : ((pid == 1) ? P1 : D);
-    RandomGenerators rngs(seeds_h, seeds_l);
-    const size_t BLOCK_SIZE = 100000;
-
-    func(id, rngs, network, n, BLOCK_SIZE, repeat, nodes, save_output, save_file);
+    return 0;
 }

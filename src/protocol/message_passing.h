@@ -75,22 +75,22 @@ namespace mp {
 
 using F_apply = std::function<std::vector<Ring>(std::vector<Ring> &, std::vector<Ring> &)>;
 
-using F_pre_mp = std::function<void(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, SecretSharedGraph &g)>;
+using F_pre_mp = std::function<void(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, SecretSharedGraph &g)>;
 
 using F_pre_mp_preprocess =
-    std::function<void(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, MPPreprocessing &preproc)>;
+    std::function<void(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, MPPreprocessing &preproc)>;
 
-using F_pre_mp_evaluate = std::function<void(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE,
-                                             MPPreprocessing &preproc, SecretSharedGraph &g)>;
+using F_pre_mp_evaluate =
+    std::function<void(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, MPPreprocessing &preproc, SecretSharedGraph &g)>;
 
-using F_post_mp = std::function<void(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, SecretSharedGraph &g,
+using F_post_mp = std::function<void(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, SecretSharedGraph &g,
                                      std::vector<Ring> &new_payload)>;
 
 using F_post_mp_preprocess =
-    std::function<void(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, MPPreprocessing &preproc)>;
+    std::function<void(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, MPPreprocessing &preproc)>;
 
-using F_post_mp_evaluate = std::function<void(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE,
-                                              SecretSharedGraph &g, MPPreprocessing &preproc, std::vector<Ring> &new_payload)>;
+using F_post_mp_evaluate = std::function<void(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, SecretSharedGraph &g,
+                                              MPPreprocessing &preproc, std::vector<Ring> &new_payload)>;
 
 std::vector<Ring> propagate_1(std::vector<Ring> &input_vector, size_t n_vertices);
 
@@ -106,14 +106,14 @@ MPPreprocessing_Dealer preprocess_Dealer(Party id, RandomGenerators &rngs, size_
 
 MPPreprocessing preprocess_Parties(Party id, RandomGenerators &rngs, size_t n, size_t n_iterations, std::vector<Ring> &vals, size_t &idx);
 
-MPPreprocessing preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, size_t n_bits,
-                           size_t n_iterations, F_pre_mp_preprocess f_preprocess, F_post_mp_preprocess f_postprocess);
+MPPreprocessing preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, size_t n_bits, size_t n_iterations,
+                           F_pre_mp_preprocess f_preprocess, F_post_mp_preprocess f_postprocess);
 
-void evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, size_t n_bits, size_t n_iterations,
-              size_t n_vertices, SecretSharedGraph &g, std::vector<Ring> &weights, F_apply f_apply, F_pre_mp_evaluate f_preprocess,
-              F_post_mp_evaluate f_postprocess, MPPreprocessing &preproc);
+void evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, size_t n_bits, size_t n_iterations, size_t n_vertices,
+              SecretSharedGraph &g, std::vector<Ring> &weights, F_apply f_apply, F_pre_mp_evaluate f_preprocess, F_post_mp_evaluate f_postprocess,
+              MPPreprocessing &preproc);
 
-void run(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, size_t n_iterations, size_t n_vertices,
-         SecretSharedGraph &g, std::vector<Ring> &weights, F_apply f_apply, F_pre_mp f_preprocess, F_post_mp f_postprocess);
+void run(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, size_t n_iterations, size_t n_vertices, SecretSharedGraph &g,
+         std::vector<Ring> &weights, F_apply f_apply, F_pre_mp f_preprocess, F_post_mp f_postprocess);
 
 }  // namespace mp

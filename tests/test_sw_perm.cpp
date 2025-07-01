@@ -8,9 +8,11 @@
 #include "../src/utils/sharing.h"
 #include "constants.h"
 
-void test_sw_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE) {
+void test_sw_perm(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, size_t BLOCK_SIZE) {
     std::cout << "------ test_sw_perm ------" << std::endl << std::endl;
     json output_data;
+
+    network->init();
 
     /* Setting up the input vector */
     int input_bits[7] = {1, 1, 0, 0, 0, 1, 0};
@@ -39,8 +41,8 @@ void test_sw_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
         bit_shares[i] = share::random_share_secret_vec_2P(id, rngs, bits[i]);
     }
 
-    Permutation sort_share = sort::get_sort(id, rngs, network, n, BLOCK_SIZE, bit_shares);
-    auto sorted_input_share = permute::apply_perm(id, rngs, network, n, BLOCK_SIZE, sort_share, input_share);
+    Permutation sort_share = sort::get_sort(id, rngs, network, n, bit_shares);
+    auto sorted_input_share = permute::apply_perm(id, rngs, network, n, sort_share, input_share);
 
     /* Inverting the bits */
     for (size_t i = 0; i < sizeof(Ring) * 8; ++i) {
@@ -57,14 +59,14 @@ void test_sw_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
     }
 
     /* Generating and applying reverse sort */
-    Permutation reverse_sort_share = sort::get_sort(id, rngs, network, n, BLOCK_SIZE, bit_shares);
+    Permutation reverse_sort_share = sort::get_sort(id, rngs, network, n, bit_shares);
 
     /* Preprocessing */
     StatsPoint start_pre(*network);
-    auto preproc = permute::switch_perm_preprocess(id, rngs, network, n, BLOCK_SIZE);
+    auto preproc = permute::switch_perm_preprocess(id, rngs, network, n);
     StatsPoint end_pre(*network);
 
-    auto preproc_1 = permute::switch_perm_preprocess(id, rngs, network, n, BLOCK_SIZE);
+    auto preproc_1 = permute::switch_perm_preprocess(id, rngs, network, n);
 
     auto rbench_pre = end_pre - start_pre;
     output_data["benchmarks_pre"].push_back(rbench_pre);
@@ -80,15 +82,12 @@ void test_sw_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
         assert(bytes_sent_pre == total_comm);
     }
 
-    network->sync();
-
     /* Evaluation*/
     StatsPoint start_online(*network);
-    auto reverse_sorted_input_share =
-        permute::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, sort_share, reverse_sort_share, preproc, sorted_input_share);
+    auto reverse_sorted_input_share = permute::switch_perm_evaluate(id, rngs, network, n, sort_share, reverse_sort_share, preproc, sorted_input_share);
     StatsPoint end_online(*network);
 
-    auto inverse_share = permute::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, reverse_sort_share, sort_share, preproc_1, reverse_sorted_input_share);
+    auto inverse_share = permute::switch_perm_evaluate(id, rngs, network, n, reverse_sort_share, sort_share, preproc_1, reverse_sorted_input_share);
 
     /* Evaluation communication assertions */
     auto rbench = end_online - start_online;
@@ -112,7 +111,7 @@ void test_sw_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
     }
     std::cout << input_vector[input_vector.size() - 1] << std::endl;
 
-    auto sorted_vector = share::reveal_vec(id, network, BLOCK_SIZE, sorted_input_share);
+    auto sorted_vector = share::reveal_vec(id, network, sorted_input_share);
 
     if (id != D) {
         std::cout << "Sorted input_vector: ";
@@ -125,7 +124,7 @@ void test_sw_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
             assert(sorted_vector[i] <= sorted_vector[i + 1]);
         }
 
-        auto reverse_sorted = share::reveal_vec(id, network, BLOCK_SIZE, reverse_sorted_input_share);
+        auto reverse_sorted = share::reveal_vec(id, network, reverse_sorted_input_share);
 
         std::cout << "Switch perm applied: ";
         for (size_t i = 0; i < reverse_sorted.size() - 1; ++i) {
@@ -137,7 +136,7 @@ void test_sw_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
             assert(reverse_sorted[i] >= reverse_sorted[i + 1]);
         }
 
-        auto inverse = share::reveal_vec(id, network, BLOCK_SIZE, inverse_share);
+        auto inverse = share::reveal_vec(id, network, inverse_share);
 
         std::cout << "Inverse switch perm applied: ";
         for (size_t i = 0; i < inverse.size() - 1; ++i) {

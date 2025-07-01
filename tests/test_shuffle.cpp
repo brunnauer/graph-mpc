@@ -6,7 +6,7 @@
 #include "../src/utils/sharing.h"
 #include "constants.h"
 
-void test_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE) {
+void test_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, size_t BLOCK_SIZE) {
     std::cout << "------ test_shuffle ------" << std::endl << std::endl;
     json output_data;
 
@@ -21,16 +21,18 @@ void test_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
 
     std::vector<Ring> share = share::random_share_secret_vec_2P(id, rngs, input_vector);
 
+    network->init();
+
     /* Preprocessing */
     StatsPoint start_pre(*network);
 
-    ShufflePre perm_share_one = shuffle::get_shuffle(id, rngs, network, n, BLOCK_SIZE, true);
-    ShufflePre perm_share_two = shuffle::get_shuffle(id, rngs, network, n, BLOCK_SIZE, true);
-    std::vector<Ring> unshuffle_B_one = shuffle::get_unshuffle(id, rngs, network, n, BLOCK_SIZE, perm_share_one);
-    std::vector<Ring> unshuffle_B_two = shuffle::get_unshuffle(id, rngs, network, n, BLOCK_SIZE, perm_share_two);
-    ShufflePre perm_share_merged_one = shuffle::get_merged_shuffle(id, rngs, network, n, BLOCK_SIZE, perm_share_one, perm_share_two);
-    ShufflePre perm_share_three = shuffle::get_shuffle(id, rngs, network, n, BLOCK_SIZE, false);
-    ShufflePre perm_share_merged_two = shuffle::get_merged_shuffle(id, rngs, network, n, BLOCK_SIZE, perm_share_two, perm_share_three);
+    ShufflePre perm_share_one = shuffle::get_shuffle(id, rngs, network, n, true);
+    ShufflePre perm_share_two = shuffle::get_shuffle(id, rngs, network, n, true);
+    std::vector<Ring> unshuffle_B_one = shuffle::get_unshuffle(id, rngs, network, n, perm_share_one);
+    std::vector<Ring> unshuffle_B_two = shuffle::get_unshuffle(id, rngs, network, n, perm_share_two);
+    ShufflePre perm_share_merged_one = shuffle::get_merged_shuffle(id, rngs, network, n, perm_share_one, perm_share_two);
+    ShufflePre perm_share_three = shuffle::get_shuffle(id, rngs, network, n, false);
+    ShufflePre perm_share_merged_two = shuffle::get_merged_shuffle(id, rngs, network, n, perm_share_two, perm_share_three);
 
     StatsPoint end_pre(*network);
 
@@ -49,17 +51,15 @@ void test_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
     }
 
     StatsPoint start_online(*network);
-
-    std::vector<Ring> shuffle_share_one = shuffle::shuffle(id, rngs, network, share, perm_share_one, n, BLOCK_SIZE);
-    std::vector<Ring> repeat_share = shuffle::shuffle(id, rngs, network, share, perm_share_one, n, BLOCK_SIZE);
-    std::vector<Ring> unshuffle_share_one = shuffle::unshuffle(id, rngs, network, perm_share_one, unshuffle_B_one, repeat_share, n, BLOCK_SIZE);
-    std::vector<Ring> shuffle_share_two = shuffle::shuffle(id, rngs, network, share, perm_share_two, n, BLOCK_SIZE);
-    std::vector<Ring> unshuffle_share_two = shuffle::unshuffle(id, rngs, network, perm_share_two, unshuffle_B_two, shuffle_share_two, n, BLOCK_SIZE);
-    std::vector<Ring> merged_share_one = shuffle::shuffle(id, rngs, network, share, perm_share_merged_one, n, BLOCK_SIZE);
-    std::vector<Ring> repeat_merged_share = shuffle::shuffle(id, rngs, network, share, perm_share_merged_one, n, BLOCK_SIZE);
-    std::vector<Ring> shuffle_share_three = shuffle::shuffle(id, rngs, network, share, perm_share_three, n, BLOCK_SIZE);
-    std::vector<Ring> merged_share_two = shuffle::shuffle(id, rngs, network, share, perm_share_merged_two, n, BLOCK_SIZE);
-
+    std::vector<Ring> shuffle_share_one = shuffle::shuffle(id, rngs, network, share, perm_share_one, n);
+    std::vector<Ring> repeat_share = shuffle::shuffle(id, rngs, network, share, perm_share_one, n);
+    std::vector<Ring> unshuffle_share_one = shuffle::unshuffle(id, rngs, network, perm_share_one, unshuffle_B_one, repeat_share, n);
+    std::vector<Ring> shuffle_share_two = shuffle::shuffle(id, rngs, network, share, perm_share_two, n);
+    std::vector<Ring> unshuffle_share_two = shuffle::unshuffle(id, rngs, network, perm_share_two, unshuffle_B_two, shuffle_share_two, n);
+    std::vector<Ring> merged_share_one = shuffle::shuffle(id, rngs, network, share, perm_share_merged_one, n);
+    std::vector<Ring> repeat_merged_share = shuffle::shuffle(id, rngs, network, share, perm_share_merged_one, n);
+    std::vector<Ring> shuffle_share_three = shuffle::shuffle(id, rngs, network, share, perm_share_three, n);
+    std::vector<Ring> merged_share_two = shuffle::shuffle(id, rngs, network, share, perm_share_merged_two, n);
     StatsPoint end_online(*network);
 
     auto rbench = end_online - start_online;
@@ -77,7 +77,7 @@ void test_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
         assert(total_comm == bytes_sent);
     }
 
-    std::vector<Ring> res = share::reveal_vec(id, network, BLOCK_SIZE, shuffle_share_one);
+    std::vector<Ring> res = share::reveal_vec(id, network, shuffle_share_one);
 
     if (id != D) {
         std::cout << std::endl << "Result of shuffle: ";
@@ -94,7 +94,7 @@ void test_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
         assert(shuffled);
     }
 
-    auto repeat_res = share::reveal_vec(id, network, BLOCK_SIZE, repeat_share);
+    auto repeat_res = share::reveal_vec(id, network, repeat_share);
 
     if (id != D) {
         std::cout << std::endl << "Result of repeat: ";
@@ -107,7 +107,7 @@ void test_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
         assert(res == repeat_res);
     }
 
-    res = share::reveal_vec(id, network, BLOCK_SIZE, unshuffle_share_one);
+    res = share::reveal_vec(id, network, unshuffle_share_one);
 
     if (id != D) {
         std::cout << std::endl << "Result of unshuffle: ";
@@ -120,7 +120,7 @@ void test_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
         assert(res == input_vector);
     }
 
-    auto new_shuffle = share::reveal_vec(id, network, BLOCK_SIZE, shuffle_share_two);
+    auto new_shuffle = share::reveal_vec(id, network, shuffle_share_two);
 
     if (id != D) {
         std::cout << std::endl << "Result of second shuffle: ";
@@ -138,7 +138,7 @@ void test_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
         assert(res != new_shuffle);
     }
 
-    res = share::reveal_vec(id, network, BLOCK_SIZE, unshuffle_share_two);
+    res = share::reveal_vec(id, network, unshuffle_share_two);
 
     if (id != D) {
         std::cout << std::endl << "Result of second unshuffle: ";
@@ -151,7 +151,7 @@ void test_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
         assert(res == input_vector);
     }
 
-    res = share::reveal_vec(id, network, BLOCK_SIZE, merged_share_one);
+    res = share::reveal_vec(id, network, merged_share_one);
 
     if (id != D) {
         std::cout << std::endl << "Result of merged shuffle: ";
@@ -168,7 +168,7 @@ void test_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
         assert(shuffled);
     }
 
-    res = share::reveal_vec(id, network, BLOCK_SIZE, repeat_merged_share);
+    res = share::reveal_vec(id, network, repeat_merged_share);
 
     if (id != D) {
         std::cout << std::endl << "Result of repeating merged shuffle: ";
@@ -185,7 +185,7 @@ void test_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
         assert(shuffled);
     }
 
-    auto third_shuffle = share::reveal_vec(id, network, BLOCK_SIZE, shuffle_share_three);
+    auto third_shuffle = share::reveal_vec(id, network, shuffle_share_three);
 
     if (id != D) {
         std::cout << std::endl << "Result of third shuffle: ";
@@ -202,7 +202,7 @@ void test_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
         assert(shuffled);
     }
 
-    auto merged_shuffle_two = share::reveal_vec(id, network, BLOCK_SIZE, merged_share_two);
+    auto merged_shuffle_two = share::reveal_vec(id, network, merged_share_two);
 
     if (id != D) {
         std::cout << std::endl << "Result of second merged shuffle: ";

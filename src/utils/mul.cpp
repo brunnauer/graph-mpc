@@ -12,18 +12,18 @@ std::vector<std::tuple<Ring, Ring, Ring>> mul::preprocess(Party id, RandomGenera
     return triples;
 }
 
-std::vector<std::tuple<Ring, Ring, Ring>> mul::preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE) {
+std::vector<std::tuple<Ring, Ring, Ring>> mul::preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n) {
     std::vector<Ring> vals_to_P1;
     size_t idx = 0;
 
-    if (id == P1) recv_vec(D, network, n, vals_to_P1, BLOCK_SIZE);
+    if (id == P1) vals_to_P1 = network->recv(D, n);
     auto triples = mul::preprocess(id, rngs, vals_to_P1, idx, n);
-    if (id == D) send_vec(P1, network, n, vals_to_P1, BLOCK_SIZE);
+    if (id == D) network->add_to_queue(P1, vals_to_P1);
 
     return triples;
 }
 
-std::vector<Ring> mul::evaluate(Party id, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, std::vector<std::tuple<Ring, Ring, Ring>> &triples,
+std::vector<Ring> mul::evaluate(Party id, std::shared_ptr<NetworkInterface> network, size_t n, std::vector<std::tuple<Ring, Ring, Ring>> &triples,
                                 std::vector<Ring> x, std::vector<Ring> y) {
     std::vector<Ring> vals_send;
     std::vector<Ring> vals_receive(n * 2);
@@ -41,11 +41,15 @@ std::vector<Ring> mul::evaluate(Party id, std::shared_ptr<io::NetIOMP> network, 
     }
 
     if (id == P0) {
-        send_vec(P1, network, vals_send.size(), vals_send, BLOCK_SIZE);
-        recv_vec(P1, network, vals_receive, BLOCK_SIZE);
+        network->send_now(P1, vals_send);
+        vals_receive = network->recv(P1, 2 * n);
+        // send_vec(P1, network, vals_send.size(), vals_send, BLOCK_SIZE);
+        // recv_vec(P1, network, vals_receive, BLOCK_SIZE);
     } else if (id == P1) {
-        recv_vec(P0, network, vals_receive, BLOCK_SIZE);
-        send_vec(P0, network, vals_send.size(), vals_send, BLOCK_SIZE);
+        vals_receive = network->recv(P0, 2 * n);
+        network->send_now(P0, vals_send);
+        // recv_vec(P0, network, vals_receive, BLOCK_SIZE);
+        // send_vec(P0, network, vals_send.size(), vals_send, BLOCK_SIZE);
     }
 
     for (size_t i = 0; i < vals_send.size(); ++i) vals_send[i] += vals_receive[i];
@@ -97,7 +101,7 @@ std::tuple<Ring, Ring, Ring> mul::preprocess_one(Party id, RandomGenerators &rng
     return {a, b, d};
 }
 
-Ring mul::evaluate_one(Party id, std::shared_ptr<io::NetIOMP> network, size_t BLOCK_SIZE, std::tuple<Ring, Ring, Ring> &triple, Ring x, Ring y) {
+Ring mul::evaluate_one(Party id, std::shared_ptr<NetworkInterface> network, std::tuple<Ring, Ring, Ring> &triple, Ring x, Ring y) {
     auto [a, b, mul] = triple;
     Ring xa = x + a;
     Ring yb = y + b;
@@ -108,11 +112,15 @@ Ring mul::evaluate_one(Party id, std::shared_ptr<io::NetIOMP> network, size_t BL
     vals[1] = yb;
 
     if (id == P0) {
-        send_vec(P1, network, 2, vals, BLOCK_SIZE);
-        recv_vec(P1, network, vals_rcv, BLOCK_SIZE);
+        network->send_now(P1, vals);
+        vals_rcv = network->recv(P1, 2);
+        // send_vec(P1, network, 2, vals, BLOCK_SIZE);
+        // recv_vec(P1, network, vals_rcv, BLOCK_SIZE);
     } else if (id == P1) {
-        recv_vec(P0, network, vals_rcv, BLOCK_SIZE);
-        send_vec(P0, network, 2, vals, BLOCK_SIZE);
+        vals_rcv = network->recv(P0, 2);
+        network->send_now(P0, vals);
+        // recv_vec(P0, network, vals_rcv, BLOCK_SIZE);
+        // send_vec(P0, network, 2, vals, BLOCK_SIZE);
     }
 
     xa += vals_rcv[0];
@@ -133,20 +141,19 @@ std::vector<std::tuple<Ring, Ring, Ring>> mul::preprocess_bin(Party id, RandomGe
     return triples;
 }
 
-std::vector<std::tuple<Ring, Ring, Ring>> mul::preprocess_bin(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n,
-                                                              size_t BLOCK_SIZE) {
+std::vector<std::tuple<Ring, Ring, Ring>> mul::preprocess_bin(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n) {
     std::vector<Ring> vals_to_P1;
     size_t idx = 0;
 
-    if (id == P1) recv_vec(D, network, n, vals_to_P1, BLOCK_SIZE);
+    if (id == P1) vals_to_P1 = network->recv(D, n);
     auto triples = mul::preprocess_bin(id, rngs, vals_to_P1, idx, n);
-    if (id == D) send_vec(P1, network, n, vals_to_P1, BLOCK_SIZE);
+    if (id == D) network->add_to_queue(P1, vals_to_P1);
 
     return triples;
 }
 
-std::vector<Ring> mul::evaluate_bin(Party id, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE,
-                                    std::vector<std::tuple<Ring, Ring, Ring>> &triples, std::vector<Ring> x, std::vector<Ring> y) {
+std::vector<Ring> mul::evaluate_bin(Party id, std::shared_ptr<NetworkInterface> network, size_t n, std::vector<std::tuple<Ring, Ring, Ring>> &triples,
+                                    std::vector<Ring> x, std::vector<Ring> y) {
     std::vector<Ring> vals_send(2 * n);
     std::vector<Ring> vals_receive(2 * n);
     std::vector<Ring> output(n);
@@ -163,11 +170,15 @@ std::vector<Ring> mul::evaluate_bin(Party id, std::shared_ptr<io::NetIOMP> netwo
     }
 
     if (id == P0) {
-        send_vec(P1, network, vals_send.size(), vals_send, BLOCK_SIZE);
-        recv_vec(P1, network, vals_receive, BLOCK_SIZE);
+        network->send_now(P1, vals_send);
+        vals_receive = network->recv(P1, 2 * n);
+        // send_vec(P1, network, vals_send.size(), vals_send, BLOCK_SIZE);
+        // recv_vec(P1, network, vals_receive, BLOCK_SIZE);
     } else {
-        recv_vec(P0, network, vals_receive, BLOCK_SIZE);
-        send_vec(P0, network, vals_send.size(), vals_send, BLOCK_SIZE);
+        vals_receive = network->recv(P0, 2 * n);
+        network->send_now(P0, vals_send);
+        // recv_vec(P0, network, vals_receive, BLOCK_SIZE);
+        // send_vec(P0, network, vals_send.size(), vals_send, BLOCK_SIZE);
     }
 
 #pragma omp parallel for if (n > 10000)
@@ -194,7 +205,7 @@ std::tuple<Ring, Ring, Ring> mul::preprocess_one_bin(Party id, RandomGenerators 
     return {a, b, d};
 }
 
-Ring mul::evaluate_one_bin(Party id, std::shared_ptr<io::NetIOMP> network, size_t BLOCK_SIZE, std::tuple<Ring, Ring, Ring> &triple, Ring x, Ring y) {
+Ring mul::evaluate_one_bin(Party id, std::shared_ptr<NetworkInterface> network, std::tuple<Ring, Ring, Ring> &triple, Ring x, Ring y) {
     auto [a, b, mul] = triple;
     Ring xa = x ^ a;
     Ring yb = y ^ b;
@@ -205,11 +216,11 @@ Ring mul::evaluate_one_bin(Party id, std::shared_ptr<io::NetIOMP> network, size_
     vals[1] = yb;
 
     if (id == P0) {
-        send_vec(P1, network, 2, vals, BLOCK_SIZE);
-        recv_vec(P1, network, vals_rcv, BLOCK_SIZE);
+        network->send_now(P1, vals);
+        vals_rcv = network->recv(P1, 2);
     } else if (id == P1) {
-        recv_vec(P0, network, vals_rcv, BLOCK_SIZE);
-        send_vec(P0, network, 2, vals, BLOCK_SIZE);
+        vals_rcv = network->recv(P0, 2);
+        network->send_now(P0, vals);
     }
 
     xa ^= vals_rcv[0];

@@ -17,33 +17,30 @@ std::vector<Ring> apply(std::vector<Ring> &old_payload, std::vector<Ring> &new_p
     return result;
 }
 
-void pre_mp_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, MPPreprocessing &preproc) {
+void pre_mp_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, MPPreprocessing &preproc) { return; }
+
+void post_mp_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, MPPreprocessing &preproc) {
+    preproc.eqz_triples = clip::equals_zero_preprocess(id, rngs, network, n);
+    preproc.B2A_triples = clip::B2A_preprocess(id, rngs, network, n);
+}
+
+void pre_mp_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, MPPreprocessing &preproc, SecretSharedGraph &g) {
     return;
 }
 
-void post_mp_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, MPPreprocessing &preproc) {
-    preproc.eqz_triples = clip::equals_zero_preprocess(id, rngs, network, n, BLOCK_SIZE);
-    preproc.B2A_triples = clip::B2A_preprocess(id, rngs, network, n, BLOCK_SIZE);
-}
-
-void pre_mp_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, MPPreprocessing &preproc,
-                     SecretSharedGraph &g) {
-    return;
-}
-
-void post_mp_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, SecretSharedGraph &g,
-                      MPPreprocessing &preproc, std::vector<Ring> &payload) {
-    std::vector<Ring> payload_v_eqz = clip::equals_zero_evaluate(id, rngs, network, BLOCK_SIZE, preproc.eqz_triples, payload);
-    std::vector<Ring> payload_v_B2A = clip::B2A_evaluate(id, rngs, network, BLOCK_SIZE, preproc.B2A_triples, payload_v_eqz);
+void post_mp_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, SecretSharedGraph &g, MPPreprocessing &preproc,
+                      std::vector<Ring> &payload) {
+    std::vector<Ring> payload_v_eqz = clip::equals_zero_evaluate(id, rngs, network, preproc.eqz_triples, payload);
+    std::vector<Ring> payload_v_B2A = clip::B2A_evaluate(id, rngs, network, preproc.B2A_triples, payload_v_eqz);
     auto payload_v_flip = clip::flip(id, payload_v_B2A);
     g.payload = payload_v_flip;
     g.payload_bits = to_bits(payload_v_flip, sizeof(Ring) * 8);
 }
 
-void test_bfs(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE) {
+void test_bfs(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, size_t BLOCK_SIZE) {
     std::cout << "------ test_bfs ------" << std::endl << std::endl;
     json output_data;
-
+    network->init();
     /**
      *                      10        8
      *                      /\     /\   /\
@@ -72,7 +69,7 @@ void test_bfs(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> net
 
     /* Preprocessing */
     StatsPoint start_pre(*network);
-    auto preproc = mp::preprocess(id, rngs, network, g.size, BLOCK_SIZE, n_bits, 4, pre_mp_preprocess, post_mp_preprocess);
+    auto preproc = mp::preprocess(id, rngs, network, g.size, n_bits, 4, pre_mp_preprocess, post_mp_preprocess);
     StatsPoint end_pre(*network);
 
     auto rbench_pre = end_pre - start_pre;
@@ -90,7 +87,7 @@ void test_bfs(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> net
     }
 
     StatsPoint start_online(*network);
-    mp::evaluate(id, rngs, network, g.size, BLOCK_SIZE, n_bits, n_iterations, 11, g_shared, weights, apply, pre_mp_evaluate, post_mp_evaluate, preproc);
+    mp::evaluate(id, rngs, network, g.size, n_bits, n_iterations, 11, g_shared, weights, apply, pre_mp_evaluate, post_mp_evaluate, preproc);
     StatsPoint end_online(*network);
 
     auto rbench = end_online - start_online;
@@ -107,7 +104,7 @@ void test_bfs(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> net
         assert(total_comm == bytes_sent);
     }
 
-    auto res_g = share::reveal_graph(id, network, BLOCK_SIZE, n_bits, g_shared);
+    auto res_g = share::reveal_graph(id, network, n_bits, g_shared);
 
     if (id != D) res_g.print();
 

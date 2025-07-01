@@ -4,9 +4,11 @@
 #include "../src/utils/random_generators.h"
 #include "../src/utils/sharing.h"
 
-void test_sharing(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE) {
+void test_sharing(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, size_t BLOCK_SIZE) {
     std::cout << "------ test_sharing ------" << std::endl << std::endl;
     json output_data;
+
+    network->init();
 
     std::vector<Ring> share(n);
     std::vector<Ring> input_table(n);
@@ -31,7 +33,7 @@ void test_sharing(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
     assert(bytes_sent_sharing == 0);
 
     StatsPoint start_reveal(*network);
-    reconstructed = share::reveal_vec(id, network, BLOCK_SIZE, share);
+    reconstructed = share::reveal_vec(id, network, share);
     StatsPoint end_reveal(*network);
 
     auto rbench_reveal = end_reveal - start_reveal;
@@ -75,7 +77,7 @@ void test_sharing(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
     g.print();
 
     SecretSharedGraph shared_graph = share::random_share_graph(id, rngs, 32, g);
-    Graph reconstructed_graph = share::reveal_graph(id, network, BLOCK_SIZE, 32, shared_graph);
+    Graph reconstructed_graph = share::reveal_graph(id, network, 32, shared_graph);
 
     std::cout << "Reconstructed graph: " << std::endl;
     reconstructed_graph.print();

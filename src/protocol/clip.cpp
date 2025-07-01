@@ -1,12 +1,11 @@
 #include "clip.h"
 
 /* ----- Preprocessing ----- */
-std::vector<std::tuple<Ring, Ring, Ring>> clip::equals_zero_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n,
-                                                                       size_t BLOCK_SIZE) {
+std::vector<std::tuple<Ring, Ring, Ring>> clip::equals_zero_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n) {
     const size_t n_layers = 5;
     const size_t n_triples = n_layers * n;
 
-    return mul::preprocess_bin(id, rngs, network, n_triples, BLOCK_SIZE);
+    return mul::preprocess_bin(id, rngs, network, n_triples);
 }
 
 std::vector<Ring> clip::equals_zero_preprocess_Dealer(Party id, RandomGenerators &rngs, size_t n) {
@@ -29,9 +28,8 @@ std::vector<std::tuple<Ring, Ring, Ring>> clip::equals_zero_preprocess_Parties(P
     return triples;
 }
 
-std::vector<std::tuple<Ring, Ring, Ring>> clip::B2A_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n,
-                                                               size_t BLOCK_SIZE) {
-    return mul::preprocess(id, rngs, network, n, BLOCK_SIZE);
+std::vector<std::tuple<Ring, Ring, Ring>> clip::B2A_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n) {
+    return mul::preprocess(id, rngs, network, n);
 }
 
 std::vector<Ring> clip::B2A_preprocess_Dealer(Party id, RandomGenerators &rngs, size_t n) {
@@ -48,7 +46,7 @@ std::vector<std::tuple<Ring, Ring, Ring>> clip::B2A_preprocess_Parties(Party id,
 }
 
 /* ----- Evaluation ----- */
-std::vector<Ring> clip::equals_zero_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t BLOCK_SIZE,
+std::vector<Ring> clip::equals_zero_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network,
                                              std::vector<std::tuple<Ring, Ring, Ring>> &triples, std::vector<Ring> &input_share) {
     const size_t n_layers = 5;
     std::vector<Ring> result(input_share.size());
@@ -70,7 +68,7 @@ std::vector<Ring> clip::equals_zero_evaluate(Party id, RandomGenerators &rngs, s
                 size_t width = 1 << (4 - layer);
                 left >>= width;
 
-                auto res = mul::evaluate_one_bin(id, network, BLOCK_SIZE, triples[(i * n_layers) + layer], left, right);
+                auto res = mul::evaluate_one_bin(id, network, triples[(i * n_layers) + layer], left, right);
 
                 if (layer == 4) {
                     res <<= 31;
@@ -85,7 +83,7 @@ std::vector<Ring> clip::equals_zero_evaluate(Party id, RandomGenerators &rngs, s
     return result;
 }
 
-std::vector<Ring> clip::B2A_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t BLOCK_SIZE,
+std::vector<Ring> clip::B2A_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network,
                                      std::vector<std::tuple<Ring, Ring, Ring>> &triples, std::vector<Ring> &input_share) {
     size_t n = input_share.size();
     std::vector<Ring> output(n);
@@ -104,11 +102,11 @@ std::vector<Ring> clip::B2A_evaluate(Party id, RandomGenerators &rngs, std::shar
 
     std::vector<Ring> vals_receive(2 * n);
     if (id == P0) {
-        send_vec(P1, network, vals_send.size(), vals_send, BLOCK_SIZE);
-        recv_vec(P1, network, vals_receive, BLOCK_SIZE);
+        network->send_now(P1, vals_send);
+        vals_receive = network->recv(P1, 2 * n);
     } else {
-        recv_vec(P0, network, vals_receive, BLOCK_SIZE);
-        send_vec(P0, network, vals_send.size(), vals_send, BLOCK_SIZE);
+        vals_receive = network->recv(P0, 2 * n);
+        network->send_now(P0, vals_send);
     }
 
 #pragma omp parallel for if (n > 10000)
@@ -143,13 +141,13 @@ std::vector<Ring> clip::flip(Party id, std::vector<Ring> &input_share) {
 }
 
 /* ----- Ad-Hoc Preprocessing ----- */
-std::vector<Ring> clip::equals_zero(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t BLOCK_SIZE, std::vector<Ring> &input_share) {
+std::vector<Ring> clip::equals_zero(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, std::vector<Ring> &input_share) {
     const size_t n_layers = 5;
     const size_t n_triples = n_layers * input_share.size();
 
     std::vector<Ring> result(input_share.size());
 
-    auto triples = mul::preprocess_bin(id, rngs, network, n_triples, BLOCK_SIZE);
+    auto triples = mul::preprocess_bin(id, rngs, network, n_triples);
 
     for (size_t i = 0; i < input_share.size(); ++i) {
         auto share = input_share[i];
@@ -168,7 +166,7 @@ std::vector<Ring> clip::equals_zero(Party id, RandomGenerators &rngs, std::share
                 size_t width = 1 << (4 - layer);
                 left >>= width;
 
-                auto res = mul::evaluate_one_bin(id, network, BLOCK_SIZE, triples[(i * n_layers) + layer], left, right);
+                auto res = mul::evaluate_one_bin(id, network, triples[(i * n_layers) + layer], left, right);
 
                 if (layer == 4) {
                     res <<= 31;
@@ -183,11 +181,10 @@ std::vector<Ring> clip::equals_zero(Party id, RandomGenerators &rngs, std::share
     return result;
 }
 
-std::vector<Ring> clip::equals_zero_two(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE,
-                                        std::vector<Ring> &input_share) {
+std::vector<Ring> clip::equals_zero_two(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, std::vector<Ring> &input_share) {
     size_t n_triples = 5 * n;
 
-    auto triples = mul::preprocess_bin(id, rngs, network, n_triples, BLOCK_SIZE);
+    auto triples = mul::preprocess_bin(id, rngs, network, n_triples);
 
     std::vector<Ring> new_share(n);
     for (size_t i = 0; i < n; ++i) {
@@ -234,17 +231,17 @@ std::vector<Ring> clip::equals_zero_two(Party id, RandomGenerators &rngs, std::s
             for (size_t j = 0; j < n_ands; ++j) {
                 auto triple = triples[triples.size()];
                 triples.pop_back();
-                layer_result[j] = mul::evaluate_one_bin(id, network, BLOCK_SIZE, triple, layer_result[2 * j], layer_result[2 * j + 1]);
+                layer_result[j] = mul::evaluate_one_bin(id, network, triple, layer_result[2 * j], layer_result[2 * j + 1]);
             }
         }
     }
     return new_share;
 }
 
-std::vector<Ring> clip::B2A(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t BLOCK_SIZE, std::vector<Ring> &input_share) {
+std::vector<Ring> clip::B2A(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, std::vector<Ring> &input_share) {
     const size_t n = input_share.size();
 
-    auto triples = mul::preprocess(id, rngs, network, n, BLOCK_SIZE);
+    auto triples = mul::preprocess(id, rngs, network, n);
 
     std::vector<Ring> result(n);
     if (id == D) return result;
@@ -263,11 +260,11 @@ std::vector<Ring> clip::B2A(Party id, RandomGenerators &rngs, std::shared_ptr<io
 
     std::vector<Ring> vals_receive;
     if (id == P0) {
-        send_vec(P1, network, vals_send.size(), vals_send, BLOCK_SIZE);
-        recv_vec(P1, network, 2 * n, vals_receive, BLOCK_SIZE);
+        network->send_now(P1, vals_send);
+        vals_receive = network->recv(P1, 2 * n);
     } else {
-        recv_vec(P0, network, 2 * n, vals_receive, BLOCK_SIZE);
-        send_vec(P0, network, vals_send.size(), vals_send, BLOCK_SIZE);
+        vals_receive = network->recv(P0, 2 * n);
+        network->send_now(P0, vals_send);
     }
 
 #pragma omp parallel for if (n > 10000)

@@ -8,9 +8,10 @@
 #include "../src/utils/sharing.h"
 #include "constants.h"
 
-void test_deduplication(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE) {
+void test_deduplication(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, size_t BLOCK_SIZE) {
     std::cout << "------ test_deduplication ------" << std::endl << std::endl;
     json output_data;
+    network->init();
     size_t n_bits = sizeof(Ring) * 8;
 
     Graph g;
@@ -37,7 +38,7 @@ void test_deduplication(Party id, RandomGenerators &rngs, std::shared_ptr<io::Ne
 
     /* Preprocessing */
     StatsPoint start_pre(*network);
-    auto preproc = deduplication_preprocess(id, rngs, network, g.size, BLOCK_SIZE);
+    auto preproc = deduplication_preprocess(id, rngs, network, g.size);
     StatsPoint end_pre(*network);
 
     auto rbench_pre = end_pre - start_pre;
@@ -55,7 +56,7 @@ void test_deduplication(Party id, RandomGenerators &rngs, std::shared_ptr<io::Ne
     }
 
     StatsPoint start_online(*network);
-    deduplication_evaluate(id, rngs, network, g.size, BLOCK_SIZE, preproc, g_shared.src_bits, g_shared.dst_bits, g_shared.src, g_shared.dst);
+    deduplication_evaluate(id, rngs, network, g.size, preproc, g_shared.src_bits, g_shared.dst_bits, g_shared.src, g_shared.dst);
     StatsPoint end_online(*network);
 
     auto rbench = end_online - start_online;
@@ -72,7 +73,7 @@ void test_deduplication(Party id, RandomGenerators &rngs, std::shared_ptr<io::Ne
         assert(total_comm == bytes_sent);
     }
 
-    auto res_g = share::reveal_graph(id, network, BLOCK_SIZE, n_bits, g_shared);
+    auto res_g = share::reveal_graph(id, network, n_bits, g_shared);
 
     /* Assertions for correctness */
     if (id != D) res_g.print();

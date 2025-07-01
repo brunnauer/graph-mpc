@@ -6,8 +6,9 @@
 #include "../src/utils/sharing.h"
 #include "constants.h"
 
-void test_eqz(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE) {
+void test_eqz(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, size_t BLOCK_SIZE) {
     json output_data;
+    network->init();
 
     std::cout << std::endl << "------ test_eqz ------" << std::endl;
     std::vector<Ring> test_vec(n);
@@ -15,7 +16,7 @@ void test_eqz(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> net
     auto test_vec_share = share::random_share_secret_vec_2P(id, rngs, test_vec);
 
     StatsPoint start_pre(*network);
-    auto eqz_triples = clip::equals_zero_preprocess(id, rngs, network, n, BLOCK_SIZE);
+    auto eqz_triples = clip::equals_zero_preprocess(id, rngs, network, n);
     StatsPoint end_pre(*network);
 
     auto rbench_pre = end_pre - start_pre;
@@ -33,7 +34,7 @@ void test_eqz(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> net
     }
 
     StatsPoint start_online(*network);
-    auto eqz_vec = clip::equals_zero_evaluate(id, rngs, network, BLOCK_SIZE, eqz_triples, test_vec_share);
+    auto eqz_vec = clip::equals_zero_evaluate(id, rngs, network, eqz_triples, test_vec_share);
     StatsPoint end_online(*network);
 
     auto rbench = end_online - start_online;
@@ -51,8 +52,9 @@ void test_eqz(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> net
     }
 
     /* Correctness assertions */
-    std::vector<Ring> B2A_vec = clip::B2A(id, rngs, network, BLOCK_SIZE, eqz_vec);
-    auto result = share::reveal_vec(id, network, BLOCK_SIZE, B2A_vec);
+    std::vector<Ring> B2A_vec = clip::B2A(id, rngs, network, eqz_vec);
+    network->sync();
+    auto result = share::reveal_vec(id, network, B2A_vec);
 
     if (id != D) {
         std::cout << "Result of eqz: ";

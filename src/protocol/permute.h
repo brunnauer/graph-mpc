@@ -46,34 +46,34 @@ namespace permute {
 /**
  * ----- F_apply_perm -----
  */
-std::vector<Ring> apply_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, Permutation &perm,
+std::vector<Ring> apply_perm(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, Permutation &perm,
                              std::vector<Ring> &input_share);
 
-std::vector<Ring> apply_perm_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, Permutation &perm,
+std::vector<Ring> apply_perm_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, Permutation &perm,
                                       ShufflePre &perm_share, std::vector<Ring> &input_share);
 
 /**
  * ----- F_reverse_perm -----
  */
-std::vector<Ring> reverse_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, Permutation &perm,
+std::vector<Ring> reverse_perm(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, Permutation &perm,
                                std::vector<Ring> &input_share);
 
-std::vector<Ring> reverse_perm_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, Permutation &perm,
+std::vector<Ring> reverse_perm_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, Permutation &perm,
                                         ShufflePre &pi, std::vector<Ring> &unshuffle_B, std::vector<Ring> &input_share);
 
 /**
  * ----- F_sw_perm -----
  */
-std::vector<Ring> switch_perm(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, Permutation &p1,
-                              Permutation &p2, std::vector<Ring> &input_share);
+std::vector<Ring> switch_perm(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, Permutation &p1, Permutation &p2,
+                              std::vector<Ring> &input_share);
 
-SwitchPermPreprocessing switch_perm_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE);
+SwitchPermPreprocessing switch_perm_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n);
 
 SwitchPermPreprocessing_Dealer switch_perm_preprocess_Dealer(Party id, RandomGenerators &rngs, size_t n);
 
 SwitchPermPreprocessing switch_perm_preprocess_Parties(Party id, RandomGenerators &rngs, size_t n, std::vector<Ring> &vals, size_t &idx);
 
-std::vector<Ring> switch_perm_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, Permutation &p1,
-                                       Permutation &p2, SwitchPermPreprocessing &preproc, std::vector<Ring> &input_share);
+std::vector<Ring> switch_perm_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, Permutation &p1, Permutation &p2,
+                                       SwitchPermPreprocessing &preproc, std::vector<Ring> &input_share);
 
 };  // namespace permute

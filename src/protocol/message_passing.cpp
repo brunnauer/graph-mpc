@@ -111,45 +111,45 @@ MPPreprocessing mp::preprocess_Parties(Party id, RandomGenerators &rngs, size_t 
     return preproc;
 }
 
-MPPreprocessing mp::preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, size_t n_bits,
-                               size_t n_iterations, F_pre_mp_preprocess f_preprocess, F_post_mp_preprocess f_postprocess) {
+MPPreprocessing mp::preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, size_t n_bits, size_t n_iterations,
+                               F_pre_mp_preprocess f_preprocess, F_post_mp_preprocess f_postprocess) {
     MPPreprocessing preproc;
 
-    f_preprocess(id, rngs, network, n, BLOCK_SIZE, preproc);
-    preproc.src_order_pre = sort::get_sort_preprocess(id, rngs, network, n, BLOCK_SIZE, n_bits + 1);
-    preproc.dst_order_pre = sort::get_sort_preprocess(id, rngs, network, n, BLOCK_SIZE, n_bits + 1);
-    preproc.vtx_order_pre = sort::sort_iteration_preprocess(id, rngs, network, n, BLOCK_SIZE);
+    f_preprocess(id, rngs, network, n, preproc);
+    preproc.src_order_pre = sort::get_sort_preprocess(id, rngs, network, n, n_bits + 1);
+    preproc.dst_order_pre = sort::get_sort_preprocess(id, rngs, network, n, n_bits + 1);
+    preproc.vtx_order_pre = sort::sort_iteration_preprocess(id, rngs, network, n);
 
-    preproc.apply_perm_share = shuffle::get_shuffle(id, rngs, network, n, BLOCK_SIZE, true);
+    preproc.apply_perm_share = shuffle::get_shuffle(id, rngs, network, n, true);
 
     for (size_t j = 0; j < 3; ++j) {
-        preproc.sw_perm_pre.push_back(permute::switch_perm_preprocess(id, rngs, network, n, BLOCK_SIZE));
+        preproc.sw_perm_pre.push_back(permute::switch_perm_preprocess(id, rngs, network, n));
     }
 
-    f_postprocess(id, rngs, network, n, BLOCK_SIZE, preproc);
+    f_postprocess(id, rngs, network, n, preproc);
 
     return preproc;
 }
 
 /* ----- Evaluation ----- */
-void mp::evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, size_t n_bits, size_t n_iterations,
-                  size_t n_vertices, SecretSharedGraph &g, std::vector<Ring> &weights, F_apply f_apply, F_pre_mp_evaluate f_preprocess,
-                  F_post_mp_evaluate f_postprocess, MPPreprocessing &preproc) {
+void mp::evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, size_t n_bits, size_t n_iterations, size_t n_vertices,
+                  SecretSharedGraph &g, std::vector<Ring> &weights, F_apply f_apply, F_pre_mp_evaluate f_preprocess, F_post_mp_evaluate f_postprocess,
+                  MPPreprocessing &preproc) {
     /* Preprocess graph before message passing */
-    f_preprocess(id, rngs, network, n, BLOCK_SIZE, preproc, g);
+    f_preprocess(id, rngs, network, n, preproc, g);
 
     /* Get the bit vectors for performing get_sort */
     auto [src_order_bits, dst_order_bits, inverted_isV] = init(id, g);
 
     /* Compute the three permutations */
-    Permutation src_order = sort::get_sort_evaluate(id, rngs, network, n, BLOCK_SIZE, src_order_bits, preproc.src_order_pre);
-    Permutation dst_order = sort::get_sort_evaluate(id, rngs, network, n, BLOCK_SIZE, dst_order_bits, preproc.dst_order_pre);
-    Permutation vtx_order = sort::sort_iteration_evaluate(id, rngs, network, n, BLOCK_SIZE, src_order, inverted_isV, preproc.vtx_order_pre);
+    Permutation src_order = sort::get_sort_evaluate(id, rngs, network, n, src_order_bits, preproc.src_order_pre);
+    Permutation dst_order = sort::get_sort_evaluate(id, rngs, network, n, dst_order_bits, preproc.dst_order_pre);
+    Permutation vtx_order = sort::sort_iteration_evaluate(id, rngs, network, n, src_order, inverted_isV, preproc.vtx_order_pre);
 
     /* Bring payload into vertex order */
     // auto payload_v = from_bits(g.payload_bits, g.size);
     auto payload_v = g.payload;
-    payload_v = permute::apply_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, vtx_order, preproc.apply_perm_share, payload_v);
+    payload_v = permute::apply_perm_evaluate(id, rngs, network, n, vtx_order, preproc.apply_perm_share, payload_v);
 
     for (size_t i = 0; i < n_iterations; ++i) {
         /* Add current weight only to vertices */
@@ -161,20 +161,20 @@ void mp::evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
         auto payload_p = propagate_1(payload_v, n_vertices);
 
         /* Switch Perm to src order */
-        auto payload_src = permute::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, vtx_order, src_order, preproc.sw_perm_pre[0], payload_p);
-        auto payload_corr = permute::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, vtx_order, src_order, preproc.sw_perm_pre[0], payload_v);
+        auto payload_src = permute::switch_perm_evaluate(id, rngs, network, n, vtx_order, src_order, preproc.sw_perm_pre[0], payload_p);
+        auto payload_corr = permute::switch_perm_evaluate(id, rngs, network, n, vtx_order, src_order, preproc.sw_perm_pre[0], payload_v);
 
         /* Propagate-2 */
         payload_p = propagate_2(payload_src, payload_corr);
 
         /* Switch Perm to dst order*/
-        auto payload_dst = permute::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, src_order, dst_order, preproc.sw_perm_pre[1], payload_p);
+        auto payload_dst = permute::switch_perm_evaluate(id, rngs, network, n, src_order, dst_order, preproc.sw_perm_pre[1], payload_p);
 
         /* Gather-1*/
         payload_p = gather_1(payload_dst);
 
         /* Switch Perm to vtx order */
-        payload_p = permute::switch_perm_evaluate(id, rngs, network, n, BLOCK_SIZE, dst_order, vtx_order, preproc.sw_perm_pre[2], payload_p);
+        payload_p = permute::switch_perm_evaluate(id, rngs, network, n, dst_order, vtx_order, preproc.sw_perm_pre[2], payload_p);
 
         /* Gather-2 */
         auto update = gather_2(payload_p, n_vertices);
@@ -183,26 +183,26 @@ void mp::evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP>
         payload_v = f_apply(payload_v, update);
     }
 
-    f_postprocess(id, rngs, network, n, BLOCK_SIZE, g, preproc, payload_v);
+    f_postprocess(id, rngs, network, n, g, preproc, payload_v);
 }
 
 /* ----- Ad-Hoc Preprocessing ----- */
 
-void mp::run(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, size_t n_iterations, size_t n_vertices,
+void mp::run(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, size_t n_iterations, size_t n_vertices,
              SecretSharedGraph &g, std::vector<Ring> &weights, F_apply f_apply, F_pre_mp f_preprocess, F_post_mp f_postprocess) {
     /* Preprocess graph before message passing */
-    f_preprocess(id, rngs, network, n, BLOCK_SIZE, g);
+    f_preprocess(id, rngs, network, n, g);
 
     auto [src_order_bits, dst_order_bits, inverted_isV] = init(id, g);
 
     /* Compute the three permutations */
-    Permutation src_order = sort::get_sort(id, rngs, network, n, BLOCK_SIZE, src_order_bits);
-    Permutation dst_order = sort::get_sort(id, rngs, network, n, BLOCK_SIZE, dst_order_bits);
-    Permutation vtx_order = sort::sort_iteration(id, rngs, network, n, BLOCK_SIZE, src_order, inverted_isV);
+    Permutation src_order = sort::get_sort(id, rngs, network, n, src_order_bits);
+    Permutation dst_order = sort::get_sort(id, rngs, network, n, dst_order_bits);
+    Permutation vtx_order = sort::sort_iteration(id, rngs, network, n, src_order, inverted_isV);
 
     /* Bring payload into vertex order */
     auto payload_v = from_bits(g.payload_bits, g.size);
-    payload_v = permute::apply_perm(id, rngs, network, n, BLOCK_SIZE, vtx_order, payload_v);
+    payload_v = permute::apply_perm(id, rngs, network, n, vtx_order, payload_v);
 
     for (size_t i = 0; i < n_iterations; ++i) {
         /* Add current weight */
@@ -214,20 +214,20 @@ void mp::run(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> netw
         auto payload_p = propagate_1(payload_v, n_vertices);
 
         /* Switch Perm to src order */
-        auto payload_src = permute::switch_perm(id, rngs, network, n, BLOCK_SIZE, vtx_order, src_order, payload_p);
-        auto payload_corr = permute::switch_perm(id, rngs, network, n, BLOCK_SIZE, vtx_order, src_order, payload_v);
+        auto payload_src = permute::switch_perm(id, rngs, network, n, vtx_order, src_order, payload_p);
+        auto payload_corr = permute::switch_perm(id, rngs, network, n, vtx_order, src_order, payload_v);
 
         /* Propagate-2 */
         payload_p = propagate_2(payload_src, payload_corr);
 
         /* Switch Perm to dst order*/
-        auto payload_dst = permute::switch_perm(id, rngs, network, n, BLOCK_SIZE, src_order, dst_order, payload_p);
+        auto payload_dst = permute::switch_perm(id, rngs, network, n, src_order, dst_order, payload_p);
 
         /* Gather-1*/
         payload_p = gather_1(payload_dst);
 
         /* Switch Perm to vtx order */
-        payload_p = permute::switch_perm(id, rngs, network, n, BLOCK_SIZE, dst_order, vtx_order, payload_p);
+        payload_p = permute::switch_perm(id, rngs, network, n, dst_order, vtx_order, payload_p);
 
         /* Gather-2 */
         auto update = gather_2(payload_p, n_vertices);
@@ -236,5 +236,5 @@ void mp::run(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> netw
         payload_v = f_apply(payload_v, update);
     }
 
-    f_postprocess(id, rngs, network, n, BLOCK_SIZE, g, payload_v);
+    f_postprocess(id, rngs, network, n, g, payload_v);
 }

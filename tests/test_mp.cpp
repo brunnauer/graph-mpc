@@ -15,29 +15,25 @@ std::vector<Ring> apply(std::vector<Ring> &old_payload, std::vector<Ring> &new_p
     return result;
 }
 
-void pre_mp_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, MPPreprocessing &preproc) {
+void pre_mp_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, MPPreprocessing &preproc) { return; }
+
+void post_mp_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, MPPreprocessing &preproc) { return; }
+
+void pre_mp_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, MPPreprocessing &preproc, SecretSharedGraph &g) {
     return;
 }
 
-void post_mp_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, MPPreprocessing &preproc) {
-    return;
-}
-
-void pre_mp_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, MPPreprocessing &preproc,
-                     SecretSharedGraph &g) {
-    return;
-}
-
-void post_mp_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, SecretSharedGraph &g,
-                      MPPreprocessing &preproc, std::vector<Ring> &payload) {
+void post_mp_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, SecretSharedGraph &g, MPPreprocessing &preproc,
+                      std::vector<Ring> &payload) {
     g.payload = payload;
     g.payload_bits = to_bits(payload, sizeof(Ring) * 8);
 }
 
-void test_mp(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE) {
+void test_mp(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, size_t BLOCK_SIZE) {
     std::cout << "------ test_mp ------" << std::endl << std::endl;
 
     json output_data;
+    network->init();
 
     /**
      *      0 == 1
@@ -60,7 +56,7 @@ void test_mp(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> netw
     SecretSharedGraph g_shared = share::random_share_graph(id, rngs, n_bits, g);
 
     StatsPoint start_pre(*network);
-    auto preproc = mp::preprocess(id, rngs, network, g.size, BLOCK_SIZE, n_bits, n_iterations, pre_mp_preprocess, post_mp_preprocess);
+    auto preproc = mp::preprocess(id, rngs, network, g.size, n_bits, n_iterations, pre_mp_preprocess, post_mp_preprocess);
     StatsPoint end_pre(*network);
 
     auto rbench_pre = end_pre - start_pre;
@@ -78,7 +74,7 @@ void test_mp(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> netw
     }
 
     StatsPoint start_online(*network);
-    mp::evaluate(id, rngs, network, g.size, BLOCK_SIZE, n_bits, n_iterations, 3, g_shared, weights, apply, pre_mp_evaluate, post_mp_evaluate, preproc);
+    mp::evaluate(id, rngs, network, g.size, n_bits, n_iterations, 3, g_shared, weights, apply, pre_mp_evaluate, post_mp_evaluate, preproc);
     StatsPoint end_online(*network);
 
     auto rbench = end_online - start_online;
@@ -96,7 +92,7 @@ void test_mp(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> netw
     }
 
     /* Correctness assertions */
-    auto res_g = share::reveal_graph(id, network, BLOCK_SIZE, n_bits, g_shared);
+    auto res_g = share::reveal_graph(id, network, n_bits, g_shared);
 
     if (id != D) {
         res_g.print();

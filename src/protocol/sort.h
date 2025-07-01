@@ -72,31 +72,30 @@ namespace sort {
  * ----- F_get_sort -----
  */
 
-Permutation get_sort(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE,
-                     std::vector<std::vector<Ring>> &bit_shares);
+Permutation get_sort(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, std::vector<std::vector<Ring>> &bit_shares);
 
-SortPreprocessing get_sort_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, size_t n_bits);
+SortPreprocessing get_sort_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, size_t n_bits);
 
 SortPreprocessing_Dealer get_sort_preprocess_Dealer(Party id, RandomGenerators &rngs, size_t n, size_t n_bits);
 
 SortPreprocessing get_sort_preprocess_Parties(Party id, RandomGenerators &rngs, size_t n, size_t n_bits, std::vector<Ring> &vals, size_t &idx);
 
-Permutation get_sort_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE,
-                              std::vector<std::vector<Ring>> &bit_shares, SortPreprocessing &preproc);
+Permutation get_sort_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, std::vector<std::vector<Ring>> &bit_shares,
+                              SortPreprocessing &preproc);
 
 /**
  * ----- F_sort_iteration -----
  */
-Permutation sort_iteration(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, Permutation &perm,
+Permutation sort_iteration(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, Permutation &perm,
                            std::vector<Ring> &bit_vec_share);
 
-SortIterationPreprocessing sort_iteration_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE);
+SortIterationPreprocessing sort_iteration_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n);
 
 SortIterationPreprocessing_Dealer sort_iteration_preprocess_Dealer(Party id, RandomGenerators &rngs, size_t n);
 
 SortIterationPreprocessing sort_iteration_preprocess_Parties(Party id, RandomGenerators &rngs, size_t n, std::vector<Ring> &vals, size_t &idx);
 
-Permutation sort_iteration_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t BLOCK_SIZE, Permutation &perm,
+Permutation sort_iteration_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, Permutation &perm,
                                     std::vector<Ring> &bit_shares, SortIterationPreprocessing &preproc);
 
 };  // namespace sort
