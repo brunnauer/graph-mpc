@@ -20,7 +20,7 @@ ShufflePre get_shuffle_compute(Party id, RandomGenerators &rngs, size_t n, std::
 
 ShufflePre get_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n);
 
-ShufflePre get_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, Party recv_larger_msg);
+ShufflePre get_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, Party &recv);
 
 void get_unshuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, ShufflePre &perm_share, MPPreprocessing &preproc);
 

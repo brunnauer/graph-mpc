@@ -123,11 +123,11 @@ ShufflePre shuffle::get_shuffle_compute(Party id, RandomGenerators &rngs, size_t
         }
     }
 }
-ShufflePre shuffle::get_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, Party recv_larger_msg) {
+ShufflePre shuffle::get_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, Party &recv) {
     ShufflePre perm_share;
     size_t P0_recv_size, P1_recv_size;
     /* Load balancing */
-    if (recv_larger_msg == P1) {
+    if (recv == P1) {
         P0_recv_size = n;
         P1_recv_size = 2 * n;
     } else {
@@ -141,12 +141,15 @@ ShufflePre shuffle::get_shuffle(Party id, RandomGenerators &rngs, std::shared_pt
     if (id == P0) D0 = network->read(D, P0_recv_size);
     if (id == P1) D1 = network->read(D, P1_recv_size);
 
-    perm_share = get_shuffle_compute(id, rngs, n, D0, D1, recv_larger_msg);
+    perm_share = get_shuffle_compute(id, rngs, n, D0, D1, recv);
 
     if (id == D) {
         network->add_send(P0, D0);
         network->add_send(P1, D1);
     }
+
+    /* Alternate receiver of larger message */
+    recv = recv == P0 ? P1 : P0;
 
     return perm_share;
 }

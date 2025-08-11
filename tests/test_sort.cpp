@@ -6,13 +6,13 @@
 #include "../src/graphmpc/sort.h"
 #include "../src/utils/permutation.h"
 
-void test_sort(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n) {
+void test_sort(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n, std::string input_file) {
     std::cout << "------ test_sort ------" << std::endl << std::endl;
     json output_data;
 
-    auto network = std::make_shared<io::NetIOMP>(net_conf);
+    auto network = std::make_shared<io::NetIOMP>(net_conf, true);
 
-    const size_t n_bits = 4;
+    const size_t n_bits = std::ceil(std::log2(n));
 
     std::vector<Ring> input_vector(n);
     for (size_t i = 0; i < n; ++i) input_vector[i] = rand() % n;
@@ -33,10 +33,11 @@ void test_sort(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, si
     }
 
     MPPreprocessing preproc;
+    Party recv = P0;
     /* Preprocessing */
     StatsPoint start_pre(*network);
     if (id != D) network->recv_buffered(D);
-    sort::get_sort_preprocess(id, rngs, network, n, bit_shares.size(), preproc);
+    sort::get_sort_preprocess(id, rngs, network, n, bit_shares.size(), preproc, recv);
     if (id == D) network->send_all();
     StatsPoint end_pre(*network);
 

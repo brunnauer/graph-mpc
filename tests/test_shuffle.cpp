@@ -6,10 +6,10 @@
 #include "../src/graphmpc/shuffle.h"
 #include "../src/utils/sharing.h"
 
-void test_shuffle(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n) {
+void test_shuffle(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n, std::string input_file) {
     std::cout << "------ test_shuffle ------" << std::endl << std::endl;
     json output_data;
-    std::shared_ptr<io::NetIOMP> network = std::make_shared<io::NetIOMP>(net_conf);
+    std::shared_ptr<io::NetIOMP> network = std::make_shared<io::NetIOMP>(net_conf, true);
 
     std::vector<Ring> input_vector(n);
     for (size_t i = 0; i < n; i++) input_vector[i] = i;

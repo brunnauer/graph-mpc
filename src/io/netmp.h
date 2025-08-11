@@ -80,10 +80,19 @@ class NetIOMP {
           save_to_disk(save_to_disk),
           n_send(conf.n_parties, 0),
           send_buffer(conf.n_parties),
-          recv_buffer(conf.n_parties) {
+          recv_buffer(conf.n_parties),
+          tmp_buf(conf.n_parties) {
+        /* Allocate recv buffers */
+        for (int i = 0; i < nP; ++i) {
+            if ((Party)i != party) tmp_buf[i].resize(CHUNK_SIZE);
+        }
         /* Remove all old files */
         for (int i = 0; i < nP; ++i) {
             std::string filename = std::to_string(party) + "_" + std::to_string((Party)i) + ".bin";
+            std::filesystem::remove(filename);
+        }
+        if (party != D) {
+            std::string filename = "preproc_" + std::to_string(party) + ".bin";
             std::filesystem::remove(filename);
         }
 
@@ -171,11 +180,6 @@ class NetIOMP {
     }
 
     void send_all() {
-        {
-            std::unique_lock<std::mutex> lock(mtx);
-            cv.wait(lock, [this] { return connection_established; });
-        }
-
         for (int i = 0; i < nP; ++i) {
             Party dst = (Party)i;
             size_t n_elems = n_send[(Party)i];
@@ -197,6 +201,7 @@ class NetIOMP {
                         std::streamsize n_read = infile.gcount() / sizeof(Ring);
                         if (n_read > 0) {
                             send_vec((Party)i, n_read, chunk);
+                            std::cout << "Sent one chunk." << std::endl;
                         }
                     }
                     infile.close();
@@ -205,12 +210,17 @@ class NetIOMP {
                 }
                 /* Clear n_send */
                 n_send[(Party)i] = 0;
+                std::cout << "Sent to one party." << std::endl;
             }
         }
         std::cout << "Sent all." << std::endl;
     }
 
     void send(Party dst, const void *data, size_t len) {
+        {
+            std::unique_lock<std::mutex> lock(mtx);
+            cv.wait(lock, [this] { return connection_established; });
+        }
         if (dst != party) {
             if (party < dst)
                 ios[dst]->send_data(data, len);
@@ -224,10 +234,6 @@ class NetIOMP {
     }
 
     void send_vec(Party dst, size_t n_elems, std::vector<Ring> &data) {
-        {
-            std::unique_lock<std::mutex> lock(mtx);
-            cv.wait(lock, [this] { return connection_established; });
-        }
         size_t n_msgs = n_elems / BLOCK_SIZE;
         size_t last_msg_size = n_elems % BLOCK_SIZE;
         for (size_t i = 0; i < n_msgs; i++) {
@@ -248,6 +254,10 @@ class NetIOMP {
     }
 
     void recv(Party src, void *data, size_t len) {
+        {
+            std::unique_lock<std::mutex> lock(mtx);
+            cv.wait(lock, [this] { return connection_established; });
+        }
         if (src != party) {
             if (sent[src]) flush(src);
             if (src < party)
@@ -262,54 +272,42 @@ class NetIOMP {
             std::unique_lock<std::mutex> lock(mtx);
             cv.wait(lock, [this] { return connection_established; });
         }
-
         size_t n_elems;
         recv(src, &n_elems, sizeof(size_t));
-        std::cout << "Receiving " << n_elems << " from " << src << " (buffered)..." << std::endl;
-
+        std::cout << "Receiving " << n_elems << " from " << src << std::endl;
         recv_vec(src, n_elems, recv_buffer[src]);
-
-        // recv_buffer[src].resize(n_elems);
-        // size_t n_msgs = n_elems / BLOCK_SIZE;
-        // size_t last_msg_size = n_elems % BLOCK_SIZE;
-        // for (size_t i = 0; i < n_msgs; i++) {
-        // std::vector<Ring> data_recv_i(BLOCK_SIZE);
-        // recv(src, data_recv_i.data(), sizeof(Ring) * BLOCK_SIZE);
-        // for (size_t j = 0; j < BLOCK_SIZE; j++) {
-        // recv_buffer[src][i * BLOCK_SIZE + j] = data_recv_i[j];
-        //}
-        //}
-
-        ///* Receive last elements */
-        // std::vector<Ring> data_recv_last(last_msg_size);
-        // recv(src, data_recv_last.data(), sizeof(Ring) * last_msg_size);
-        // for (size_t j = 0; j < last_msg_size; j++) {
-        // recv_buffer[src][n_msgs * BLOCK_SIZE + j] = data_recv_last[j];
-        //}
+        std::cout << "Done receiving." << std::endl;
     }
 
     void recv_vec(Party src, size_t n_elems, std::vector<Ring> &buffer) {
-        {
-            std::unique_lock<std::mutex> lock(mtx);
-            cv.wait(lock, [this] { return connection_established; });
-        }
+        const size_t BLOCK_SIZE_MIN = std::min(CHUNK_SIZE, BLOCK_SIZE);
+        size_t n_msgs = n_elems / BLOCK_SIZE_MIN;
+        size_t last_msg_size = n_elems % BLOCK_SIZE_MIN;
 
-        buffer.resize(n_elems);
-        size_t n_msgs = n_elems / BLOCK_SIZE;
-        size_t last_msg_size = n_elems % BLOCK_SIZE;
+        if (!(save_to_disk && src == D)) buffer.resize(n_elems);
+
+        auto &tmp = tmp_buf[src];
+
         for (size_t i = 0; i < n_msgs; i++) {
-            std::vector<Ring> data_recv_i(BLOCK_SIZE);
-            recv(src, data_recv_i.data(), sizeof(Ring) * BLOCK_SIZE);
-            for (size_t j = 0; j < BLOCK_SIZE; j++) {
-                buffer[i * BLOCK_SIZE + j] = data_recv_i[j];
+            // std::vector<Ring> data_recv_i(BLOCK_SIZE_MIN);
+            recv(src, tmp.data(), sizeof(Ring) * BLOCK_SIZE_MIN);
+            if (save_to_disk && src == D) {
+                write_binary("preproc_" + std::to_string(party) + ".bin", {tmp.begin(), tmp.begin() + BLOCK_SIZE_MIN});
+            } else {
+                std::memcpy(buffer.data() + (i * BLOCK_SIZE_MIN), tmp.data(), sizeof(Ring) * BLOCK_SIZE_MIN);
             }
         }
 
         /* Receive last elements */
-        std::vector<Ring> data_recv_last(last_msg_size);
-        recv(src, data_recv_last.data(), sizeof(Ring) * last_msg_size);
-        for (size_t j = 0; j < last_msg_size; j++) {
-            buffer[n_msgs * BLOCK_SIZE + j] = data_recv_last[j];
+        if (last_msg_size > 0) {
+            // std::vector<Ring> data_recv_last(last_msg_size);
+            recv(src, tmp.data(), sizeof(Ring) * last_msg_size);
+
+            if (save_to_disk && src == D) {
+                write_binary("preproc_" + std::to_string(party) + ".bin", {tmp.begin(), tmp.begin() + last_msg_size});
+            } else {
+                std::memcpy(buffer.data() + (n_msgs * BLOCK_SIZE_MIN), tmp.data(), sizeof(Ring) * last_msg_size);
+            }
         }
     }
 
@@ -318,13 +316,48 @@ class NetIOMP {
             throw std::logic_error("Cannot receive data from yourself.");
         }
 
-        auto &buffer = recv_buffer[src];
-        assert(buffer.size() >= n_elems);
-
         std::vector<Ring> chunk;
-        chunk.reserve(n_elems);
-        std::move(buffer.begin(), buffer.begin() + n_elems, std::back_inserter(chunk));
-        buffer.erase(buffer.begin(), buffer.begin() + n_elems);
+
+        if (save_to_disk) {  // Read from file
+            std::string filename = "preproc_" + std::to_string(party) + ".bin";
+            std::ifstream in(filename, std::ios::binary);
+            if (!in) throw std::runtime_error("Cannot open file");
+
+            in.seekg(0, std::ios::end);
+            size_t fileSize = in.tellg();
+
+            // No more values to read
+            if (read_offset >= fileSize) {
+                in.close();
+                std::ofstream out(filename, std::ios::binary | std::ios::trunc);
+                out.close();
+                read_offset = 0;
+                return {};
+            }
+
+            in.seekg(read_offset, std::ios::beg);
+            size_t max_elements = (fileSize - read_offset) / sizeof(Ring);
+            size_t elements_to_read = std::min(n_elems, max_elements);
+
+            chunk.resize(elements_to_read);
+            in.read(reinterpret_cast<char *>(chunk.data()), elements_to_read * sizeof(Ring));
+            read_offset += in.gcount();  // in.gcount() is in bytes
+            in.close();
+
+            // Optional: truncate file when all data is read
+            if (read_offset >= fileSize) {
+                std::ofstream out(filename, std::ios::binary | std::ios::trunc);
+                out.close();
+                read_offset = 0;
+            }
+        } else {  // Read from buffer
+            auto &buffer = recv_buffer[src];
+            assert(buffer.size() >= n_elems);
+
+            chunk.reserve(n_elems);
+            std::move(buffer.begin(), buffer.begin() + n_elems, std::back_inserter(chunk));
+            buffer.erase(buffer.begin(), buffer.begin() + n_elems);
+        }
 
         return chunk;
     }
@@ -385,21 +418,6 @@ class NetIOMP {
         }
     }
 
-    void write_to_file(const char *filename, Ring val) {
-        int fd = open(filename, O_WRONLY | O_CREAT, 0666);
-        if (fd < 0) {
-            throw new std::runtime_error("Error opening file.");
-        }
-
-        if (lseek(fd, 0, SEEK_END) == (off_t)-1) {
-            close(fd);
-            throw new std::runtime_error("Could not seek end of file.");
-        }
-
-        ssize_t bytes_written = write(fd, &val, sizeof(Ring));
-        close(fd);
-    }
-
     /**
      * Writes the data to a file.
      */
@@ -410,38 +428,21 @@ class NetIOMP {
         out.write(reinterpret_cast<const char *>(data.data()), data.size() * sizeof(Ring));
     }
 
-    /**
-     * Reads n_elements Ring-Elements from file filename.
-     */
-    std::vector<Ring> read_binary_file(const std::string &filename) {
-        std::ifstream in(filename, std::ios::binary);
-        if (!in) throw std::runtime_error("Failed to open file.");
-
-        auto file_size = std::filesystem::file_size(filename);
-        if (file_size % sizeof(Ring) != 0) throw std::runtime_error("File size is not a multiple of element size.");
-
-        size_t n_elems = file_size / sizeof(Ring);
-        std::vector<Ring> data(n_elems);
-
-        in.read(reinterpret_cast<char *>(data.data()), file_size);
-
-        std::filesystem::remove(filename);
-        return data;
-    }
-
    private:
     NetworkConfig conf;
     std::vector<std::unique_ptr<TLSNetIO>> ios;
     std::vector<std::unique_ptr<TLSNetIO>> ios2;
     std::vector<bool> sent;
     size_t BLOCK_SIZE;
-    const size_t CHUNK_SIZE = 16384;
+    const size_t CHUNK_SIZE = 10000;
 
     std::thread init_thread;
 
     std::vector<std::vector<Ring>> send_buffer;
     std::vector<std::vector<Ring>> recv_buffer;
+    std::vector<std::vector<Ring>> tmp_buf;
     std::vector<size_t> n_send;
-};
 
+    size_t read_offset = 0;  // For reading preprocessing vals from file
+};
 };  // namespace io

@@ -5,7 +5,6 @@
 #include "../io/netmp.h"
 #include "../setup/stats.h"
 #include "bits.h"
-#include "graph.h"
 #include "permutation.h"
 #include "random_generators.h"
 #include "types.h"
@@ -15,7 +14,7 @@ Ring random_share_secret_2P(Party id, RandomGenerators &rngs, Ring &secret);
 
 Ring random_share_secret_2P_bin(Party id, RandomGenerators &rngs, Ring &secret);
 
-std::vector<Ring> random_share_secret_vec_2P(Party id, RandomGenerators &rngs, std::vector<Ring> &secret_perm);
+std::vector<Ring> random_share_secret_vec_2P(Party id, RandomGenerators &rngs, std::vector<Ring> &secret_vec, Party sender = P0);
 
 Permutation random_share_secret_perm_2P(Party id, RandomGenerators &rngs, Permutation &secret_vec);
 
@@ -31,14 +30,10 @@ Ring random_share_secret_3P(Party id, RandomGenerators &rngs, std::vector<Ring> 
 
 Ring random_share_secret_3P_bin(Party id, RandomGenerators &rngs, std::vector<Ring> &vals_to_p1, size_t &idx, Ring &secret);
 
-SecretSharedGraph random_share_graph(Party id, RandomGenerators &rngs, size_t n_bits, Graph &g);
-
 std::vector<Ring> reveal_vec(Party id, std::shared_ptr<io::NetIOMP> network, std::vector<Ring> &share);
 
 std::vector<Ring> reveal_vec_bin(Party id, std::shared_ptr<io::NetIOMP> network, std::vector<Ring> &share);
 
 Permutation reveal_perm(Party id, std::shared_ptr<io::NetIOMP> network, Permutation &share);
-
-Graph reveal_graph(Party id, std::shared_ptr<io::NetIOMP> network, size_t n_bits, SecretSharedGraph &g);
 
 };  // namespace share

@@ -4,21 +4,11 @@
 #include "../setup/comm.h"
 #include "../setup/utils.h"
 #include "../src/graphmpc/message_passing.h"
+#include "../src/mp_protocol.h"
 #include "../src/utils/permutation.h"
 
-std::vector<Ring> apply(std::vector<Ring> &old_payload, std::vector<Ring> &new_payload) {
-    std::vector<Ring> result(old_payload.size());
-
-    for (size_t i = 0; i < result.size(); ++i) {
-        result[i] = old_payload[i] + new_payload[i];
-    }
-    return result;
-}
-
-void test_mp(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n) {
+void test_mp(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n, std::string input_file) {
     std::cout << "------ test_mp ------" << std::endl << std::endl;
-
-    json output_data;
     auto network = std::make_shared<io::NetIOMP>(net_conf, true);
 
     /**
@@ -31,68 +21,55 @@ void test_mp(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size
     const size_t n_iterations = 2;
     size_t n_bits = std::ceil(std::log2(n));  // Optimization
     std::cout << "n_bits: " << n_bits << std::endl;
-    Graph g;
-    g.size = n;
-    g.src = std::vector<Ring>({0, 1, 2, 0, 1, 2, 2, 2});
-    g.dst = std::vector<Ring>({0, 1, 2, 1, 0, 1, 0, 1});
-    g.isV = std::vector<Ring>({1, 1, 1, 0, 0, 0, 0, 0});
-    g.payload = std::vector<Ring>({1, 2, 3, 0, 0, 0, 0, 0});
+
+    Graph g = Graph::parse(input_file);
+    // Graph g;
+    // g.add_list_entry(0, 0, 1, 1);
+    // g.add_list_entry(1, 1, 1, 2);
+    // g.add_list_entry(2, 2, 1, 3);
+    // g.add_list_entry(0, 1, 0, 0);
+    // g.add_list_entry(1, 0, 0, 0);
+    // g.add_list_entry(2, 1, 0, 0);
+    // g.add_list_entry(2, 0, 0, 0);
+    // g.add_list_entry(2, 1, 0, 0);
 
     std::vector<Ring> weights(n_iterations);
+    Graph g_shared = g.secret_share(id, rngs, network, n_bits, P0);
 
-    SecretSharedGraph g_shared = share::random_share_graph(id, rngs, n_bits, g);
-
-    StatsPoint start_pre(*network);
-    if (id != D) network->recv_buffered(D);
-    auto preproc = mp::preprocess(id, rngs, network, n, n_bits, n_iterations);
-    if (id == D) network->send_all();
-    StatsPoint end_pre(*network);
-
-    auto rbench_pre = end_pre - start_pre;
-    output_data["benchmarks_pre"].push_back(rbench_pre);
-    size_t bytes_sent_pre = 0;
-    for (const auto &val : rbench_pre["communication"]) {
-        bytes_sent_pre += val.get<int64_t>();
-    }
+    MPProtocol mp(id, rngs, network, n, n_bits, n_iterations, weights);
+    mp.run(g_shared, TEST);
 
     /* Preprocessing communication assertions */
     if (id == D) {
-        /* n_elems * 4 Bytes per element */
-        // size_t total_comm = 4 * (MP_COMM_PRE(id, n, n_bits) + 2);
-        // assert(bytes_sent_pre == total_comm);
-    }
-
-    StatsPoint start_online(*network);
-    mp::evaluate(id, rngs, network, g.size, n_bits, n_iterations, 3, preproc, apply, weights, g_shared);
-    StatsPoint end_online(*network);
-
-    auto rbench = end_online - start_online;
-    output_data["benchmarks"].push_back(rbench);
-
-    size_t bytes_sent = 0;
-    for (const auto &val : rbench["communication"]) {
-        bytes_sent += val.get<int64_t>();
+        size_t expected_comm_pre = MP_COMM_PRE(n, n_bits) + 4;
+        size_t actual_comm_pre = mp.comm_pre();
+        std::cout << "Expected: " << expected_comm_pre << std::endl;
+        std::cout << "Actual: " << actual_comm_pre << std::endl;
+        assert(expected_comm_pre == actual_comm_pre);
     }
 
     /* Evaluation communication assertions */
     if (id != D) {
-        size_t total_comm = 4 * MP_COMM_ONLINE(n, n_bits, n_iterations);
-        assert(total_comm == bytes_sent);
+        size_t expected_comm_eval = MP_COMM_ONLINE(n, n_bits, n_iterations);
+        size_t actual_comm_eval = mp.comm_eval();
+        std::cout << "Expected: " << expected_comm_eval << std::endl;
+        std::cout << "Actual: " << actual_comm_eval << std::endl;
+        assert(expected_comm_eval == actual_comm_eval);
     }
 
     /* Correctness assertions */
-    auto res_g = share::reveal_graph(id, network, n_bits, g_shared);
+    auto res_g = g_shared.reveal(id, network);
 
     if (id != D) {
         res_g.print();
-        assert(res_g.payload[0] == 18);
-        assert(res_g.payload[1] == 21);
-        assert(res_g.payload[2] == 3);
-        assert(res_g.payload[3] == 0);
-        assert(res_g.payload[4] == 0);
-        assert(res_g.payload[5] == 0);
-        assert(res_g.payload[6] == 0);
-        assert(res_g.payload[7] == 0);
+        assert(res_g._data[0] == 18);
+        assert(res_g._data[1] == 21);
+        assert(res_g._data[2] == 3);
+        assert(res_g._data[3] == 0);
+        assert(res_g._data[4] == 0);
+        assert(res_g._data[5] == 0);
+        assert(res_g._data[6] == 0);
+        assert(res_g._data[7] == 0);
     }
 }
 

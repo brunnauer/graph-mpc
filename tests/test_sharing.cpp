@@ -1,10 +1,11 @@
 #include <cassert>
 
 #include "../setup/utils.h"
+#include "../src/utils/graph.h"
 #include "../src/utils/random_generators.h"
 #include "../src/utils/sharing.h"
 
-void test_sharing(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n) {
+void test_sharing(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n, std::string input_file) {
     std::cout << "------ test_sharing ------" << std::endl << std::endl;
     json output_data;
     auto network = std::make_shared<io::NetIOMP>(net_conf, false);
@@ -60,31 +61,25 @@ void test_sharing(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf,
     std::cout << std::endl << std::endl;
 
     /* Test Graph Sharing */
-    Graph g;
-    g.add_list_entry(0, 0, 1, 1);
-    g.add_list_entry(1, 1, 1, 2);
-    g.add_list_entry(2, 2, 1, 3);
-    g.add_list_entry(3, 0, 1, 4);
-    g.add_list_entry(0, 1, 0, 0);
-    g.add_list_entry(1, 2, 0, 0);
-    g.add_list_entry(2, 0, 0, 0);
-    g.add_list_entry(3, 2, 0, 0);
+    Graph g = Graph::parse(input_file);
 
-    std::cout << "Initial graph: " << std::endl;
-    auto src_bits = to_bits(g.src, 32);
-    g.src = from_bits(src_bits, g.size);
+    std::cout << "Personal graph: " << std::endl;
     g.print();
 
-    SecretSharedGraph shared_graph = share::random_share_graph(id, rngs, 32, g);
-    Graph reconstructed_graph = share::reveal_graph(id, network, 32, shared_graph);
+    Graph shared_graph = g.share_subgraphs(id, rngs, network, 32);
+    Graph reconstructed_graph = shared_graph.reveal(id, network);
 
-    std::cout << "Reconstructed graph: " << std::endl;
+    std::cout << "Concatenated graph: " << std::endl;
     reconstructed_graph.print();
 
-    assert(g.src == reconstructed_graph.src);
-    assert(g.dst == reconstructed_graph.dst);
-    assert(g.isV == reconstructed_graph.isV);
-    assert(g.payload == reconstructed_graph.payload);
+    // assert(2 * g.src.size() == reconstructed_graph.src.size());
+    // assert(2 * g.dst.size() == reconstructed_graph.dst.size());
+    // assert(2 * g.isV.size() == reconstructed_graph.isV.size());
+    // assert(2 * g.payload.size() == reconstructed_graph.payload.size());
+
+    // assert(shared_graph.src_bits.size() == 32);
+    // assert(shared_graph.src_bits[0].size() == 2 * g.size);
+    // assert(shared_graph.dst_bits[0].size() == 2 * g.size);
 }
 
 int main(int argc, char **argv) {

@@ -11,7 +11,7 @@
 #include "../utils/types.h"
 
 namespace mul {
-void preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc);
+void preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, Party &recv);
 
 std::vector<std::tuple<Ring, Ring, Ring>> preprocess(Party id, RandomGenerators &rngs, std::vector<Ring> &D1, size_t &idx, size_t n);
 

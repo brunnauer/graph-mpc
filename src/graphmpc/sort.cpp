@@ -1,16 +1,17 @@
 #include "sort.h"
 
-void sort::get_sort_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t n_bits, MPPreprocessing &preproc) {
-    mul::preprocess(id, rngs, network, n, preproc);
+void sort::get_sort_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t n_bits, MPPreprocessing &preproc,
+                               Party &recv) {
+    mul::preprocess(id, rngs, network, n, preproc, recv);
 
     for (size_t i = 0; i < n_bits - 1; ++i) {
-        sort_iteration_preprocess(id, rngs, network, n, preproc);
+        sort_iteration_preprocess(id, rngs, network, n, preproc, recv);
     }
 }
 
-void sort::sort_iteration_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc) {
-    ShufflePre shuffle_pre = shuffle::get_shuffle(id, rngs, network, n);
-    mul::preprocess(id, rngs, network, n, preproc);
+void sort::sort_iteration_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, Party &recv) {
+    ShufflePre shuffle_pre = shuffle::get_shuffle(id, rngs, network, n, recv);
+    mul::preprocess(id, rngs, network, n, preproc, recv);
     std::vector<Ring> unshuffle_pre = shuffle::get_unshuffle(id, rngs, network, n, shuffle_pre);
 
     preproc.shuffles.push(shuffle_pre);

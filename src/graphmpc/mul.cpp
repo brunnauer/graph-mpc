@@ -1,19 +1,8 @@
 #include "mul.h"
 
-void mul::preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc) {
+void mul::preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, Party &recv) {
     std::vector<Ring> vals_send;
     size_t idx = 0;
-
-    Party recv;
-    int coin;
-    rngs.rng_D().random_data(&coin, sizeof(int));
-    if (coin < 0) coin = -coin;
-    coin %= 2;
-    if (coin) {
-        recv = P0;
-    } else {
-        recv = P1;
-    }
 
     if (id == recv) vals_send = network->read(D, n);
     for (size_t i = 0; i < n; ++i) {
@@ -24,6 +13,9 @@ void mul::preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIO
         preproc.triples.push({a, b, c});
     }
     if (id == D) network->add_send(recv, vals_send);
+
+    /* Alternate receiver */
+    recv = recv == P0 ? P1 : P0;
 }
 
 std::vector<std::tuple<Ring, Ring, Ring>> mul::preprocess(Party id, RandomGenerators &rngs, std::vector<Ring> &shares, size_t &idx, size_t n) {

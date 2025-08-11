@@ -48,8 +48,9 @@ bpo::options_description setup::programOptions() {
                                                                                                               "File to save benchmarks.")(
         "repeat,r", bpo::value<size_t>()->default_value(1), "Number of times to run benchmarks.")("num_parties,np", bpo::value<size_t>()->default_value(3),
                                                                                                   "Number of parties running the protocol.")(
-        "BLOCK_SIZE", bpo::value<size_t>()->default_value(100000), "BLOCK_SIZE for sending messages over the network.")(
-        "ssd", bpo::bool_switch(), "Preprocessing values are stored on disk before they are sent.");
+        "BLOCK_SIZE", bpo::value<size_t>()->default_value(1000000), "BLOCK_SIZE for sending messages over the network.")(
+        "ssd", bpo::bool_switch(), "Preprocessing values are stored on disk before they are sent.")("input,i", bpo::value<std::string>(),
+                                                                                                    "File specifying the graph.");
 
     return desc;
 }
@@ -90,11 +91,15 @@ bpo::variables_map setup::parseOptions(bpo::options_description &cmdline, bpo::o
 }
 
 void setup::setupExecution(const bpo::variables_map &opts, size_t &pid, size_t &nP, size_t &repeat, size_t &threads, size_t &nodes, io::NetworkConfig &net_conf,
-                           uint64_t *seeds_h, uint64_t *seeds_l, bool &save_output, std::string &save_file, bool &save_to_disk) {
+                           uint64_t *seeds_h, uint64_t *seeds_l, bool &save_output, std::string &save_file, bool &save_to_disk, std::string &input_file) {
     save_output = false;
     if (opts.count("output") != 0) {
         save_output = true;
         save_file = opts["output"].as<std::string>();
+    }
+
+    if (opts.count("input") != 0) {
+        input_file = opts["input"].as<std::string>();
     }
 
     pid = opts["pid"].as<size_t>();
@@ -168,7 +173,8 @@ void setup::setupExecution(const bpo::variables_map &opts, size_t &pid, size_t &
     save_to_disk = opts["ssd"].as<bool>();
 }
 
-void setup::run_test(const bpo::variables_map &opts, std::function<void(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n)> func) {
+void setup::run_test(const bpo::variables_map &opts,
+                     std::function<void(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n, std::string input_file)> func) {
     auto n = opts["vec-size"].as<size_t>();
 
     size_t pid, nP, repeat, threads, shuffle_num, nodes;
@@ -179,8 +185,9 @@ void setup::run_test(const bpo::variables_map &opts, std::function<void(Party id
     bool save_output;
     std::string save_file;
     bool save_to_disk;
+    std::string input_file;
 
-    setup::setupExecution(opts, pid, nP, repeat, threads, nodes, net_conf, seeds_h, seeds_l, save_output, save_file, save_to_disk);
+    setup::setupExecution(opts, pid, nP, repeat, threads, nodes, net_conf, seeds_h, seeds_l, save_output, save_file, save_to_disk, input_file);
     output_data["details"] = {{"pid", pid},         {"num_parties", nP}, {"threads", threads}, {"seeds_h", seeds_h},
                               {"seeds_l", seeds_l}, {"repeat", repeat},  {"vec-size", n}};
 
@@ -193,12 +200,12 @@ void setup::run_test(const bpo::variables_map &opts, std::function<void(Party id
     Party id = (pid == 0) ? P0 : ((pid == 1) ? P1 : D);
     RandomGenerators rngs(seeds_h, seeds_l);
 
-    func(id, rngs, net_conf, n);
+    func(id, rngs, net_conf, n, input_file);
 }
 
 void setup::run_benchmark(const bpo::variables_map &opts,
                           std::function<void(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n, size_t repeat, size_t n_vertices,
-                                             bool save_output, std::string save_file, bool save_to_disk)>
+                                             bool save_output, std::string save_file, bool save_to_disk, std::string input_file)>
                               func) {
     auto n = opts["vec-size"].as<size_t>();
 
@@ -210,8 +217,9 @@ void setup::run_benchmark(const bpo::variables_map &opts,
     bool save_output;
     std::string save_file;
     bool save_to_disk;
+    std::string input_file;
 
-    setup::setupExecution(opts, pid, nP, repeat, threads, nodes, net_conf, seeds_h, seeds_l, save_output, save_file, save_to_disk);
+    setup::setupExecution(opts, pid, nP, repeat, threads, nodes, net_conf, seeds_h, seeds_l, save_output, save_file, save_to_disk, input_file);
     output_data["details"] = {{"pid", pid},         {"num_parties", nP}, {"threads", threads}, {"seeds_h", seeds_h},
                               {"seeds_l", seeds_l}, {"repeat", repeat},  {"vec-size", n}};
 
@@ -224,5 +232,5 @@ void setup::run_benchmark(const bpo::variables_map &opts,
     Party id = (pid == 0) ? P0 : ((pid == 1) ? P1 : D);
     RandomGenerators rngs(seeds_h, seeds_l);
 
-    func(id, rngs, net_conf, n, repeat, nodes, save_output, save_file, save_to_disk);
+    func(id, rngs, net_conf, n, repeat, nodes, save_output, save_file, save_to_disk, input_file);
 }

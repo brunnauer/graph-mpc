@@ -5,7 +5,7 @@
 #include "../setup/utils.h"
 #include "../src/io/netmp.h"
 
-void test_network(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n) {
+void test_network(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n, std::string input_file) {
     std::cout << "------ test_network ------" << std::endl << std::endl;
     json output_data;
 
@@ -15,29 +15,30 @@ void test_network(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf,
 
     std::shared_ptr<io::NetIOMP> network = std::make_shared<io::NetIOMP>(net_conf, false);
 
-    if (id == D) {
-        network->write_binary("test", input_vector);
-        auto read_vector = network->read_binary_file("test");
-        std::cout << "Input vector read from SSD: " << std::endl;
-        setup::print_vec(read_vector);
-    }
-
     switch (id) {
         case D: {
             network->add_send(P0, input_vector);
             network->add_send(P1, input_vector);
             network->send_all();
+            network->sync();
             break;
         }
         case P0: {
+            size_t n = 10;
+            network->send(P1, &n, sizeof(size_t));
             network->recv_buffered(D);
             auto res = network->read(D, n);
+            network->sync();
             setup::print_vec(res);
             break;
         }
         case P1: {
+            size_t n;
+            network->recv(P0, &n, sizeof(size_t));
+            std::cout << "Received " << n << " from P0." << std::endl;
             network->recv_buffered(D);
             auto res = network->read(D, n);
+            network->sync();
             setup::print_vec(res);
             break;
         }
