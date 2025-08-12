@@ -415,6 +415,10 @@ class NetIOMP {
     }
 
     void sync() {
+        {
+            std::unique_lock<std::mutex> lock(mtx);
+            cv.wait(lock, [this] { return connection_established; });
+        }
         for (int i = 0; i < nP; ++i) {
             for (int j = 0; j < nP; ++j) {
                 if (i < j) {
