@@ -107,8 +107,6 @@ class MPProtocol {
     std::string save_file;
 
     Party recv = P0;
-    // std::vector<std::function<void()>> preprocessing;
-    // std::vector<std::function<void()>> evaluation;
 
     void mp_preprocess() {
         MPFunctions::pre_mp_preprocessing(id, rngs, network, n, n_bits, preproc, recv);
@@ -237,57 +235,4 @@ class MPProtocol {
 
         MPFunctions::post_mp_eval(id, rngs, network, n, n_bits, g);
     }
-
-    // void shuffle_preprocess() { shuffle::get_shuffle(id, rngs, network, n, preproc); }
-
-    // void shuffle_evaluate(std::vector<Ring> &input) { input = shuffle::shuffle(id, rngs, network, n, preproc, input); }
-
-    // void sort_preprocess() { sort::get_sort_preprocess(id, rngs, network, n, n_bits, preproc); }
-
-    // void sort_evaluate(std::vector<std::vector<Ring>> &keys, Permutation &res) { res = sort::get_sort_evaluate(id, rngs, network, n, preproc, keys); }
-
-    // void apply_perm_preprocess() { shuffle::get_shuffle(id, rngs, network, n, preproc); }
-
-    // void apply_perm_evaluate(std::vector<Ring> &input, Permutation &perm) {
-    ///* Extract next shuffle */
-    // ShufflePre perm_share = preproc.shuffles.front();
-    // preproc.shuffles.pop();
-
-    // Permutation perm_shuffled = shuffle::shuffle(id, rngs, network, n, perm_share, perm);
-    // auto perm_shuffled_clear = share::reveal_perm(id, network, perm_shuffled);
-
-    // auto shuffled_input = shuffle::shuffle(id, rngs, network, n, perm_share, input);
-    // input = perm_shuffled_clear(shuffled_input);
-    //}
-
-    // void mul_preprocess() { mul::preprocess(id, rngs, network, n, preproc); }
-
-    // void mul_evaluate(std::vector<Ring> &x, std::vector<Ring> &y, std::vector<Ring> &res) {
-    // auto triples = extract(preproc.triples, n);
-    // res = mul::evaluate(id, network, n, preproc, x, y);
-    //}
-
-    // void reveal_vec(std::vector<Ring> &vec) { vec = share::reveal_vec(id, network, vec); }
-
-    // void add_shuffle(std::vector<Ring> &input) {
-    // preprocessing.push_back([=]() { shuffle_preprocess(); });
-    // evaluation.push_back([=, &input]() { shuffle_evaluate(input); });
-    //}
-
-    // void add_multiplication(std::vector<Ring> &x, std::vector<Ring> &y, std::vector<Ring> &res) {
-    // preprocessing.push_back([=]() { mul_preprocess(); });
-    // evaluation.push_back([=, &x, &y, &res]() { mul_evaluate(x, y, res); });
-    //}
-
-    // void add_sort(std::vector<std::vector<Ring>> &bits, Permutation &res) {
-    // size_t n_bits = bits.size();
-    // preprocessing.push_back([=]() { sort_preprocess(); });
-    // evaluation.push_back([=, &bits, &res]() { sort_evaluate(bits, res); });
-    //}
-
-    // void add_apply_perm(std::vector<Ring> &input, Permutation &perm) {}
-
-    // void add_reveal(std::vector<Ring> &share) {
-    // evaluation.push_back([=, &share]() { reveal_vec(share); });
-    //}
 };
