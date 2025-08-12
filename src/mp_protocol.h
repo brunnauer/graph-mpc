@@ -111,16 +111,18 @@ class MPProtocol {
     // std::vector<std::function<void()>> evaluation;
 
     void mp_preprocess() {
+        MPFunctions::pre_mp_preprocessing(id, rngs, network, n, n_bits, preproc, recv);
+
         auto sort_pre_start = std::chrono::system_clock::now();
 
         /* Sort preprocessing */
-        if (preproc.deduplication_pre.is_null()) {  // TODO: change branch condition
-            sort::get_sort_preprocess(id, rngs, network, n, n_bits + 1, preproc, recv);
-            sort::get_sort_preprocess(id, rngs, network, n, n_bits + 1, preproc, recv);
-        } else {
+        if (preproc.deduplication) {                                                     // TODO: change branch condition
             sort::get_sort_preprocess(id, rngs, network, n, n_bits + 2, preproc, recv);  // One bit more, as deduplication appends a bit to the end
             sort::sort_iteration_preprocess(id, rngs, network, n, preproc,
                                             recv);  // Only one iteration, as dst_sort has almost been completed during deduplication
+        } else {
+            sort::get_sort_preprocess(id, rngs, network, n, n_bits + 1, preproc, recv);
+            sort::get_sort_preprocess(id, rngs, network, n, n_bits + 1, preproc, recv);
         }
         sort::sort_iteration_preprocess(id, rngs, network, n, preproc, recv);  // vtx_order sort iteration
 
@@ -145,6 +147,8 @@ class MPProtocol {
         auto sw_pre_end = std::chrono::system_clock::now();
         elapsed = std::chrono::duration_cast<std::chrono::seconds>(sw_pre_end - sw_pre_start);
         std::cout << "Switch Perm Preprocessing took: " << std::to_string(elapsed.count()) << " s" << std::endl;
+
+        MPFunctions::post_mp_preprocessing(id, rngs, network, n, n_bits, preproc, recv);
     }
 
     /**
@@ -153,7 +157,29 @@ class MPProtocol {
     void mp_evaluate(size_t n_iterations, std::vector<Ring> &weights, Graph &g) {
         if (id == D) return;
 
-        g.init_mp(id, rngs, network, n, preproc);
+        g.init_mp(id);
+
+        /* Run PreMP */
+        MPFunctions::pre_mp_eval(id, rngs, network, n, n_bits, preproc, g);
+
+        /* Compute the three orders */
+        std::cout << "Start generating sorts..." << std::endl;
+        auto sort_eval_start = std::chrono::system_clock::now();
+
+        preproc.src_order = sort::get_sort_evaluate(id, rngs, network, n, preproc, g.src_order_bits);
+
+        if (preproc.deduplication) {
+            /* One more sort iteration to get dst_order */
+            preproc.dst_order = sort::sort_iteration_evaluate(id, rngs, network, n, preproc.dst_order, preproc, g.dst_order_bits[g.dst_order_bits.size() - 1]);
+        } else {
+            preproc.dst_order = sort::get_sort_evaluate(id, rngs, network, n, preproc, g.dst_order_bits);
+        }
+
+        preproc.vtx_order = sort::sort_iteration_evaluate(id, rngs, network, n, preproc.src_order, preproc, g.isV_inv);
+        auto sort_eval_end = std::chrono::system_clock::now();
+
+        auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(sort_eval_end - sort_eval_start);
+        std::cout << "Sort Evaluation took: " << std::to_string(elapsed.count()) << " s" << std::endl << std::endl;
 
         /* Prepare Permutations for apply / switch perm */
         mp::prepare_permutations(id, rngs, network, n, preproc);
@@ -208,6 +234,8 @@ class MPProtocol {
         }
         /* Save new payload */
         g._data = data_v;
+
+        MPFunctions::post_mp_eval(id, rngs, network, n, n_bits, g);
     }
 
     // void shuffle_preprocess() { shuffle::get_shuffle(id, rngs, network, n, preproc); }

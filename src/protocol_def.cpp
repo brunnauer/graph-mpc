@@ -1,10 +1,24 @@
 #include "protocol_def.h"
 
-void MPFunctions::pre_mp_preprocessing() {}
-void MPFunctions::apply_v_preprocessing() {}
-void MPFunctions::post_mp_preprocessing() {}
+void MPFunctions::pre_mp_preprocessing(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t n_bits,
+                                       MPPreprocessing &preproc, Party &recv) {
+#if defined PI_K
+    deduplication_preprocess(id, rngs, network, n, n_bits, preproc, recv);
+#endif
+}
 
-void MPFunctions::pre_mp_eval(Graph &g) {}
+void MPFunctions::apply_v_preprocessing(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t n_bits,
+                                        MPPreprocessing &preproc, Party &recv) {}
+
+void MPFunctions::post_mp_preprocessing(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t n_bits,
+                                        MPPreprocessing &preproc, Party &recv) {}
+
+void MPFunctions::pre_mp_eval(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t n_bits, MPPreprocessing &preproc,
+                              Graph &g) {
+#if defined PI_K
+    deduplication_evaluate(id, rngs, network, n, preproc, g);
+#endif
+}
 
 void MPFunctions::apply_v_eval(std::vector<Ring> &old_data, std::vector<Ring> &new_data) {
 /* Implement ApplyV */
@@ -17,4 +31,4 @@ void MPFunctions::apply_v_eval(std::vector<Ring> &old_data, std::vector<Ring> &n
 #endif
 }
 
-void MPFunctions::post_mp_eval(Graph &g) {}
+void MPFunctions::post_mp_eval(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t n_bits, Graph &g) {}

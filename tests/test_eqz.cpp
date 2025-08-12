@@ -1,74 +1,41 @@
 #include <cassert>
 
-#include "../setup/constants.h"
-#include "../setup/setup.h"
-#include "../src/protocol/clip.h"
+#include "../setup/comm.h"
+#include "../setup/utils.h"
+#include "../src/graphmpc/clip.h"
 #include "../src/utils/random_generators.h"
 #include "../src/utils/sharing.h"
 
-void test_eqz(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, size_t BLOCK_SIZE) {
+void test_eqz(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n, std::string input_file) {
     json output_data;
-    network->init();
+    auto network = std::make_shared<io::NetIOMP>(net_conf, false);
 
     std::cout << std::endl << "------ test_eqz ------" << std::endl;
+
     std::vector<Ring> test_vec(n);
     for (size_t i = 0; i < n; ++i) test_vec[i] = i;
     auto test_vec_share = share::random_share_secret_vec_2P(id, rngs, test_vec);
 
-    StatsPoint start_pre(*network);
-    if (id != D) {
-        size_t n_receive = eqz_comm_pre(id, n);
-        network->add_recv(D, n_receive);
-        network->recv_queue(D);
-    }
+    MPPreprocessing preproc;
+    Party recv = P1;
 
-    auto eqz_triples = clip::equals_zero_preprocess(id, rngs, network, n);
-    StatsPoint end_pre(*network);
+    if (id != D) network->recv_buffered(D);
 
-    auto rbench_pre = end_pre - start_pre;
-    output_data["benchmarks_pre"].push_back(rbench_pre);
-    size_t bytes_sent_pre = 0;
-    for (const auto &val : rbench_pre["communication"]) {
-        bytes_sent_pre += val.get<int64_t>();
-    }
+    clip::equals_zero_preprocess(id, rngs, network, n, preproc, recv);
+    clip::B2A_preprocess(id, rngs, network, n, preproc, recv);
+    if (id == D) network->send_all();
 
-    /* Preprocessing communication assertions */
-    if (id == D) {
-        /* n_elems * 4 Bytes per element */
-        size_t total_comm = 4 * eqz_comm_pre(id, n);
-        assert(bytes_sent_pre == total_comm);
-    }
+    // network->sync();
 
-    StatsPoint start_online(*network);
-
-    auto eqz_vec = clip::equals_zero_evaluate(id, rngs, network, eqz_triples, test_vec_share);
-    StatsPoint end_online(*network);
-
-    auto rbench = end_online - start_online;
-    output_data["benchmarks"].push_back(rbench);
-
-    size_t bytes_sent = 0;
-    for (const auto &val : rbench["communication"]) {
-        bytes_sent += val.get<int64_t>();
-    }
-
-    /* Evaluation communication assertions */
-    if (id != D) {
-        size_t total_comm = 4 * eqz_comm_online(n);
-        assert(total_comm == bytes_sent);
-    }
+    auto res = clip::equals_zero_evaluate(id, rngs, network, preproc, test_vec_share);
+    res = clip::B2A_evaluate(id, rngs, network, n, preproc, res);
 
     /* Correctness assertions */
-    std::vector<Ring> B2A_vec = clip::B2A(id, rngs, network, eqz_vec);
-    network->sync();
-    auto result = share::reveal_vec(id, network, B2A_vec);
+    auto result = share::reveal_vec(id, network, res);
 
     if (id != D) {
         std::cout << "Result of eqz: ";
-        for (auto &elem : result) {
-            std::cout << elem << ", ";
-        }
-        std::cout << std::endl;
+        setup::print_vec(result);
 
         for (size_t i = 0; i < n; ++i) {
             if (i == 0)

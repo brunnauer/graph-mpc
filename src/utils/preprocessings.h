@@ -35,19 +35,6 @@ struct SortPreprocessing {
     std::vector<SortIterationPreprocessing> sort_iteration_pre;  // size: (n_bits-1) * (5n resp. 6n)
 };
 
-struct DeduplicationPreprocessing {
-    SortPreprocessing dst_sort_pre;
-    std::vector<SortIterationPreprocessing> src_sort_pre;
-    ShufflePre apply_perm_share;
-    std::vector<Ring> unshuffle_B;
-    std::vector<std::vector<std::tuple<Ring, Ring, Ring>>> eqz_triples_1;
-    std::vector<std::vector<std::tuple<Ring, Ring, Ring>>> eqz_triples_2;
-    std::vector<std::tuple<Ring, Ring, Ring>> mul_triples;
-    std::vector<std::tuple<Ring, Ring, Ring>> B2A_triples;
-    Permutation dst_sort;
-    bool is_null() { return unshuffle_B.size() == 0; }
-};
-
 struct MPPreprocessing {
     std::queue<std::tuple<Ring, Ring, Ring>> triples;
     std::queue<ShufflePre> shuffles;
@@ -69,7 +56,7 @@ struct MPPreprocessing {
     Permutation clear_shuffled_src_order;
     Permutation clear_shuffled_dst_order;
 
-    DeduplicationPreprocessing deduplication_pre;
+    bool deduplication = false;
 };
 
 template <typename T>

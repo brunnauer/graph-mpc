@@ -11,7 +11,9 @@ target_sources(GraphMPC_lib
     utils/sharing.cpp
     utils/types.h
     io/netmp.h
+    graphmpc/clip.cpp
     graphmpc/compaction.cpp
+    graphmpc/deduplication.cpp
     graphmpc/message_passing.cpp
     graphmpc/mul.cpp
     graphmpc/shuffle.cpp

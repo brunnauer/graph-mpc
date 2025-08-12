@@ -3,35 +3,17 @@
 #include <algorithm>
 #include <cassert>
 
-#include "../setup/constants.h"
-#include "../setup/setup.h"
-#include "../src/protocol/deduplication.h"
-#include "../src/protocol/message_passing.h"
+#include "../setup/comm.h"
+#include "../setup/utils.h"
+#include "../src/graphmpc/deduplication.h"
+#include "../src/mp_protocol.h"
 #include "../src/utils/bits.h"
-#include "../src/utils/perm.h"
+#include "../src/utils/graph.h"
+#include "../src/utils/permutation.h"
 
-std::vector<Ring> apply(std::vector<Ring> &old_payload, std::vector<Ring> &new_payload) { return new_payload; }
-
-void pre_mp_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, size_t n_bits, MPPreprocessing &preproc) {
-    preproc.deduplication_pre = deduplication_preprocess(id, rngs, network, n, n_bits);
-}
-
-void post_mp_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, MPPreprocessing &preproc) { return; }
-
-void pre_mp_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, MPPreprocessing &preproc, SecretSharedGraph &g) {
-    deduplication_evaluate(id, rngs, network, n, preproc.deduplication_pre, g);
-    preproc.dst_order = preproc.deduplication_pre.dst_sort;
-}
-
-void post_mp_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, SecretSharedGraph &g, MPPreprocessing &preproc,
-                      std::vector<Ring> &payload) {
-    g.payload = payload;
-}
-
-void test_pi_k(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterface> network, size_t n, size_t BLOCK_SIZE) {
+void test_pi_k(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n, std::string input_file) {
     std::cout << "------ test_pi_k ------" << std::endl << std::endl;
-    json output_data;
-    network->init();
+    auto network = std::make_shared<io::NetIOMP>(net_conf, true);
 
     /*
     Graph instance:
@@ -59,7 +41,6 @@ void test_pi_k(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterfac
     */
 
     Graph g;
-
     g.add_list_entry(1, 1, 1);
     g.add_list_entry(2, 2, 1);
     g.add_list_entry(1, 2, 0);
@@ -77,7 +58,7 @@ void test_pi_k(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterfac
     g.add_list_entry(2, 4, 0);
     g.add_list_entry(4, 2, 0);
 
-    n = g.size;
+    n = g.size();
     std::vector<Ring> weights = {10000000, 100000, 1000, 1};
     const size_t n_vertices = 4;
     const size_t n_iterations = weights.size();
@@ -85,61 +66,34 @@ void test_pi_k(Party id, RandomGenerators &rngs, std::shared_ptr<NetworkInterfac
 
     if (id != D) g.print();
 
-    SecretSharedGraph g_shared = share::random_share_graph(id, rngs, n_bits, g);
-
-    /* Preprocessing */
-    StatsPoint start_pre(*network);
-    if (id != D) {
-        size_t n_receive = pi_k_comm_pre(id, n, n_bits, n_iterations);
-        network->add_recv(D, n_receive);
-        network->recv_queue(D);
-    }
-    auto preproc = mp::preprocess(id, rngs, network, n, n_bits, n_iterations, pre_mp_preprocess, post_mp_preprocess);
-    StatsPoint end_pre(*network);
-
-    auto rbench_pre = end_pre - start_pre;
-    output_data["benchmarks_pre"].push_back(rbench_pre);
-    size_t bytes_sent_pre = 0;
-    for (const auto &val : rbench_pre["communication"]) {
-        bytes_sent_pre += val.get<int64_t>();
-    }
+    Graph g_shared = g.secret_share(id, rngs, network, n_bits, P0);
+    MPProtocol mp(id, rngs, network, n, n_bits, n_iterations, weights);
+    mp.run(g_shared);
 
     /* Preprocessing communication assertions */
     if (id == D) {
         /* n_elems * 4 Bytes per element */
-        size_t total_comm = 4 * pi_k_comm_pre(id, n, n_bits, n_iterations);
-        std::cout << "Expected comm: " << total_comm << " actual: " << bytes_sent_pre << std::endl;
-        assert(bytes_sent_pre == total_comm);
-    }
-
-    StatsPoint start_online(*network);
-    mp::evaluate(id, rngs, network, n, n_bits, n_iterations, n_vertices, g_shared, weights, apply, pre_mp_evaluate, post_mp_evaluate, preproc);
-    StatsPoint end_online(*network);
-
-    auto rbench = end_online - start_online;
-    output_data["benchmarks"].push_back(rbench);
-
-    size_t bytes_sent = 0;
-    for (const auto &val : rbench["communication"]) {
-        bytes_sent += val.get<int64_t>();
+        size_t comm_expected_pre = 4 + PI_K_COMM_PRE(n, n_bits, n_iterations);
+        size_t comm_actual_pre = mp.comm_pre();
+        assert(comm_expected_pre == comm_actual_pre);
     }
 
     /* Evaluation communication assertions */
     if (id != D) {
-        size_t total_comm = 4 * pi_k_comm_online(n, n_bits, n_iterations);
-        std::cout << "Expected comm: " << total_comm << " actual: " << bytes_sent << std::endl;
-        assert(total_comm == bytes_sent);
+        size_t comm_expected_eval = PI_K_COMM_ONLINE(n, n_bits, n_iterations);
+        size_t comm_actual_eval = mp.comm_eval();
+        assert(comm_expected_eval == comm_actual_eval);
     }
 
-    auto res_g = share::reveal_graph(id, network, n_bits, g_shared);
+    auto res_g = g_shared.reveal(id, network);
 
     if (id != D) {
         res_g.print();
 
-        assert(res_g.payload[0] == 20510023);  // 2 of length 1, 5 of length 2, 10 of length 3, 23 of length 4
-        assert(res_g.payload[1] == 30513025);  // 3 of length 1, 5 of length 2, 13 of length 3, 25 of length 4
-        assert(res_g.payload[2] == 20510023);  // 2 of length 1, 5 of length 2, 10 of length 3, 23 of length 4
-        assert(res_g.payload[3] == 10305013);  // 1 of length 1, 3 of length 2,  5 of length 3, 13 of length 4
+        assert(res_g._data[0] == 20510023);  // 2 of length 1, 5 of length 2, 10 of length 3, 23 of length 4
+        assert(res_g._data[1] == 30513025);  // 3 of length 1, 5 of length 2, 13 of length 3, 25 of length 4
+        assert(res_g._data[2] == 20510023);  // 2 of length 1, 5 of length 2, 10 of length 3, 23 of length 4
+        assert(res_g._data[3] == 10305013);  // 1 of length 1, 3 of length 2,  5 of length 3, 13 of length 4
     }
 }
 

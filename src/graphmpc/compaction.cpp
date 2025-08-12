@@ -1,17 +1,18 @@
 #include "compaction.h"
 
 /* ----- Preprocessing ----- */
-std::vector<std::tuple<Ring, Ring, Ring>> compaction::preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n) {
-    return mul::preprocess(id, rngs, network, n);
+void compaction::preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, Party &recv) {
+    mul::preprocess(id, rngs, network, n, preproc, recv);
 }
 
 /* ----- Evaluation ----- */
-Permutation compaction::evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n,
-                                 std::vector<std::tuple<Ring, Ring, Ring>> &triples, std::vector<Ring> &input_share) {
+Permutation compaction::evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc,
+                                 std::vector<Ring> &input_share) {
+    if (id == D) return std::vector<Ring>(n);
+
     std::vector<Ring> output(n);
     std::vector<Ring> vals_send(2 * n);
-
-    if (id == D) return Permutation(output);
+    auto triples = extract(preproc.triples, n);
 
     if (n != D) {
         std::vector<Ring> f_0;
@@ -79,8 +80,9 @@ Permutation compaction::evaluate(Party id, RandomGenerators &rngs, std::shared_p
 }
 
 /* ----- Ad-Hoc Preprocessing ----- */
-Permutation compaction::get_compaction(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, std::vector<Ring> &input_share) {
-    auto triples = preprocess(id, rngs, network, n);
+Permutation compaction::get_compaction(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc,
+                                       std::vector<Ring> &input_share, Party &recv) {
+    preprocess(id, rngs, network, n, preproc, recv);
     network->sync();
-    return evaluate(id, rngs, network, n, triples, input_share);
+    return evaluate(id, rngs, network, n, preproc, input_share);
 }

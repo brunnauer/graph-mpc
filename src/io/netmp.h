@@ -167,6 +167,11 @@ class NetIOMP {
         }
     }
 
+    void add_send(Party dst, Ring &data) {
+        auto vec = std::vector<Ring>({data});
+        add_send(dst, vec);
+    }
+
     void add_send(Party dst, std::vector<Ring> &data) {
         /* Count the total number of elements */
         n_send[dst] += data.size();
@@ -272,11 +277,13 @@ class NetIOMP {
             std::unique_lock<std::mutex> lock(mtx);
             cv.wait(lock, [this] { return connection_established; });
         }
-        size_t n_elems;
+        size_t n_elems = 0;
         recv(src, &n_elems, sizeof(size_t));
-        std::cout << "Receiving " << n_elems << " from " << src << std::endl;
-        recv_vec(src, n_elems, recv_buffer[src]);
-        std::cout << "Done receiving." << std::endl;
+        if (n_elems > 0) {
+            std::cout << "Receiving " << n_elems << " from " << src << std::endl;
+            recv_vec(src, n_elems, recv_buffer[src]);
+            std::cout << "Done receiving." << std::endl;
+        }
     }
 
     void recv_vec(Party src, size_t n_elems, std::vector<Ring> &buffer) {
@@ -309,6 +316,11 @@ class NetIOMP {
                 std::memcpy(buffer.data() + (n_msgs * BLOCK_SIZE_MIN), tmp.data(), sizeof(Ring) * last_msg_size);
             }
         }
+    }
+
+    Ring read_one(Party src) {
+        auto result = read(src, 1);
+        return result[0];
     }
 
     std::vector<Ring> read(Party src, size_t n_elems) {

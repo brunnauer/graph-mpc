@@ -23,3 +23,10 @@ TODO
 scripts/macos/**
 scripts/*/**
 scripts/**
+scripts/macos/benchmark_pi_m.sh
+scripts/macos/test_mp_dealer_p0.sh
+scripts/macos/test_mp_dealer_p1.sh
+scripts/macos/test_mp.sh
+scripts/macos/test_pi_m.sh
+scripts/macos/test_sharing_p1.sh
+scripts/macos/test_sharing.sh

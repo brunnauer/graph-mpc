@@ -69,7 +69,7 @@
 
 #define DEDUPLICATION_COMM_ONLINE(n, n_bits)                                                                                                          \
     (SORT_COMM_ONLINE(n, (n_bits) + 1) + (n_bits) * SORT_ITERATION_COMM_ONLINE(n) + 3 * SHUFFLE_COMM_ONLINE(n) + (n) + 2 * EQZ_COMM_ONLINE((n) - 1) + \
-     MUL_COMM_ONLINE((n) - 1) + B2A_COMM_ONLINE((n) - 1) + REVERSE_PERM_COMM_ONLINE(n))
+     MUL_COMM_ONLINE((n) - 1) + B2A_COMM_ONLINE((n) - 1) + UNSHUFFLE_COMM_ONLINE(n))
 
 #define MP_COMM_ONLINE(n, n_bits, d)                                                                                                        \
     (2 * SORT_COMM_ONLINE(n, (n_bits) + 1) + SORT_ITERATION_COMM_ONLINE(n) + APPLY_PERM_COMM_ONLINE(n) + FIRST_SWITCH_PERM_COMM_ONLINE(n) + \

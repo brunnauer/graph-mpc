@@ -1,37 +1,5 @@
 #include "sharing.h"
 
-Ring share::random_share_secret_2P(Party id, RandomGenerators &rngs, Ring &secret) {
-    Ring share;
-    switch (id) {
-        case P0: {
-            rngs.rng_01().random_data(&share, sizeof(Ring));
-            return secret - share;
-        }
-        case P1: {
-            rngs.rng_01().random_data(&share, sizeof(Ring));
-            return share;
-        }
-        default:
-            return share;
-    }
-}
-
-Ring share::random_share_secret_2P_bin(Party id, RandomGenerators &rngs, Ring &secret) {
-    Ring share;
-    switch (id) {
-        case P0: {
-            rngs.rng_01().random_data(&share, sizeof(Ring));
-            return secret ^ share;
-        }
-        case P1: {
-            rngs.rng_01().random_data(&share, sizeof(Ring));
-            return share;
-        }
-        default:
-            return share;
-    }
-}
-
 std::vector<Ring> share::random_share_secret_vec_2P(Party id, RandomGenerators &rngs, std::vector<Ring> &secret_vec, Party sender) {
     std::vector<Ring> share(secret_vec.size());
     if (id == D)
@@ -47,28 +15,6 @@ std::vector<Ring> share::random_share_secret_vec_2P(Party id, RandomGenerators &
         }
     }
     return share;
-}
-
-Permutation share::random_share_secret_perm_2P(Party id, RandomGenerators &rngs, Permutation &secret_perm) {
-    std::vector<Ring> share(secret_perm.size());
-    switch (id) {
-        case P0: {
-            for (size_t i = 0; i < share.size(); ++i) {
-                rngs.rng_01().random_data(&share[i], sizeof(Ring));
-                share[i] = secret_perm[i] - share[i];
-            }
-            break;
-        }
-        case P1: {
-            for (size_t i = 0; i < share.size(); ++i) {
-                rngs.rng_01().random_data(&share[i], sizeof(Ring));
-            }
-            break;
-        }
-        default:
-            break;
-    }
-    return Permutation(share);
 }
 
 std::vector<Ring> share::random_share_secret_vec_2P_bin(Party id, RandomGenerators &rngs, std::vector<Ring> &secret_vec) {
@@ -93,112 +39,69 @@ std::vector<Ring> share::random_share_secret_vec_2P_bin(Party id, RandomGenerato
     return share;
 }
 
-Ring share::random_share_3P(Party id, RandomGenerators &rngs) {
+std::vector<Ring> share::random_share_vec_3P(Party id, RandomGenerators &rngs, size_t n, bool binary) {
     switch (id) {
         case P0: {
-            Ring share;
-            rngs.rng_D0_comp().random_data(&share, sizeof(Ring));
+            std::vector<Ring> share(n);
+            for (size_t i = 0; i < n; ++i) rngs.rng_D0_comp().random_data(&share[i], sizeof(Ring));
             return share;
         }
         case P1: {
-            Ring share;
-            rngs.rng_D1_comp().random_data(&share, sizeof(Ring));
+            std::vector<Ring> share(n);
+            for (size_t i = 0; i < n; ++i) rngs.rng_D1_comp().random_data(&share[i], sizeof(Ring));
             return share;
         }
         case D: {
-            Ring share_1;
-            Ring share_2;
-            rngs.rng_D0_comp().random_data(&share_1, sizeof(Ring));
-            rngs.rng_D1_comp().random_data(&share_2, sizeof(Ring));
-            return (share_1 + share_2);
+            std::vector<Ring> share_1(n);
+            std::vector<Ring> share_2(n);
+            std::vector<Ring> sum(n);
+            for (size_t i = 0; i < n; ++i) rngs.rng_D0_comp().random_data(&share_1[i], sizeof(Ring));
+            for (size_t i = 0; i < n; ++i) rngs.rng_D1_comp().random_data(&share_2[i], sizeof(Ring));
+
+            if (binary) {
+                for (size_t i = 0; i < n; ++i) sum[i] = share_1[i] ^ share_2[i];
+            } else {
+                for (size_t i = 0; i < n; ++i) sum[i] = share_1[i] + share_2[i];
+            }
+            return sum;
         }
     }
 }
 
-Ring share::random_share_3P_bin(Party id, RandomGenerators &rngs) {
-    switch (id) {
-        case P0: {
-            Ring share;
-            rngs.rng_D0_comp().random_data(&share, sizeof(Ring));
-            return share;
-        }
-        case P1: {
-            Ring share;
-            rngs.rng_D1_comp().random_data(&share, sizeof(Ring));
-            return share;
-        }
-        case D: {
-            Ring share_1;
-            Ring share_2;
-            rngs.rng_D0_comp().random_data(&share_1, sizeof(Ring));
-            rngs.rng_D1_comp().random_data(&share_2, sizeof(Ring));
-            return (share_1 ^ share_2);
-        }
-    }
-}
-
-Ring share::random_share_secret_3P(Party id, RandomGenerators &rngs, std::vector<Ring> &shares, size_t &idx, Ring &secret, Party recv) {
+std::vector<Ring> share::random_share_secret_vec_3P(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, std::vector<Ring> &secret,
+                                                    Party &recv, bool binary) {
     if (id == D) {
-        Ring share_0;
-        if (recv == P1) rngs.rng_D0_comp().random_data(&share_0, sizeof(Ring));
-        if (recv == P0) rngs.rng_D1_comp().random_data(&share_0, sizeof(Ring));
-        Ring share_1 = secret - share_0;
-        shares.push_back(share_1);
+        assert(secret.size() == n);
+        std::vector<Ring> share_0(n);
+        std::vector<Ring> share_1(n);
+
+        if (recv == P1) {
+            for (size_t i = 0; i < n; ++i) rngs.rng_D0_comp().random_data(&share_0[i], sizeof(Ring));
+        }
+        if (recv == P0) {
+            for (size_t i = 0; i < n; ++i) rngs.rng_D1_comp().random_data(&share_0[i], sizeof(Ring));
+        }
+
+        if (binary) {
+            for (size_t i = 0; i < n; ++i) share_1[i] = (secret[i] ^ share_0[i]);
+        } else {
+            for (size_t i = 0; i < n; ++i) share_1[i] = (secret[i] - share_0[i]);
+        }
+
+        network->add_send(recv, share_1);
         return secret;
     } else if (id == recv) {
-        Ring share = shares[idx];
-        idx++;
+        std::vector<Ring> share = network->read(D, n);
         return share;
     } else {
-        Ring share;
-        if (id == P0) rngs.rng_D0_comp().random_data(&share, sizeof(Ring));
-        if (id == P1) rngs.rng_D1_comp().random_data(&share, sizeof(Ring));
+        std::vector<Ring> share(n);
+        if (id == P0) {
+            for (size_t i = 0; i < n; ++i) rngs.rng_D0_comp().random_data(&share[i], sizeof(Ring));
+        }
+        if (id == P1) {
+            for (size_t i = 0; i < n; ++i) rngs.rng_D1_comp().random_data(&share[i], sizeof(Ring));
+        }
         return share;
-    }
-}
-
-Ring share::random_share_secret_3P(Party id, RandomGenerators &rngs, std::vector<Ring> &shares_P1, size_t &idx, Ring &secret) {
-    switch (id) {
-        case P0: {
-            Ring share;
-            rngs.rng_D0_comp().random_data(&share, sizeof(Ring));
-            return share;
-        }
-        case P1: {
-            Ring share = shares_P1[idx];
-            idx++;
-            return share;
-        }
-        case D: {
-            Ring share_0;
-            rngs.rng_D0_comp().random_data(&share_0, sizeof(Ring));
-            Ring share_1 = secret - share_0;
-            shares_P1.push_back(share_1);
-            return secret;
-        }
-    }
-}
-
-Ring share::random_share_secret_3P_bin(Party id, RandomGenerators &rngs, std::vector<Ring> &vals_to_p1, size_t &idx, Ring &secret) {
-    switch (id) {
-        case P0: {
-            Ring share;
-            rngs.rng_D0_comp().random_data(&share, sizeof(Ring));
-            return share;
-        }
-        case P1: {
-            Ring share = vals_to_p1[idx];
-            idx++;
-            return share;
-        }
-        case D: {
-            Ring share_0;
-            rngs.rng_D0_comp().random_data(&share_0, sizeof(Ring));
-            Ring share_1 = secret ^ share_0;
-            vals_to_p1.push_back(share_1);
-            idx++;
-            return secret;
-        }
     }
 }
 

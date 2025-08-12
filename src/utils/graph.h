@@ -242,7 +242,7 @@ class Graph {
         return g;
     }
 
-    void init_mp(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc) {
+    void init_mp(Party id) {
         /* Generate vector containing { 1-isV[0], 1-isV[1], ... 1-isV[n-1]} */
         isV_inv.resize(_isV.size());
         for (size_t i = 0; i < isV_inv.size(); ++i) {
@@ -259,24 +259,6 @@ class Graph {
         dst_order_bits.resize(_dst_bits.size() + 1);
         std::copy(_dst_bits.begin(), _dst_bits.end(), dst_order_bits.begin() + 1);
         dst_order_bits[0] = _isV;
-
-        /* Compute the three permutations */
-        std::cout << "Start generating sorts..." << std::endl;
-        auto sort_eval_start = std::chrono::system_clock::now();
-
-        preproc.src_order = sort::get_sort_evaluate(id, rngs, network, n, preproc, src_order_bits);
-        // if (preproc.deduplication_pre.is_null()) {
-        preproc.dst_order = sort::get_sort_evaluate(id, rngs, network, n, preproc, dst_order_bits);
-        //} else {
-        ///* One more sort iteration to get dst_order */
-        // preproc.dst_order =
-        // sort::sort_iteration_evaluate(id, rngs, network, n, preproc.dst_order, preproc.dst_order_sort_iteration_pre, g.dst_order_bits[n_bits + 1]);
-        //}
-        preproc.vtx_order = sort::sort_iteration_evaluate(id, rngs, network, n, preproc.src_order, preproc, isV_inv);
-        auto sort_eval_end = std::chrono::system_clock::now();
-
-        auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(sort_eval_end - sort_eval_start);
-        std::cout << "Sort Evaluation took: " << std::to_string(elapsed.count()) << " s" << std::endl << std::endl;
     }
 
    private:
