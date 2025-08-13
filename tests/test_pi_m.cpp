@@ -11,6 +11,10 @@
 void test_pi_m(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n, std::string input_file) {
     std::cout << "------ test_pi_m ------" << std::endl << std::endl;
     auto network = std::make_shared<io::NetIOMP>(net_conf, true);
+    std::vector<Ring> weights = {10000000, 100000, 1000, 1};
+    const size_t n_iterations = weights.size();
+    size_t n_bits = std::ceil(std::log2(n + 2));
+    MPProtocol mp(id, rngs, network, 16, n_bits, n_iterations, weights, true);
     /*
     Graph instance:
     v1 - v2
@@ -54,17 +58,9 @@ void test_pi_m(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, si
     g.add_list_entry(4, 2, 0);
     g.add_list_entry(2, 4, 0);
     g.add_list_entry(4, 2, 0);
-    n = g.size();
-
-    std::vector<Ring> weights = {10000000, 100000, 1000, 1};
-    const size_t n_iterations = weights.size();
-    size_t n_bits = std::ceil(std::log2(n + 2));
-
     if (id != D) g.print();
-
     Graph g_shared = g.secret_share(id, rngs, network, n_bits, P0);
 
-    MPProtocol mp(id, rngs, network, g.size(), n_bits, n_iterations, weights);
     mp.run(g_shared, TEST);
 
     /* Preprocessing communication assertions */

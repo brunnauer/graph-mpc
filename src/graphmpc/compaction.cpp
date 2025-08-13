@@ -1,18 +1,25 @@
 #include "compaction.h"
 
 /* ----- Preprocessing ----- */
-void compaction::preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, Party &recv) {
-    mul::preprocess(id, rngs, network, n, preproc, recv);
+void compaction::preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, Party &recv,
+                            bool save_to_disk) {
+    mul::preprocess(id, rngs, network, n, preproc, recv, false, save_to_disk);
 }
 
 /* ----- Evaluation ----- */
 Permutation compaction::evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc,
-                                 std::vector<Ring> &input_share) {
+                                 std::vector<Ring> &input_share, bool save_to_disk) {
     if (id == D) return std::vector<Ring>(n);
 
     std::vector<Ring> output(n);
     std::vector<Ring> vals_send(2 * n);
-    auto triples = extract(preproc.triples, n);
+    std::vector<std::tuple<Ring, Ring, Ring>> triples;
+
+    if (save_to_disk) {
+        triples = network->preproc_disk.read_triples(n);
+    } else {
+        triples = extract(preproc.triples, n);
+    }
 
     if (n != D) {
         std::vector<Ring> f_0;

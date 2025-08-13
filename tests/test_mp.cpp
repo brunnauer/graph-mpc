@@ -36,7 +36,7 @@ void test_mp(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size
     std::vector<Ring> weights(n_iterations);
     Graph g_shared = g.secret_share(id, rngs, network, n_bits, P0);
 
-    MPProtocol mp(id, rngs, network, n, n_bits, n_iterations, weights);
+    MPProtocol mp(id, rngs, network, n, n_bits, n_iterations, weights, true);
     mp.run(g_shared, TEST);
 
     /* Preprocessing communication assertions */

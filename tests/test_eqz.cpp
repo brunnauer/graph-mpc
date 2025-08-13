@@ -8,7 +8,7 @@
 
 void test_eqz(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n, std::string input_file) {
     json output_data;
-    auto network = std::make_shared<io::NetIOMP>(net_conf, false);
+    auto network = std::make_shared<io::NetIOMP>(net_conf, true);
 
     std::cout << std::endl << "------ test_eqz ------" << std::endl;
 
@@ -21,14 +21,14 @@ void test_eqz(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, siz
 
     if (id != D) network->recv_buffered(D);
 
-    clip::equals_zero_preprocess(id, rngs, network, n, preproc, recv);
-    clip::B2A_preprocess(id, rngs, network, n, preproc, recv);
+    clip::equals_zero_preprocess(id, rngs, network, n, preproc, recv, true);
+    clip::B2A_preprocess(id, rngs, network, n, preproc, recv, true);
     if (id == D) network->send_all();
 
     // network->sync();
 
-    auto res = clip::equals_zero_evaluate(id, rngs, network, preproc, test_vec_share);
-    res = clip::B2A_evaluate(id, rngs, network, n, preproc, res);
+    auto res = clip::equals_zero_evaluate(id, rngs, network, preproc, test_vec_share, true);
+    res = clip::B2A_evaluate(id, rngs, network, n, preproc, res, true);
 
     /* Correctness assertions */
     auto result = share::reveal_vec(id, network, res);

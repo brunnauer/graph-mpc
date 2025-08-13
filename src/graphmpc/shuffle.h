@@ -6,15 +6,15 @@
 #include <random>
 #include <stdexcept>
 
-#include "io/netmp.h"
-#include "utils/permutation.h"
-#include "utils/preprocessings.h"
-#include "utils/random_generators.h"
-#include "utils/types.h"
+#include "../io/netmp.h"
+#include "../utils/permutation.h"
+#include "../utils/preprocessings.h"
+#include "../utils/random_generators.h"
+#include "../utils/types.h"
 
 namespace shuffle {
 
-void get_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc);
+void get_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, bool save_to_disk = false);
 
 ShufflePre get_shuffle_compute(Party id, RandomGenerators &rngs, size_t n, std::vector<Ring> &D0, std::vector<Ring> &D1, Party recv_larger_msg);
 

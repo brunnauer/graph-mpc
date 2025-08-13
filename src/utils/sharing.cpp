@@ -59,8 +59,10 @@ std::vector<Ring> share::random_share_vec_3P(Party id, RandomGenerators &rngs, s
             for (size_t i = 0; i < n; ++i) rngs.rng_D1_comp().random_data(&share_2[i], sizeof(Ring));
 
             if (binary) {
+#pragma omp parallel for if (n > 10000)
                 for (size_t i = 0; i < n; ++i) sum[i] = share_1[i] ^ share_2[i];
             } else {
+#pragma omp parallel for if (n > 10000)
                 for (size_t i = 0; i < n; ++i) sum[i] = share_1[i] + share_2[i];
             }
             return sum;

@@ -154,8 +154,12 @@ ShufflePre shuffle::get_shuffle(Party id, RandomGenerators &rngs, std::shared_pt
     return perm_share;
 }
 
-void shuffle::get_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc) {
+void shuffle::get_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, bool save_to_disk) {
+    // if (save_to_disk) {
+    //  network->preproc_disk.write_shuffle();
+    //} else {
     preproc.shuffles.push(get_shuffle(id, rngs, network, n));
+    //}
 }
 
 ShufflePre shuffle::get_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n) {

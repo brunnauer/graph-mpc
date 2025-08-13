@@ -14,18 +14,27 @@ using json = nlohmann::json;
 
 class MPProtocol {
    public:
-    MPProtocol(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t n_bits, size_t n_iterations, bool save_output = false,
-               std::string save_file = "")
-        : id(id), rngs(rngs), network(network), n(n), n_bits(n_bits), n_iterations(n_iterations), save_output(save_output), save_file(save_file) {};
+    // MPProtocol(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t n_bits, size_t n_iterations, bool save_to_disk =
+    // false, bool save_output = false, std::string save_file = "")
+    //: id(id),
+    // rngs(rngs),
+    // network(network),
+    // n(n),
+    // n_bits(n_bits),
+    // n_iterations(n_iterations),
+    // save_to_disk(save_to_disk),
+    // save_output(save_output),
+    // save_file(save_file) {};
 
     MPProtocol(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t n_bits, size_t n_iterations, std::vector<Ring> &weights,
-               bool save_output = false, std::string save_file = "")
+               bool save_to_disk = false, bool save_output = false, std::string save_file = "")
         : id(id),
           rngs(rngs),
           network(network),
           n(n),
           n_bits(n_bits),
           n_iterations(n_iterations),
+          save_to_disk(save_to_disk),
           weights(weights),
           save_output(save_output),
           save_file(save_file) {
@@ -55,7 +64,7 @@ class MPProtocol {
         }
 
         /* Network Sync */
-        network->sync();
+        // network->sync();
 
         /* Evaluation */
         StatsPoint start_online(*network);
@@ -96,6 +105,7 @@ class MPProtocol {
     size_t n_bits;
     size_t n_iterations;
     std::vector<Ring> weights;
+    bool save_to_disk;
 
     MPPreprocessing preproc;
 
@@ -109,20 +119,21 @@ class MPProtocol {
     Party recv = P0;
 
     void mp_preprocess() {
-        MPFunctions::pre_mp_preprocessing(id, rngs, network, n, n_bits, preproc, recv);
+        MPFunctions::pre_mp_preprocessing(id, rngs, network, n, n_bits, preproc, recv, save_to_disk);
 
         auto sort_pre_start = std::chrono::system_clock::now();
 
         /* Sort preprocessing */
-        if (preproc.deduplication) {                                                     // TODO: change branch condition
-            sort::get_sort_preprocess(id, rngs, network, n, n_bits + 2, preproc, recv);  // One bit more, as deduplication appends a bit to the end
-            sort::sort_iteration_preprocess(id, rngs, network, n, preproc,
-                                            recv);  // Only one iteration, as dst_sort has almost been completed during deduplication
+        if (preproc.deduplication) {  // TODO: change branch condition
+            sort::get_sort_preprocess(id, rngs, network, n, n_bits + 2, preproc, recv,
+                                      save_to_disk);  // One bit more, as deduplication appends a bit to the end
+            sort::sort_iteration_preprocess(id, rngs, network, n, preproc, recv,
+                                            save_to_disk);  // Only one iteration, as dst_sort has almost been completed during deduplication
         } else {
-            sort::get_sort_preprocess(id, rngs, network, n, n_bits + 1, preproc, recv);
-            sort::get_sort_preprocess(id, rngs, network, n, n_bits + 1, preproc, recv);
+            sort::get_sort_preprocess(id, rngs, network, n, n_bits + 1, preproc, recv, save_to_disk);
+            sort::get_sort_preprocess(id, rngs, network, n, n_bits + 1, preproc, recv, save_to_disk);
         }
-        sort::sort_iteration_preprocess(id, rngs, network, n, preproc, recv);  // vtx_order sort iteration
+        sort::sort_iteration_preprocess(id, rngs, network, n, preproc, recv, save_to_disk);  // vtx_order sort iteration
 
         auto sort_pre_end = std::chrono::system_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(sort_pre_end - sort_pre_start);
@@ -146,7 +157,7 @@ class MPProtocol {
         elapsed = std::chrono::duration_cast<std::chrono::seconds>(sw_pre_end - sw_pre_start);
         std::cout << "Switch Perm Preprocessing took: " << std::to_string(elapsed.count()) << " s" << std::endl;
 
-        MPFunctions::post_mp_preprocessing(id, rngs, network, n, n_bits, preproc, recv);
+        MPFunctions::post_mp_preprocessing(id, rngs, network, n, n_bits, preproc, recv, save_to_disk);
     }
 
     /**
@@ -158,22 +169,23 @@ class MPProtocol {
         g.init_mp(id);
 
         /* Run PreMP */
-        MPFunctions::pre_mp_eval(id, rngs, network, n, n_bits, preproc, g);
+        MPFunctions::pre_mp_eval(id, rngs, network, n, n_bits, preproc, g, save_to_disk);
 
         /* Compute the three orders */
         std::cout << "Start generating sorts..." << std::endl;
         auto sort_eval_start = std::chrono::system_clock::now();
 
-        preproc.src_order = sort::get_sort_evaluate(id, rngs, network, n, preproc, g.src_order_bits);
+        preproc.src_order = sort::get_sort_evaluate(id, rngs, network, n, preproc, g.src_order_bits, save_to_disk);
 
         if (preproc.deduplication) {
             /* One more sort iteration to get dst_order */
-            preproc.dst_order = sort::sort_iteration_evaluate(id, rngs, network, n, preproc.dst_order, preproc, g.dst_order_bits[g.dst_order_bits.size() - 1]);
+            preproc.dst_order =
+                sort::sort_iteration_evaluate(id, rngs, network, n, preproc.dst_order, preproc, g.dst_order_bits[g.dst_order_bits.size() - 1], save_to_disk);
         } else {
-            preproc.dst_order = sort::get_sort_evaluate(id, rngs, network, n, preproc, g.dst_order_bits);
+            preproc.dst_order = sort::get_sort_evaluate(id, rngs, network, n, preproc, g.dst_order_bits, save_to_disk);
         }
 
-        preproc.vtx_order = sort::sort_iteration_evaluate(id, rngs, network, n, preproc.src_order, preproc, g.isV_inv);
+        preproc.vtx_order = sort::sort_iteration_evaluate(id, rngs, network, n, preproc.src_order, preproc, g.isV_inv, save_to_disk);
         auto sort_eval_end = std::chrono::system_clock::now();
 
         auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(sort_eval_end - sort_eval_start);
@@ -191,7 +203,7 @@ class MPProtocol {
         /* Run message-passing */
         for (size_t i = 0; i < n_iterations; ++i) {
             /* Add current weight only to vertices */
-            if (id == P0) {
+            if (id == P0 && weights.size() > 0) {
 #pragma omp parallel for if (g.n_vertices() > 10000)
                 for (size_t j = 0; j < g.n_vertices(); ++j) data_v[j] += weights[weights.size() - 1 - i];
             }
@@ -227,12 +239,12 @@ class MPProtocol {
             auto update = mp::gather_2(data_p, g.n_vertices());
 
             /* ApplyV */
-            MPFunctions::apply_v_eval(data_v, update);
+            MPFunctions::apply_v_eval(data_v, update, save_to_disk);
             // payload_v = f_apply(payload_v, update);
         }
         /* Save new payload */
         g._data = data_v;
 
-        MPFunctions::post_mp_eval(id, rngs, network, n, n_bits, g);
+        MPFunctions::post_mp_eval(id, rngs, network, n, n_bits, g, save_to_disk);
     }
 };

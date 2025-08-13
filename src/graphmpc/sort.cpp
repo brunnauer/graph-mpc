@@ -2,17 +2,18 @@
 
 /* ----- Preprocessing ----- */
 void sort::get_sort_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t n_bits, MPPreprocessing &preproc,
-                               Party &recv) {
-    mul::preprocess(id, rngs, network, n, preproc, recv);
+                               Party &recv, bool save_to_disk) {
+    mul::preprocess(id, rngs, network, n, preproc, recv, false, save_to_disk);
 
     for (size_t i = 0; i < n_bits - 1; ++i) {
-        sort_iteration_preprocess(id, rngs, network, n, preproc, recv);
+        sort_iteration_preprocess(id, rngs, network, n, preproc, recv, save_to_disk);
     }
 }
 
-void sort::sort_iteration_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, Party &recv) {
+void sort::sort_iteration_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, Party &recv,
+                                     bool save_to_disk) {
     ShufflePre shuffle_pre = shuffle::get_shuffle(id, rngs, network, n, recv);
-    mul::preprocess(id, rngs, network, n, preproc, recv);
+    mul::preprocess(id, rngs, network, n, preproc, recv, false, save_to_disk);
     std::vector<Ring> unshuffle_pre = shuffle::get_unshuffle(id, rngs, network, n, shuffle_pre);
 
     preproc.shuffles.push(shuffle_pre);
@@ -21,20 +22,20 @@ void sort::sort_iteration_preprocess(Party id, RandomGenerators &rngs, std::shar
 
 /* ----- Evaluation ----- */
 Permutation sort::get_sort_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc,
-                                    std::vector<std::vector<Ring>> &bit_shares) {
+                                    std::vector<std::vector<Ring>> &bit_shares, bool save_to_disk) {
     if (id == D) return Permutation(n);
 
-    Permutation sigma = compaction::evaluate(id, rngs, network, n, preproc, bit_shares[0]);
+    Permutation sigma = compaction::evaluate(id, rngs, network, n, preproc, bit_shares[0], save_to_disk);
 
     size_t n_bits = bit_shares.size();
     for (size_t i = 1; i < n_bits; ++i) {
-        sigma = sort_iteration_evaluate(id, rngs, network, n, sigma, preproc, bit_shares[i]);
+        sigma = sort_iteration_evaluate(id, rngs, network, n, sigma, preproc, bit_shares[i], save_to_disk);
     }
     return sigma;
 }
 
 Permutation sort::sort_iteration_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, Permutation &perm,
-                                          MPPreprocessing &preproc, std::vector<Ring> &bit_shares) {
+                                          MPPreprocessing &preproc, std::vector<Ring> &bit_shares, bool save_to_disk) {
     if (id == D) return Permutation(n);
     ShufflePre shuffle_share = preproc.shuffles.front();
     preproc.shuffles.pop();
@@ -46,7 +47,7 @@ Permutation sort::sort_iteration_evaluate(Party id, RandomGenerators &rngs, std:
     std::vector<Ring> input_shuffled = shuffle::shuffle(id, rngs, network, n, shuffle_share, bit_shares);
     std::vector<Ring> input_sorted = perm_open(input_shuffled);
 
-    Permutation sigma_p = compaction::evaluate(id, rngs, network, n, preproc, input_sorted);
+    Permutation sigma_p = compaction::evaluate(id, rngs, network, n, preproc, input_sorted, save_to_disk);
 
     auto sigma_p_vec = sigma_p.get_perm_vec();
     std::vector<Ring> next_perm = perm_open.inverse()(sigma_p_vec);

@@ -9,15 +9,16 @@
 
 namespace MPFunctions {
 void pre_mp_preprocessing(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t n_bits, MPPreprocessing &preproc,
-                          Party &recv);
+                          Party &recv, bool save_to_disk);
 void apply_v_preprocessing(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t n_bits, MPPreprocessing &preproc,
-                           Party &recv);
+                           Party &recv, bool save_to_disk);
 void post_mp_preprocessing(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t n_bits, MPPreprocessing &preproc,
-                           Party &recv);
+                           Party &recv, bool save_to_disk);
 
-void pre_mp_eval(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t n_bits, MPPreprocessing &preproc, Graph &g);
-void apply_v_eval(std::vector<Ring> &old_data, std::vector<Ring> &new_data);
-void post_mp_eval(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t n_bits, Graph &g);
+void pre_mp_eval(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t n_bits, MPPreprocessing &preproc, Graph &g,
+                 bool save_to_disk);
+void apply_v_eval(std::vector<Ring> &old_data, std::vector<Ring> &new_data, bool save_to_disk);
+void post_mp_eval(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t n_bits, Graph &g, bool save_to_disk);
 
 };  // namespace MPFunctions
 

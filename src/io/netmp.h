@@ -41,6 +41,7 @@
 #include <vector>
 
 #include "../utils/types.h"
+#include "disk.h"
 #include "emp-tool/emp-tool.h"
 #include "tls_net_io_channel.h"
 
@@ -67,6 +68,7 @@ class NetIOMP {
     std::condition_variable cv;
     bool connection_established;
     bool save_to_disk;
+    Disk preproc_disk;
 
     NetIOMP(NetworkConfig &conf, bool save_to_disk = false)
         : conf(conf),
@@ -87,13 +89,22 @@ class NetIOMP {
             if ((Party)i != party) tmp_buf[i].resize(CHUNK_SIZE);
         }
         /* Remove all old files */
-        for (int i = 0; i < nP; ++i) {
-            std::string filename = std::to_string(party) + "_" + std::to_string((Party)i) + ".bin";
-            std::filesystem::remove(filename);
-        }
-        if (party != D) {
-            std::string filename = "preproc_" + std::to_string(party) + ".bin";
-            std::filesystem::remove(filename);
+        // for (int i = 0; i < nP; ++i) {
+        // std::string filename = std::to_string(party) + "_" + std::to_string((Party)i) + ".bin";
+        // std::filesystem::remove(filename);
+        //}
+        // if (party != D) {
+        // std::string filename = "preproc_" + std::to_string(party) + ".bin";
+        // std::filesystem::remove(filename);
+        //}
+
+        if (party == D) {
+            Disk P0_disk((Party)party, std::to_string(party) + "_" + std::to_string(P0) + ".bin");
+            Disk P1_disk((Party)party, std::to_string(party) + "_" + std::to_string(P1) + ".bin");
+            writers[P0] = P0_disk;
+            writers[P1] = P1_disk;
+        } else {
+            preproc_disk = Disk((Party)party, "preproc_" + std::to_string(party) + ".bin");
         }
 
         init_thread = std::thread(&NetIOMP::init_network, this);
@@ -177,7 +188,8 @@ class NetIOMP {
         n_send[dst] += data.size();
 
         if (party == D && save_to_disk) {
-            write_binary(std::to_string(party) + "_" + std::to_string(dst) + ".bin", data);
+            writers[dst].write(data);
+            // write_binary(std::to_string(party) + "_" + std::to_string(dst) + ".bin", data);
         } else {
             auto &buf = send_buffer[dst];
             buf.insert(buf.end(), data.begin(), data.end());
@@ -194,22 +206,33 @@ class NetIOMP {
 
                 /* Sending actual data */
                 if (party == D && save_to_disk) {
-                    std::string filename = std::to_string(party) + "_" + std::to_string((Party)i) + ".bin";
-                    std::ifstream infile(filename, std::ios::binary);
-                    if (!infile) {
-                        throw std::runtime_error("Failed to open file: " + filename);
-                    }
-                    std::vector<Ring> chunk(CHUNK_SIZE);
-                    std::cout << "Sending values that are loaded from disk in chunks." << std::endl;
-                    while (infile) {
-                        infile.read(reinterpret_cast<char *>(chunk.data()), CHUNK_SIZE * sizeof(Ring));
-                        std::streamsize n_read = infile.gcount() / sizeof(Ring);
-                        if (n_read > 0) {
-                            send_vec((Party)i, n_read, chunk);
-                            std::cout << "Sent one chunk." << std::endl;
+                    size_t remaining = n_elems;
+                    while (remaining > 0) {
+                        size_t n_send;
+                        if ((int)(remaining - CHUNK_SIZE) < 0) {
+                            n_send = remaining;
+                        } else {
+                            n_send = CHUNK_SIZE;
                         }
+                        auto vals = writers[dst].read(n_send);
+                        send_vec((Party)i, n_send, vals);
+                        remaining -= n_send;
                     }
-                    infile.close();
+                    // std::string filename = std::to_string(party) + "_" + std::to_string((Party)i) + ".bin";
+                    // std::ifstream infile(filename, std::ios::binary);
+                    // if (!infile) {
+                    // throw std::runtime_error("Failed to open file: " + filename);
+                    //}
+                    // std::vector<Ring> chunk(CHUNK_SIZE);
+                    // std::cout << "Sending values that are loaded from disk in chunks." << std::endl;
+                    // while (infile) {
+                    // infile.read(reinterpret_cast<char *>(chunk.data()), CHUNK_SIZE * sizeof(Ring));
+                    // std::streamsize n_read = infile.gcount() / sizeof(Ring);
+                    // if (n_read > 0) {
+                    //       std::cout << "Sent one chunk." << std::endl;
+                    //}
+                    //}
+                    // infile.close();
                 } else {
                     send_vec((Party)i, send_buffer[i].size(), send_buffer[i]);
                 }
@@ -233,9 +256,9 @@ class NetIOMP {
                 ios2[dst]->send_data(data, len);
             sent[dst] = true;
         }
-#ifdef __clang__
+        // #ifdef __clang__
         flush(dst);
-#endif
+        // #endif
     }
 
     void send_vec(Party dst, size_t n_elems, std::vector<Ring> &data) {
@@ -299,7 +322,8 @@ class NetIOMP {
             // std::vector<Ring> data_recv_i(BLOCK_SIZE_MIN);
             recv(src, tmp.data(), sizeof(Ring) * BLOCK_SIZE_MIN);
             if (save_to_disk && src == D) {
-                write_binary("preproc_" + std::to_string(party) + ".bin", {tmp.begin(), tmp.begin() + BLOCK_SIZE_MIN});
+                preproc_disk.write({tmp.begin(), tmp.begin() + BLOCK_SIZE_MIN});
+                // write_binary("preproc_" + std::to_string(party) + ".bin", {tmp.begin(), tmp.begin() + BLOCK_SIZE_MIN});
             } else {
                 std::memcpy(buffer.data() + (i * BLOCK_SIZE_MIN), tmp.data(), sizeof(Ring) * BLOCK_SIZE_MIN);
             }
@@ -311,7 +335,8 @@ class NetIOMP {
             recv(src, tmp.data(), sizeof(Ring) * last_msg_size);
 
             if (save_to_disk && src == D) {
-                write_binary("preproc_" + std::to_string(party) + ".bin", {tmp.begin(), tmp.begin() + last_msg_size});
+                // write_binary("preproc_" + std::to_string(party) + ".bin", {tmp.begin(), tmp.begin() + last_msg_size});
+                preproc_disk.write({tmp.begin(), tmp.begin() + last_msg_size});
             } else {
                 std::memcpy(buffer.data() + (n_msgs * BLOCK_SIZE_MIN), tmp.data(), sizeof(Ring) * last_msg_size);
             }
@@ -331,37 +356,38 @@ class NetIOMP {
         std::vector<Ring> chunk;
 
         if (save_to_disk) {  // Read from file
-            std::string filename = "preproc_" + std::to_string(party) + ".bin";
-            std::ifstream in(filename, std::ios::binary);
-            if (!in) throw std::runtime_error("Cannot open file");
+            chunk = preproc_disk.read(n_elems);
+            // std::string filename = "preproc_" + std::to_string(party) + ".bin";
+            // std::ifstream in(filename, std::ios::binary);
+            // if (!in) throw std::runtime_error("Cannot open file");
 
-            in.seekg(0, std::ios::end);
-            size_t fileSize = in.tellg();
+            // in.seekg(0, std::ios::end);
+            // size_t fileSize = in.tellg();
 
-            // No more values to read
-            if (read_offset >= fileSize) {
-                in.close();
-                std::ofstream out(filename, std::ios::binary | std::ios::trunc);
-                out.close();
-                read_offset = 0;
-                return {};
-            }
+            //// No more values to read
+            // if (read_offset >= fileSize) {
+            // in.close();
+            // std::ofstream out(filename, std::ios::binary | std::ios::trunc);
+            // out.close();
+            // read_offset = 0;
+            // return {};
+            //}
 
-            in.seekg(read_offset, std::ios::beg);
-            size_t max_elements = (fileSize - read_offset) / sizeof(Ring);
-            size_t elements_to_read = std::min(n_elems, max_elements);
+            // in.seekg(read_offset, std::ios::beg);
+            // size_t max_elements = (fileSize - read_offset) / sizeof(Ring);
+            // size_t elements_to_read = std::min(n_elems, max_elements);
 
-            chunk.resize(elements_to_read);
-            in.read(reinterpret_cast<char *>(chunk.data()), elements_to_read * sizeof(Ring));
-            read_offset += in.gcount();  // in.gcount() is in bytes
-            in.close();
+            // chunk.resize(elements_to_read);
+            // in.read(reinterpret_cast<char *>(chunk.data()), elements_to_read * sizeof(Ring));
+            // read_offset += in.gcount();  // in.gcount() is in bytes
+            // in.close();
 
-            // Optional: truncate file when all data is read
-            if (read_offset >= fileSize) {
-                std::ofstream out(filename, std::ios::binary | std::ios::trunc);
-                out.close();
-                read_offset = 0;
-            }
+            //// Optional: truncate file when all data is read
+            // if (read_offset >= fileSize) {
+            // std::ofstream out(filename, std::ios::binary | std::ios::trunc);
+            // out.close();
+            // read_offset = 0;
+            //}
         } else {  // Read from buffer
             auto &buffer = recv_buffer[src];
             assert(buffer.size() >= n_elems);
@@ -437,12 +463,12 @@ class NetIOMP {
     /**
      * Writes the data to a file.
      */
-    void write_binary(const std::string &filename, const std::vector<Ring> &data) {
-        std::ofstream out(filename, std::ios::binary | std::ios::app);
-        if (!out) throw std::runtime_error("Failed to open file for writing.");
+    // void write_binary(const std::string &filename, const std::vector<Ring> &data) {
+    // std::ofstream out(filename, std::ios::binary | std::ios::app);
+    // if (!out) throw std::runtime_error("Failed to open file for writing.");
 
-        out.write(reinterpret_cast<const char *>(data.data()), data.size() * sizeof(Ring));
-    }
+    // out.write(reinterpret_cast<const char *>(data.data()), data.size() * sizeof(Ring));
+    //}
 
    private:
     NetworkConfig conf;
@@ -459,6 +485,7 @@ class NetIOMP {
     std::vector<std::vector<Ring>> tmp_buf;
     std::vector<size_t> n_send;
 
-    size_t read_offset = 0;  // For reading preprocessing vals from file
+    std::unordered_map<Party, Disk> writers;
+    // size_t read_offset = 0;  // For reading preprocessing vals from file
 };
 };  // namespace io

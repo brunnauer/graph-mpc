@@ -11,16 +11,22 @@ void benchmark(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, si
     /* Initialize protocol */
     size_t n_bits = std::ceil(std::log2(n_vertices + 2));
     std::cout << "n_bits: " << n_bits << std::endl;
-    size_t n_iterations = 1;
+    size_t n_iterations = 0;
     std::vector<Ring> weights(n_iterations);
 
-    MPProtocol mp(id, rngs, network, n, n_bits, n_iterations, weights);
+    MPProtocol mp(id, rngs, network, n, n_bits, n_iterations, weights, save_to_disk);
 
     /* Construct and share graph */
     Graph g;
-    for (size_t i = 0; i < n_vertices; i++) g.add_list_entry(i + 1, i + 1, 1);
-    for (size_t i = 0; i < n - n_vertices; i++) g.add_list_entry(1, 2, 0);
-    Graph g_shared = g.secret_share(id, rngs, network, n_bits, P0);
+    if (id == P0) {
+        for (size_t i = 0; i < n_vertices / 2; i++) g.add_list_entry(i + 1, i + 1, 1);
+        for (size_t i = 0; i < (n - n_vertices) / 2; i++) g.add_list_entry(1, 2, 0);
+    }
+    if (id == P1) {
+        for (size_t i = n_vertices / 2; i < n_vertices; i++) g.add_list_entry(i + 1, i + 1, 1);
+        for (size_t i = (n - n_vertices) / 2; i < n - n_vertices; i++) g.add_list_entry(1, 2, 0);
+    }
+    Graph g_shared = g.share_subgraphs(id, rngs, network, n_bits);
     network->sync();
 
     for (size_t r = 0; r < repeat; ++r) {

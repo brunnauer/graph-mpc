@@ -90,7 +90,9 @@ class Graph {
     }
 
     Graph secret_share(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n_bits, Party sender) {
-        if (id == D) return {};
+        if (id == D) {
+            return {};
+        }
 
         std::vector<Ring> src;
         std::vector<Ring> dst;
@@ -102,32 +104,30 @@ class Graph {
         std::vector<std::vector<Ring>> src_bits(n_bits);
         std::vector<std::vector<Ring>> dst_bits(n_bits);
 
-        if (id != D) {
-            Party partner = id == P0 ? P1 : P0;
-            if (id == sender) {
-                src = _src;
-                dst = _dst;
-                isV = _isV;
-                data = _data;
-                size = _size;
-                n_vertices = _n_vertices;
-                network->send(partner, &size, sizeof(size_t));
-                network->send(partner, &n_vertices, sizeof(size_t));
-                src_bits = to_bits(src, n_bits);
-                dst_bits = to_bits(dst, n_bits);
-            } else {
-                network->recv(partner, &size, sizeof(size_t));
-                network->recv(partner, &n_vertices, sizeof(size_t));
+        Party partner = (id == P0) ? P1 : P0;
+        if (id == sender) {
+            src = _src;
+            dst = _dst;
+            isV = _isV;
+            data = _data;
+            size = _size;
+            n_vertices = _n_vertices;
+            network->send(partner, &size, sizeof(size_t));
+            network->send(partner, &n_vertices, sizeof(size_t));
+            src_bits = to_bits(src, n_bits);
+            dst_bits = to_bits(dst, n_bits);
+        } else {
+            network->recv(partner, &size, sizeof(size_t));
+            network->recv(partner, &n_vertices, sizeof(size_t));
 
-                src.resize(size);
-                dst.resize(size);
-                isV.resize(size);
-                data.resize(size);
+            src.resize(size);
+            dst.resize(size);
+            isV.resize(size);
+            data.resize(size);
 
-                for (size_t i = 0; i < n_bits; ++i) {
-                    src_bits[i].resize(size);
-                    dst_bits[i].resize(size);
-                }
+            for (size_t i = 0; i < n_bits; ++i) {
+                src_bits[i].resize(size);
+                dst_bits[i].resize(size);
             }
         }
 
@@ -160,18 +160,13 @@ class Graph {
         size_t size_other;
 
         if (id == P0) {
-            network->send(P1, &_size, sizeof(size_t));
-            network->recv(P1, &size_other, sizeof(size_t));
-
             auto g1 = secret_share(id, rngs, network, n_bits, id);
             auto g2 = secret_share(id, rngs, network, n_bits, P1);
+
             auto concat = g1 + g2;
             return concat;
         }
         if (id == P1) {
-            network->recv(P0, &size_other, sizeof(size_t));
-            network->send(P0, &_size, sizeof(size_t));
-
             auto g1 = secret_share(id, rngs, network, n_bits, P0);
             auto g2 = secret_share(id, rngs, network, n_bits, id);
             auto concat = g1 + g2;

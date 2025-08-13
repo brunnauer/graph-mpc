@@ -15,6 +15,13 @@ void test_pi_k(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, si
     std::cout << "------ test_pi_k ------" << std::endl << std::endl;
     auto network = std::make_shared<io::NetIOMP>(net_conf, true);
 
+    std::vector<Ring> weights = {10000000, 100000, 1000, 1};
+    const size_t n_vertices = 4;
+    const size_t n_iterations = weights.size();
+    size_t n_bits = std::ceil(std::log2(n_vertices + 2));
+    n = 16;
+    MPProtocol mp(id, rngs, network, n, n_bits, n_iterations, weights, true);
+
     /*
     Graph instance:
     v1 - v2
@@ -41,33 +48,34 @@ void test_pi_k(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, si
     */
 
     Graph g;
-    g.add_list_entry(1, 1, 1);
-    g.add_list_entry(2, 2, 1);
-    g.add_list_entry(1, 2, 0);
-    g.add_list_entry(2, 1, 0);
-    g.add_list_entry(1, 3, 0);
-    g.add_list_entry(1, 3, 0);
-    g.add_list_entry(3, 1, 0);
-    g.add_list_entry(4, 4, 1);
-    g.add_list_entry(3, 3, 1);
-    g.add_list_entry(3, 1, 0);
-    g.add_list_entry(3, 2, 0);
-    g.add_list_entry(2, 3, 0);
-    g.add_list_entry(2, 4, 0);
-    g.add_list_entry(4, 2, 0);
-    g.add_list_entry(2, 4, 0);
-    g.add_list_entry(4, 2, 0);
+    if (id == P0) {
+        g.add_list_entry(1, 1, 1);
+        g.add_list_entry(2, 2, 1);
+        g.add_list_entry(1, 2, 0);
+        g.add_list_entry(2, 1, 0);
+        g.add_list_entry(1, 3, 0);
+        g.add_list_entry(1, 3, 0);
+        g.add_list_entry(3, 1, 0);
+        g.add_list_entry(4, 4, 1);
+    }
+    if (id == P1) {
+        g.add_list_entry(3, 3, 1);
+        g.add_list_entry(3, 1, 0);
+        g.add_list_entry(3, 2, 0);
+        g.add_list_entry(2, 3, 0);
+        g.add_list_entry(2, 4, 0);
+        g.add_list_entry(4, 2, 0);
+        g.add_list_entry(2, 4, 0);
+        g.add_list_entry(4, 2, 0);
+    }
+    Graph g_shared = g.share_subgraphs(id, rngs, network, n_bits);
+    std::cout << "Graph size: " << g_shared.size() << std::endl;
+    std::cout << "Nodes: " << g_shared.n_vertices() << std::endl;
+    network->sync();
 
-    n = g.size();
-    std::vector<Ring> weights = {10000000, 100000, 1000, 1};
-    const size_t n_vertices = 4;
-    const size_t n_iterations = weights.size();
-    size_t n_bits = std::ceil(std::log2(n_vertices + 2));
+    Graph g_rev = g_shared.reveal(id, network);
+    if (id != D) g_rev.print();
 
-    if (id != D) g.print();
-
-    Graph g_shared = g.secret_share(id, rngs, network, n_bits, P0);
-    MPProtocol mp(id, rngs, network, n, n_bits, n_iterations, weights);
     mp.run(g_shared);
 
     /* Preprocessing communication assertions */
