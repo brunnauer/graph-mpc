@@ -1,27 +1,17 @@
 #include "../setup/utils.h"
-#include "../src/io/input_client.h"
-#include "../src/io/input_server.h"
+#include "../src/input-sharing/input_client.h"
+#include "../src/input-sharing/input_server.h"
 #include "../src/utils/graph.h"
 
-#define PRINT_LOG [](const std::string &strLogMsg) { std::cout << strLogMsg << std::endl; }
-
 void test_socket(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n, std::string input_file) {
-    std::unique_ptr<CTCPSSLClient> m_pSSLTCPClient;
-
-    if (id == P0) {                                    // Server
-        InputServer server(id, std::to_string(4242));  // Socket expecting one client
+    if (id == P0) {
+        InputServer server(id, std::to_string(4242), 2);  // Server expecting two clients
         server.connect_clients();
-        auto pkt = server.recv_packet(0);
-        auto entries = pkt.entries;
-
-        Graph g;
-        for (size_t i = 0; i < entries.size() / 4; ++i) {
-            g.add_list_entry(entries[i * 4], entries[i * 4 + 1], entries[i * 4 + 2], entries[i * 4 + 3]);
-        }
+        Graph g = server.recv_graph();
         g.print();
     }
 
-    if (id == P1) {  // Client
+    if (id == P1) {  // Client 1
         Graph g;
         g.add_list_entry(0, 0, 1, 10);
         g.add_list_entry(1, 1, 1, 20);
@@ -35,6 +25,27 @@ void test_socket(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, 
         InputClient::Packet pkt;
         pkt.start = 0;
         pkt.end = g.size() * 4;
+        pkt.entries = g.serialize();
+
+        InputClient client(id);
+        client.connect("localhost", 4242);
+        client.send_graph(g);
+    }
+
+    if (id == D) {  // Client 2
+        Graph g;
+        g.add_list_entry(0, 0, 1, 10);
+        g.add_list_entry(1, 1, 1, 20);
+        g.add_list_entry(2, 2, 1, 30);
+        g.add_list_entry(0, 1, 0, 0);
+        g.add_list_entry(0, 2, 0, 0);
+        g.add_list_entry(1, 2, 0, 0);
+        g.add_list_entry(2, 0, 0, 0);
+        g.print();
+
+        InputClient::Packet pkt;
+        pkt.start = 4 * 7;
+        pkt.end = pkt.start + g.size() * 4;
         pkt.entries = g.serialize();
 
         InputClient client(id);

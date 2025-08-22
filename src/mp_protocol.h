@@ -5,7 +5,6 @@
 
 #include "graphmpc/message_passing.h"
 #include "graphmpc/shuffle.h"
-#include "io/input_server.h"
 #include "io/netmp.h"
 #include "protocol_def.h"
 #include "utils/random_generators.h"
@@ -26,8 +25,7 @@ class MPProtocol {
           save_to_disk(save_to_disk),
           weights(weights),
           save_output(save_output),
-          save_file(save_file),
-          input_socket(id, std::to_string(4242)) {
+          save_file(save_file) {
         assert(weights.size() >= n_iterations);
     };
 
@@ -35,8 +33,6 @@ class MPProtocol {
     size_t comm_eval() { return bytes_sent_eval / sizeof(Ring); }
 
     void run(Graph &g, Execution exc = TEST) {
-        init_DAG_list();
-
         /* Preprocessing */
         StatsPoint start_pre(*network);
         if (id != D) network->recv_buffered(D);
@@ -111,9 +107,6 @@ class MPProtocol {
 
     Party recv_shuffle = P0;
     Party recv_mul = P0;
-    InputServer input_socket;
-
-    void init_DAG_list() { input_socket.connect_clients(); }
 
     void mp_preprocess() {
         MPFunctions::pre_mp_preprocessing(id, rngs, network, n, n_bits, preproc, recv_shuffle, recv_mul, save_to_disk);

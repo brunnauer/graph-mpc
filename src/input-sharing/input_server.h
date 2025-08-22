@@ -1,10 +1,10 @@
 #pragma once
 
-#include <Socket/TCPSSLServer.h>
+#include <socket/TCPSSLServer.h>
 
 #include <future>
 
-#include "../utils/types.h"
+#include "../src/utils/types.h"
 
 class InputServer {
    public:
@@ -37,6 +37,23 @@ class InputServer {
         }
     }
 
+    Graph recv_graph() {
+        auto pkts = recv_packets();
+
+        std::vector<Ring> entries;
+        for (auto &pkt : pkts) {
+            entries.insert(entries.end() + pkt.start, pkt.entries.begin(), pkt.entries.end());
+        }
+
+        Graph g;
+        for (size_t i = 0; i < entries.size() / 4; ++i) {
+            g.add_list_entry(entries[i * 4], entries[i * 4 + 1], entries[i * 4 + 2], entries[i * 4 + 3]);
+        }
+
+        return g;
+    }
+
+   private:
     std::vector<char> recv(size_t client_id, size_t n_elems) {
         std::vector<char> recv_buffer(n_elems);
         auto HeaderReceive = [&]() { return m_pSSLTCPServer->Receive(clients[client_id], recv_buffer.data(), n_elems); };
@@ -45,11 +62,20 @@ class InputServer {
         return recv_buffer;
     }
 
-    Packet recv_packet(size_t client_id) {
+    std::vector<Packet> recv_packets() {
+        std::vector<Packet> packets;
+        for (auto &client : clients) {
+            auto packet = recv_packet(client);
+            packets.push_back(packet);
+        }
+        return packets;
+    }
+
+    Packet recv_packet(ASecureSocket::SSLSocket &client) {
         Packet pkt;
 
         std::array<size_t, 2> header{};
-        auto HeaderReceive = [&]() { return m_pSSLTCPServer->Receive(clients[client_id], reinterpret_cast<char *>(header.data()), sizeof(header)); };
+        auto HeaderReceive = [&]() { return m_pSSLTCPServer->Receive(client, reinterpret_cast<char *>(header.data()), sizeof(header)); };
         std::future<int> futHeaderReceive = std::async(std::launch::async, HeaderReceive);
         auto n_bytes_recvd = futHeaderReceive.get();
 
@@ -71,9 +97,7 @@ class InputServer {
             return pkt;  // nothing else to receive
         }
 
-        auto entriesReceive = [&]() {
-            return m_pSSLTCPServer->Receive(clients[client_id], reinterpret_cast<char *>(pkt.entries.data()), n_entries * sizeof(Ring));
-        };
+        auto entriesReceive = [&]() { return m_pSSLTCPServer->Receive(client, reinterpret_cast<char *>(pkt.entries.data()), n_entries * sizeof(Ring)); };
         std::future<int> futEntriesReceive = std::async(std::launch::async, entriesReceive);
         n_bytes_recvd = futEntriesReceive.get();
 
@@ -84,7 +108,6 @@ class InputServer {
         return pkt;
     }
 
-   private:
     Party id;
     size_t n_clients;
     std::vector<ASecureSocket::SSLSocket> clients;

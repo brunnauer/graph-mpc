@@ -12,8 +12,8 @@ target_sources(GraphMPC_lib
     utils/types.h
     io/netmp.h
     io/disk.h
-    io/input_server.h
-    io/input_client.h
+    input-sharing/input_client.h
+    input-sharing/input_server.h
     graphmpc/clip.cpp
     graphmpc/compaction.cpp
     graphmpc/deduplication.cpp

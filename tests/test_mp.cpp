@@ -9,7 +9,7 @@
 
 void test_mp(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n, std::string input_file) {
     std::cout << "------ test_mp ------" << std::endl << std::endl;
-    auto network = std::make_shared<io::NetIOMP>(net_conf, true);
+    auto network = std::make_shared<io::NetIOMP>(net_conf, false);
 
     /**
      *      0 == 1
