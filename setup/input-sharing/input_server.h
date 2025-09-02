@@ -60,34 +60,43 @@ class InputServer {
         }
         std::cout << "Packets received." << std::endl;
 
-        std::vector<Ring> src, dst, isV, data;
-        std::vector<std::vector<Ring>> src_bits(n_bits, std::vector<Ring>());
-        std::vector<std::vector<Ring>> dst_bits(n_bits, std::vector<Ring>());
-
+        size_t total_size = 0;
         for (auto &pkt : pkts) {
             size_t pkt_size = pkt.end - pkt.start;
             size_t expected_size = (4 + 2 * n_bits) * pkt_size;
             assert(pkt.start < pkt.end);
             assert(pkt.entries.size() == expected_size);
+            total_size += pkt_size;
+        }
 
-            /* Copy list elements */
-            size_t idx = 0;
-            for (size_t i = 0; i < pkt_size; ++i) {
-                src.push_back(pkt.entries[idx++]);
-                dst.push_back(pkt.entries[idx++]);
-                isV.push_back(pkt.entries[idx++]);
-                data.push_back(pkt.entries[idx++]);
+        std::vector<Ring> src(total_size);
+        std::vector<Ring> dst(total_size);
+        std::vector<Ring> isV(total_size);
+        std::vector<Ring> data(total_size);
+        std::vector<std::vector<Ring>> src_bits(n_bits, std::vector<Ring>(total_size));
+        std::vector<std::vector<Ring>> dst_bits(n_bits, std::vector<Ring>(total_size));
+
+        for (auto &pkt : pkts) {
+            size_t pkt_size = pkt.end - pkt.start;
+            size_t pkt_idx = 0;
+            size_t idx = pkt.start;
+
+            for (size_t i = pkt.start; i < pkt.start + pkt_size; ++i) {
+                src[i] = pkt.entries[pkt_idx++];
+                dst[i] = pkt.entries[pkt_idx++];
+                isV[i] = pkt.entries[pkt_idx++];
+                data[i] = pkt.entries[pkt_idx++];
             }
 
             for (size_t i = 0; i < n_bits; ++i) {
-                for (size_t j = 0; j < pkt_size; ++j) {
-                    src_bits[i].push_back(pkt.entries[idx++]);
+                for (size_t j = pkt.start; j < pkt.start + pkt_size; ++j) {
+                    src_bits[i][j] = pkt.entries[pkt_idx++];
                 }
             }
 
             for (size_t i = 0; i < n_bits; ++i) {
-                for (size_t j = 0; j < pkt_size; ++j) {
-                    dst_bits[i].push_back(pkt.entries[idx++]);
+                for (size_t j = pkt.start; j < pkt.start + pkt_size; ++j) {
+                    dst_bits[i][j] = pkt.entries[pkt_idx++];
                 }
             }
         }
