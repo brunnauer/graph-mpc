@@ -142,26 +142,25 @@ class InputServer {
 
         pkt.start = header[0];
         pkt.end = header[1];
-        std::cout << "Received packet." << std::endl;
-        std::cout << "Start: " << pkt.start << std::endl;
-        std::cout << "End: " << pkt.end << std::endl;
 
         if (pkt.end < pkt.start) {
             throw std::runtime_error("Invalid packet: end < start");
         }
 
         size_t n_entries = pkt.end - pkt.start;
-        pkt.entries.resize(4 * n_entries + 2 * n_entries * n_bits);
+        size_t elems_to_recv = 4 * n_entries + 2 * n_entries * n_bits;
+        size_t bytes_to_recv = elems_to_recv * sizeof(Ring);
+        pkt.entries.resize(elems_to_recv);
 
         if (n_entries == 0) {
             return pkt;  // nothing else to receive
         }
 
-        n_bytes_recvd = m_pSSLTCPServer->Receive(client, reinterpret_cast<char *>(pkt.entries.data()), pkt.entries.size() * sizeof(Ring));
+        n_bytes_recvd = m_pSSLTCPServer->Receive(client, reinterpret_cast<char *>(pkt.entries.data()), bytes_to_recv);
 
-        // if (n_bytes_recvd != static_cast<int>(n_entries * sizeof(Ring))) {
-        // throw std::runtime_error("Failed to receive all ring elements.");
-        //}
+        if (n_bytes_recvd != static_cast<int>(bytes_to_recv)) {
+            throw std::runtime_error("Failed to receive all ring elements.");
+        }
 
         return pkt;
     }

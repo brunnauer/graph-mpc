@@ -25,13 +25,10 @@ class InputClient {
     ~InputClient() { m_pSSLTCPClient->Disconnect(); };
 
     void connect(std::string ip, int port) {
-        std::cout << "Connecting to " << ip << ":" << std::to_string(port) << std::endl;
         m_pSSLTCPClient->Disconnect();
         connected = m_pSSLTCPClient->Connect(ip, std::to_string(port));
-        if (connected) {
-            std::cout << "Connected." << std::endl;
-        } else {
-            std::cout << "Failed." << std::endl;
+        if (!connected) {
+            throw std::runtime_error("Could not connect to " + ip + ":" + std::to_string(port));
         }
     }
 
@@ -44,16 +41,10 @@ class InputClient {
         if (connected) {
             size_t password_size = password.size();
             send(password_size);
-            std::cout << "Sent password size: " << password_size << std::endl;
             send(password);
-            std::cout << "Sent password: " << password << std::endl;
             auto n_vertices = g.n_vertices();
             send(n_vertices);
-            std::cout << "Sent n_vertices: " << n_vertices << std::endl;
             send_packet(pkt);
-            std::cout << "Sent packet." << std::endl;
-            std::cout << "Start: " << pkt.start << std::endl;
-            std::cout << "End: " << pkt.end << std::endl;
         } else {
             std::cout << "Could not send packet since client is not connected to server." << std::endl;
         }
