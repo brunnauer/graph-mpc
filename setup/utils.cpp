@@ -260,7 +260,7 @@ void setup::run_test(const bpo::variables_map &opts,
         if (id != D) {
             std::cout << "Using pwds from " << passwords_file << std::endl;
             InputServer server(id, passwords_file, std::to_string(input_port), nC, n_bits);  // Server expecting two clients
-            std::cout << "Awaiting " << nC << " shares at " << "localhost:" << std::to_string(input_port) << std::endl;
+            std::cout << "Awaiting " << nC << " packets at " << "localhost:" << std::to_string(input_port) << std::endl;
             server.connect_clients();
             g = server.recv_graph();
             g.print();
@@ -322,7 +322,7 @@ void setup::run_benchmark(const bpo::variables_map &opts,
         if (id != D) {
             std::cout << "Using pwds from " << passwords_file << std::endl;
             InputServer server(id, passwords_file, std::to_string(input_port), nC, n_bits);
-            std::cout << "Awaiting " << nC << " shares at " << "localhost:" << std::to_string(input_port) << std::endl;
+            std::cout << "Awaiting " << nC << " packets at " << "localhost:" << std::to_string(input_port) << std::endl;
             server.connect_clients();
             g = server.recv_graph();
             g.print();

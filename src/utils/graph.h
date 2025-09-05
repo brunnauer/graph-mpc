@@ -51,11 +51,13 @@ class Graph {
     std::vector<std::vector<Ring>> dst_order_bits;
     std::vector<Ring> isV_inv;
     std::vector<Ring> _data;
+    size_t _size = 0;
+    size_t _n_vertices = 0;
 
-    std::vector<Ring> src() const { return _src; }
-    std::vector<Ring> dst() const { return _dst; }
-    std::vector<Ring> isV() const { return _isV; }
-    std::vector<Ring> data() const { return _data; }
+    std::vector<Ring> &src() { return _src; }
+    std::vector<Ring> &dst() { return _dst; }
+    std::vector<Ring> &isV() { return _isV; }
+    std::vector<Ring> &data() { return _data; }
     size_t size() { return _size; }
     size_t n_vertices() { return _n_vertices; }
     std::vector<std::vector<Ring>> src_bits() { return _src_bits; }
@@ -358,8 +360,6 @@ class Graph {
     std::vector<Ring> _src;
     std::vector<Ring> _dst;
     std::vector<Ring> _isV;
-    size_t _size = 0;
-    size_t _n_vertices = 0;
     bool is_shared = false;
 
     /* Specifically for Message-Passing */

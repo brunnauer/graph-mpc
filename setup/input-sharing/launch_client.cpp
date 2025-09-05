@@ -10,8 +10,6 @@ void launch_client(int id, size_t start_idx, std::string ip_0, std::string ip_1,
                    std::string &password) {
     Graph g = Graph::parse(input_file);
     std::cout << "Graph loaded from file." << std::endl;
-    g.print();
-    std::cout << "Nodes: " << g.n_vertices() << std::endl;
 
     auto [share_0, share_1] = g.secret_share(rng, n_bits);
 

@@ -284,9 +284,9 @@ class NetIOMP {
         size_t n_elems = 0;
         recv(src, &n_elems, sizeof(size_t));
         if (n_elems > 0) {
-            std::cout << "Receiving " << n_elems << " from " << src << std::endl;
+            // std::cout << "Receiving " << n_elems << " from " << src << std::endl;
             recv_vec(src, n_elems, recv_buffer[src]);
-            std::cout << "Done receiving." << std::endl;
+            // std::cout << "Done receiving." << std::endl;
         }
     }
 

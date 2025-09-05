@@ -45,6 +45,7 @@ class InputClient {
             auto n_vertices = g.n_vertices();
             send(n_vertices);
             send_packet(pkt);
+            std::cout << "Graph sent successfully." << std::endl;
         } else {
             std::cout << "Could not send packet since client is not connected to server." << std::endl;
         }

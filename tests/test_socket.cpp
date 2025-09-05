@@ -23,7 +23,7 @@ void test_socket(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, 
 
     network->sync();
 
-    mp.run(g);
+    mp.run(g, TEST);
 
     auto res_g = g.reveal(id, network);
 
