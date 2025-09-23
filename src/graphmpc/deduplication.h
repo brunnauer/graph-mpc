@@ -9,7 +9,7 @@
 #include "sort.h"
 
 void deduplication_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t n_bits, MPPreprocessing &preproc,
-                              Party &recv_shuffle, Party &recv_mul, bool save_to_disk = false);
+                              Party &recv_shuffle, Party &recv_mul, bool ssd = false);
 
 void deduplication_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, Graph &g,
-                            bool save_to_disk = false);
+                            bool ssd = false);

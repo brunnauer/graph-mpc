@@ -8,8 +8,8 @@
 
 void test_shuffle(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n, std::string input_file, Graph &g) {
     std::cout << "------ test_shuffle ------" << std::endl << std::endl;
-    bool save_to_disk = true;
-    std::shared_ptr<io::NetIOMP> network = std::make_shared<io::NetIOMP>(net_conf, save_to_disk);
+    bool ssd = true;
+    std::shared_ptr<io::NetIOMP> network = std::make_shared<io::NetIOMP>(net_conf, ssd);
 
     std::vector<Ring> input_vector(n);
     for (size_t i = 0; i < n; i++) input_vector[i] = i;
@@ -20,16 +20,16 @@ void test_shuffle(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf,
     Party recv = P0;
 
     if (id != D) network->recv_buffered(D);
-    shuffle::get_shuffle(id, rngs, network, n, preproc, recv, save_to_disk);
-    shuffle::get_unshuffle(id, rngs, network, n, preproc, save_to_disk);
-    shuffle::get_shuffle(id, rngs, network, n, preproc, recv, save_to_disk);
-    shuffle::get_unshuffle(id, rngs, network, n, preproc, save_to_disk);
+    shuffle::get_shuffle(id, rngs, network, n, preproc, recv, ssd);
+    shuffle::get_unshuffle(id, rngs, network, n, preproc, ssd);
+    shuffle::get_shuffle(id, rngs, network, n, preproc, recv, ssd);
+    shuffle::get_unshuffle(id, rngs, network, n, preproc, ssd);
     if (id == D) network->send_all();
 
-    auto shuffled_input = shuffle::shuffle(id, rngs, network, n, preproc, input_share, save_to_disk, true);
-    auto repeated_input = shuffle::shuffle_repeat(id, rngs, network, n, preproc, input_share, save_to_disk);
-    repeated_input = shuffle::shuffle_repeat(id, rngs, network, n, preproc, input_share, save_to_disk);
-    auto unshuffled_input = shuffle::unshuffle(id, rngs, network, n, preproc, shuffled_input, save_to_disk);
+    auto shuffled_input = shuffle::shuffle(id, rngs, network, n, preproc, input_share, ssd, true);
+    auto repeated_input = shuffle::shuffle_repeat(id, rngs, network, n, preproc, input_share, ssd);
+    repeated_input = shuffle::shuffle_repeat(id, rngs, network, n, preproc, input_share, ssd);
+    auto unshuffled_input = shuffle::unshuffle(id, rngs, network, n, preproc, shuffled_input, ssd);
 
     auto result_shuffle = share::reveal_vec(id, network, shuffled_input);
     auto result_repeat = share::reveal_vec(id, network, repeated_input);
@@ -39,9 +39,9 @@ void test_shuffle(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf,
     setup::print_vec(result_repeat);
     setup::print_vec(result_unshuffle);
 
-    shuffled_input = shuffle::shuffle(id, rngs, network, n, preproc, input_share, save_to_disk, true);
-    repeated_input = shuffle::shuffle_repeat(id, rngs, network, n, preproc, input_share, save_to_disk);
-    unshuffled_input = shuffle::unshuffle(id, rngs, network, n, preproc, shuffled_input, save_to_disk);
+    shuffled_input = shuffle::shuffle(id, rngs, network, n, preproc, input_share, ssd, true);
+    repeated_input = shuffle::shuffle_repeat(id, rngs, network, n, preproc, input_share, ssd);
+    unshuffled_input = shuffle::unshuffle(id, rngs, network, n, preproc, shuffled_input, ssd);
 
     result_shuffle = share::reveal_vec(id, network, shuffled_input);
     result_repeat = share::reveal_vec(id, network, repeated_input);

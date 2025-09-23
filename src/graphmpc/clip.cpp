@@ -2,21 +2,20 @@
 
 /* ----- Preprocessing ----- */
 void clip::equals_zero_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, Party &recv,
-                                  bool save_to_disk) {
+                                  bool ssd) {
     const size_t n_layers = 5;
     const size_t n_triples = n_layers * n;
 
-    mul::preprocess(id, rngs, network, n_triples, preproc, recv, true, save_to_disk);
+    mul::preprocess(id, rngs, network, n_triples, preproc, recv, true, ssd);
 }
 
-void clip::B2A_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, Party &recv,
-                          bool save_to_disk) {
-    mul::preprocess(id, rngs, network, n, preproc, recv, false, save_to_disk);
+void clip::B2A_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, Party &recv, bool ssd) {
+    mul::preprocess(id, rngs, network, n, preproc, recv, false, ssd);
 }
 
 /* ----- Evaluation ----- */
 std::vector<Ring> clip::equals_zero_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, MPPreprocessing &preproc,
-                                             std::vector<Ring> &input_share, bool save_to_disk) {
+                                             std::vector<Ring> &input_share, bool ssd) {
     const size_t n_layers = 5;
     const size_t n = input_share.size();  // Change
     std::vector<Ring> res(input_share);
@@ -41,7 +40,7 @@ std::vector<Ring> clip::equals_zero_evaluate(Party id, RandomGenerators &rngs, s
 #pragma omp parallel for if (n > 10000)
             for (auto &elem : shares_left) elem >>= width;
 
-            res = mul::evaluate(id, network, n, preproc, shares_left, shares_right, true, save_to_disk);
+            res = mul::evaluate(id, network, n, preproc, shares_left, shares_right, true, ssd);
 
             if (layer == 4) {
 #pragma omp parallel for if (n > 10000)
@@ -56,14 +55,14 @@ std::vector<Ring> clip::equals_zero_evaluate(Party id, RandomGenerators &rngs, s
 }
 
 std::vector<Ring> clip::B2A_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc,
-                                     std::vector<Ring> &input_share, bool save_to_disk) {
+                                     std::vector<Ring> &input_share, bool ssd) {
     if (id == D) return std::vector<Ring>(n);
 
     std::vector<Ring> output(n);
     std::vector<Ring> vals_send(2 * n);
     std::vector<std::tuple<Ring, Ring, Ring>> triples;
 
-    if (save_to_disk) {
+    if (ssd) {
         triples = network->mul_disk.read_triples(n);
     } else {
         triples = extract(preproc.triples, n);

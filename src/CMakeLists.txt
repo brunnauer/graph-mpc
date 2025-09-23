@@ -1,8 +1,10 @@
 add_library(GraphMPC_lib STATIC)
 target_sources(GraphMPC_lib 
     PRIVATE 
-    mp_protocol.h
-    protocol_def.cpp
+    message_passing.h
+    examples/pi_k.h
+    examples/pi_m.h
+    examples/pi_r.h
     utils/bits.h
     utils/graph.h
     utils/preprocessings.h

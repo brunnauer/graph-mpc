@@ -11,9 +11,9 @@
 
 namespace mul {
 void preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, Party &recv, bool binary = false,
-                bool save_to_disk = false);
+                bool ssd = false);
 
 std::vector<Ring> evaluate(Party id, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, std::vector<Ring> x, std::vector<Ring> y,
-                           bool binary = false, bool save_to_disk = false);
+                           bool binary = false, bool ssd = false);
 
 };  // namespace mul

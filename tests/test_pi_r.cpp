@@ -1,27 +1,22 @@
-#include <omp.h>
-
 #include <algorithm>
 #include <cassert>
 
 #include "../setup/comm.h"
 #include "../setup/utils.h"
-#include "../src/graphmpc/deduplication.h"
-#include "../src/mp_protocol.h"
-#include "../src/utils/bits.h"
+#include "../src/examples/pi_r.h"
 #include "../src/utils/graph.h"
-#include "../src/utils/permutation.h"
 
 void test_pi_r(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n, std::string input_file, Graph &g) {
     std::cout << "------ test_pi_r ------" << std::endl << std::endl;
-    bool save_to_disk = true;
-    auto network = std::make_shared<io::NetIOMP>(net_conf, save_to_disk);
+    bool ssd = true;
+    auto network = std::make_shared<io::NetIOMP>(net_conf, ssd);
 
     const size_t n_vertices = 5;
     const size_t n_iterations = 2;
     std::vector<Ring> weights(n_iterations);
     size_t n_bits = std::ceil(std::log2(n_vertices + 2));
     n = 17;
-    MPProtocol mp(id, rngs, network, n, n_bits, n_iterations, weights, save_to_disk);
+    PiRProtocol prot(id, rngs, network, n, n_bits, n_vertices, n_iterations, ssd);
 
     /*
   Graph instance:
@@ -78,20 +73,20 @@ void test_pi_r(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, si
     Graph g_rev = g_shared.reveal(id, network);
     if (id != D) g_rev.print();
 
-    mp.run(g_shared, TEST, true);
+    prot.run(g_shared, weights, TEST, true);
 
     /* Preprocessing communication assertions */
     // if (id == D) {
     ///* n_elems * 4 Bytes per element */
     // size_t comm_expected_pre = 4 + PI_K_COMM_PRE(n, n_bits, n_iterations);
-    // size_t comm_actual_pre = mp.comm_pre();
+    // size_t comm_actual_pre = prot.comm_pre();
     // assert(comm_expected_pre == comm_actual_pre);
     //}
 
     ///* Evaluation communication assertions */
     // if (id != D) {
     // size_t comm_expected_eval = PI_K_COMM_ONLINE(n, n_bits, n_iterations);
-    // size_t comm_actual_eval = mp.comm_eval();
+    // size_t comm_actual_eval = prot.comm_eval();
     // assert(comm_expected_eval == comm_actual_eval);
     //}
 

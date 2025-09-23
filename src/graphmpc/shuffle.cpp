@@ -154,21 +154,20 @@ ShufflePre shuffle::get_shuffle(Party id, RandomGenerators &rngs, std::shared_pt
     return perm_share;
 }
 
-void shuffle::get_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, Party &recv,
-                          bool save_to_disk) {
+void shuffle::get_shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, Party &recv, bool ssd) {
     auto perm_share = get_shuffle(id, rngs, network, n, recv);
-    if (save_to_disk && id != D) {
+    if (ssd && id != D) {
         network->shuffle_disk.write_shuffle(perm_share);
     }
     preproc.shuffles.push(perm_share);
 }
 
-void shuffle::get_unshuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, bool save_to_disk) {
+void shuffle::get_unshuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, bool ssd) {
     std::vector<Ring> B_0(n);
     std::vector<Ring> B_1(n);
 
     ShufflePre perm_share = preproc.shuffles.back();  // Assumption: shuffle to unshuffle is the last one added to preproc
-    if (save_to_disk && id != D) {
+    if (ssd && id != D) {
         preproc.shuffles.pop();
     }
     switch (id) {
@@ -209,7 +208,7 @@ void shuffle::get_unshuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io
         }
         case P0: {
             B_0 = network->read(D, n);
-            if (save_to_disk)
+            if (ssd)
                 network->unshuffle_disk.write_vec(B_0);
             else
                 preproc.unshuffles.push(B_0);
@@ -217,7 +216,7 @@ void shuffle::get_unshuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io
         }
         case P1: {
             B_1 = network->read(D, n);
-            if (save_to_disk)
+            if (ssd)
                 network->unshuffle_disk.write_vec(B_1);
             else
                 preproc.unshuffles.push(B_1);
@@ -405,11 +404,11 @@ Permutation shuffle::shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<i
 }
 
 std::vector<Ring> shuffle::shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc,
-                                   std::vector<Ring> &input_share, bool save_to_disk, bool repeat) {
+                                   std::vector<Ring> &input_share, bool ssd, bool repeat) {
     if (id == D) return std::vector<Ring>(n);
 
     ShufflePre perm_share;
-    if (save_to_disk) {
+    if (ssd) {
         perm_share = network->shuffle_disk.read_shuffle(n);
     } else {
         perm_share = preproc.shuffles.front();
@@ -418,7 +417,7 @@ std::vector<Ring> shuffle::shuffle(Party id, RandomGenerators &rngs, std::shared
     auto result = shuffle(id, rngs, network, n, perm_share, input_share);
 
     if (repeat) {  // Save updated perm_share
-        if (save_to_disk)
+        if (ssd)
             network->repeat_disk.write_shuffle(perm_share);
         else
             preproc.shuffle_repeats.push(perm_share);
@@ -428,17 +427,17 @@ std::vector<Ring> shuffle::shuffle(Party id, RandomGenerators &rngs, std::shared
 }
 
 Permutation shuffle::shuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc,
-                             Permutation &input_share, bool save_to_disk, bool repeat) {
+                             Permutation &input_share, bool ssd, bool repeat) {
     auto perm_vec = input_share.get_perm_vec();
-    return Permutation(shuffle(id, rngs, network, n, preproc, perm_vec, save_to_disk, repeat));
+    return Permutation(shuffle(id, rngs, network, n, preproc, perm_vec, ssd, repeat));
 }
 
 std::vector<Ring> shuffle::shuffle_repeat(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc,
-                                          std::vector<Ring> &input_share, bool save_to_disk, bool delete_preprocessing) {
+                                          std::vector<Ring> &input_share, bool ssd, bool delete_preprocessing) {
     if (id == D) return std::vector<Ring>(n);
 
     ShufflePre perm_share;
-    if (save_to_disk) {
+    if (ssd) {
         perm_share = network->repeat_disk.read_shuffle(n, true);
     } else {
         perm_share = preproc.shuffle_repeats.front();
@@ -501,12 +500,12 @@ Permutation shuffle::unshuffle(Party id, RandomGenerators &rngs, std::shared_ptr
 }
 
 std::vector<Ring> shuffle::unshuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc,
-                                     std::vector<Ring> &input_share, bool save_to_disk) {
+                                     std::vector<Ring> &input_share, bool ssd) {
     if (id == D) return std::vector<Ring>(n);
 
     ShufflePre shuffle_pre;
     std::vector<Ring> unshuffle_B;
-    if (save_to_disk) {
+    if (ssd) {
         shuffle_pre = network->repeat_disk.read_shuffle(n);
         unshuffle_B = network->unshuffle_disk.read(n);
     } else {
@@ -519,7 +518,7 @@ std::vector<Ring> shuffle::unshuffle(Party id, RandomGenerators &rngs, std::shar
 }
 
 Permutation shuffle::unshuffle(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc,
-                               Permutation &input_share, bool save_to_disk) {
+                               Permutation &input_share, bool ssd) {
     auto perm_vec = input_share.get_perm_vec();
-    return Permutation(unshuffle(id, rngs, network, n, preproc, perm_vec, save_to_disk));
+    return Permutation(unshuffle(id, rngs, network, n, preproc, perm_vec, ssd));
 }

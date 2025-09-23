@@ -7,7 +7,6 @@
 #include <functional>
 #include <tuple>
 
-#include "../protocol_def.h"
 #include "../setup/comm.h"
 #include "../setup/utils.h"
 #include "sort.h"

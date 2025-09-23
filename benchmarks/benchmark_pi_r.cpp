@@ -1,19 +1,18 @@
 #include "../setup/comm.h"
 #include "../setup/utils.h"
-#include "../src/mp_protocol.h"
+#include "../src/examples/pi_r.h"
 #include "../src/utils/graph.h"
 
 void benchmark(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n, size_t repeat, size_t n_vertices, bool save_output,
-               std::string save_file, bool save_to_disk, std::string input_file, Graph &g) {
-    /* Setup network */
-    auto network = std::make_shared<io::NetIOMP>(net_conf, save_to_disk);
-
-    /* Initialize protocol */
+               std::string save_file, bool ssd, std::string input_file, Graph &g) {
     size_t n_bits = std::ceil(std::log2(n_vertices + 2));
     size_t n_iterations = 0;
     std::vector<Ring> weights(n_iterations);
 
-    MPProtocol mp(id, rngs, network, n, n_bits, n_iterations, weights, save_to_disk);
+    /* Initialize network connection */
+    auto network = std::make_shared<io::NetIOMP>(net_conf, ssd);
+
+    PiRProtocol prot(id, rngs, network, n, n_bits, n_vertices, n_iterations, ssd, save_output, save_file);
 
     /* Construct and share graph */
     if (id == P0) {
@@ -24,15 +23,12 @@ void benchmark(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, si
         for (size_t i = n_vertices / 2; i < n_vertices; i++) g.add_list_entry(i + 1, i + 1, 1);
         for (size_t i = (n - n_vertices) / 2; i < n - n_vertices; i++) g.add_list_entry(1, 2, 0);
     }
-
     Graph g_shared = g.share_subgraphs(id, rngs, network, n_bits);
-    g_shared._n_vertices = n_vertices;  // For helper
     network->sync();
 
     for (size_t r = 0; r < repeat; ++r) {
         std::cout << "--- Repetition " << r + 1 << " ---" << std::endl;
-
-        mp.run(g_shared, BENCHMARK, true);
+        prot.run(g_shared, weights, BENCHMARK);
     }
 }
 

@@ -9,8 +9,8 @@
 void test_sort(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n, std::string input_file, Graph &g) {
     std::cout << "------ test_sort ------" << std::endl << std::endl;
     json output_data;
-    bool save_to_disk = true;
-    auto network = std::make_shared<io::NetIOMP>(net_conf, save_to_disk);
+    bool ssd = true;
+    auto network = std::make_shared<io::NetIOMP>(net_conf, ssd);
 
     const size_t n_bits = std::ceil(std::log2(n));
 
@@ -38,7 +38,7 @@ void test_sort(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, si
     /* Preprocessing */
     StatsPoint start_pre(*network);
     if (id != D) network->recv_buffered(D);
-    sort::get_sort_preprocess(id, rngs, network, n, bit_shares.size(), preproc, recv_shuffle, recv_mul, save_to_disk);
+    sort::get_sort_preprocess(id, rngs, network, n, bit_shares.size(), preproc, recv_shuffle, recv_mul, ssd);
     if (id == D) network->send_all();
     StatsPoint end_pre(*network);
 
@@ -56,7 +56,7 @@ void test_sort(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, si
     }
     /* Evaluation */
     StatsPoint start_online(*network);
-    auto sort_share = sort::get_sort_evaluate(id, rngs, network, n, preproc, bit_shares, save_to_disk);
+    auto sort_share = sort::get_sort_evaluate(id, rngs, network, n, preproc, bit_shares, ssd);
     StatsPoint end_online(*network);
 
     auto rbench = end_online - start_online;

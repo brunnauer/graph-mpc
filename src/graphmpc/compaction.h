@@ -15,11 +15,10 @@
 
 namespace compaction {
 
-void preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, Party &recv,
-                bool save_to_disk = false);
+void preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, Party &recv, bool ssd = false);
 
 Permutation evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, std::vector<Ring> &input_share,
-                     bool save_to_disk = false);
+                     bool ssd = false);
 
 Permutation get_compaction(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc,
                            std::vector<Ring> &input_share, Party &recv);

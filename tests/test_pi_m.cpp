@@ -1,20 +1,23 @@
-#include <omp.h>
-
 #include <algorithm>
 #include <cassert>
 
 #include "../setup/comm.h"
 #include "../setup/utils.h"
-#include "../src/mp_protocol.h"
-#include "../src/utils/permutation.h"
+#include "../src/examples/pi_m.h"
+#include "../src/utils/graph.h"
 
 void test_pi_m(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n, std::string input_file, Graph &g) {
     std::cout << "------ test_pi_m ------" << std::endl << std::endl;
-    auto network = std::make_shared<io::NetIOMP>(net_conf, true);
+    bool ssd = true;
+    auto network = std::make_shared<io::NetIOMP>(net_conf, ssd);
+
     std::vector<Ring> weights = {10000000, 100000, 1000, 1};
+    const size_t n_vertices = 4;
     const size_t n_iterations = weights.size();
-    size_t n_bits = std::ceil(std::log2(n + 2));
-    MPProtocol mp(id, rngs, network, 16, n_bits, n_iterations, weights, true);
+    size_t n_bits = std::ceil(std::log2(n_vertices + 2));
+    n = 16;
+    PiMProtocol prot(id, rngs, network, n, n_bits, n_vertices, n_iterations, ssd);
+
     /*
     Graph instance:
     v1 - v2
@@ -60,12 +63,12 @@ void test_pi_m(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, si
     if (id != D) g.print();
     Graph g_shared = g.secret_share_parties(id, rngs, network, n_bits, P0);
 
-    mp.run(g_shared, TEST);
+    prot.run(g_shared, weights, TEST);
 
     /* Preprocessing communication assertions */
     if (id == D) {
         size_t expected_comm_pre = MP_COMM_PRE(g.size(), n_bits) + 4;
-        size_t actual_comm_pre = mp.comm_pre();
+        size_t actual_comm_pre = prot.comm_pre();
         std::cout << "Expected: " << expected_comm_pre << std::endl;
         std::cout << "Actual: " << actual_comm_pre << std::endl;
         //        assert(expected_comm_pre == actual_comm_pre);
@@ -74,7 +77,7 @@ void test_pi_m(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, si
     /* Evaluation communication assertions */
     if (id != D) {
         size_t expected_comm_eval = MP_COMM_ONLINE(n, n_bits, n_iterations);
-        size_t actual_comm_eval = mp.comm_eval();
+        size_t actual_comm_eval = prot.comm_eval();
         std::cout << "Expected: " << expected_comm_eval << std::endl;
         std::cout << "Actual: " << actual_comm_eval << std::endl;
         //       assert(expected_comm_eval == actual_comm_eval);

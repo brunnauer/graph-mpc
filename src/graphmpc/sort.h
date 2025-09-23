@@ -11,15 +11,15 @@
 namespace sort {
 
 void get_sort_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t n_bits, MPPreprocessing &preproc,
-                         Party &recv_shuffle, Party &recv_mul, bool save_to_disk = false);
+                         Party &recv_shuffle, Party &recv_mul, bool ssd = false);
 
 void sort_iteration_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, Party &recv_shuffle,
-                               Party &recv_mul, bool save_to_disk = false);
+                               Party &recv_mul, bool ssd = false);
 
 Permutation get_sort_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc,
-                              std::vector<std::vector<Ring>> &bit_shares, bool save_to_disk = false);
+                              std::vector<std::vector<Ring>> &bit_shares, bool ssd = false);
 
 Permutation sort_iteration_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, Permutation &perm,
-                                    MPPreprocessing &preproc, std::vector<Ring> &bit_shares, bool save_to_disk = false);
+                                    MPPreprocessing &preproc, std::vector<Ring> &bit_shares, bool ssd = false);
 
 };  // namespace sort

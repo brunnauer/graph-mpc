@@ -32,7 +32,7 @@ void setupClient(const bpo::variables_map &opts, int &id, size_t &start_idx, std
                  std::string &input_file, size_t &n_bits, std::string &password);
 
 void setupExecution(const bpo::variables_map &opts, size_t &pid, size_t &nP, size_t &nC, size_t &repeat, size_t &threads, size_t &nodes,
-                    io::NetworkConfig &net_config, uint64_t *seeds_h, uint64_t *seeds_l, bool &save_output, std::string &save_file, bool &save_to_disk,
+                    io::NetworkConfig &net_config, uint64_t *seeds_h, uint64_t *seeds_l, bool &save_output, std::string &save_file, bool &ssd,
                     std::string &input_file, std::string &passwords_file, int &input_port);
 
 void run_test(const bpo::variables_map &opts,
@@ -40,6 +40,6 @@ void run_test(const bpo::variables_map &opts,
 
 void run_benchmark(const bpo::variables_map &opts,
                    std::function<void(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n, size_t repeat, size_t n_vertices,
-                                      bool save_output, std::string save_file, bool save_to_disk, std::string input_file, Graph &g)>
+                                      bool save_output, std::string save_file, bool ssd, std::string input_file, Graph &g)>
                        func);
 }  // namespace setup

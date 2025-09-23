@@ -67,14 +67,14 @@ class NetIOMP {
     std::mutex mtx;
     std::condition_variable cv;
     bool connection_established;
-    bool save_to_disk;
+    bool ssd;
     FileWriter mul_disk;
     FileWriter shuffle_disk;
     FileWriter unshuffle_disk;
     FileWriter repeat_disk;
     FileWriter recv_disk;
 
-    NetIOMP(NetworkConfig &conf, bool save_to_disk = false)
+    NetIOMP(NetworkConfig &conf, bool ssd = false)
         : conf(conf),
           ios(conf.n_parties),
           ios2(conf.n_parties),
@@ -83,7 +83,7 @@ class NetIOMP {
           sent(conf.n_parties, false),
           BLOCK_SIZE(conf.BLOCK_SIZE),
           connection_established(false),
-          save_to_disk(save_to_disk),
+          ssd(ssd),
           n_send(conf.n_parties, 0),
           send_buffer(conf.n_parties),
           recv_buffer(conf.n_parties),
@@ -186,7 +186,7 @@ class NetIOMP {
         /* Count the total number of elements */
         n_send[dst] += data.size();
 
-        if (party == D && save_to_disk) {
+        if (party == D && ssd) {
             writers[dst].write_vec(data);
         } else {
             auto &buf = send_buffer[dst];
@@ -203,7 +203,7 @@ class NetIOMP {
                 send(dst, &n_elems, sizeof(size_t));
 
                 /* Sending actual data */
-                if (party == D && save_to_disk) {
+                if (party == D && ssd) {
                     size_t remaining = n_elems;
                     while (remaining > 0) {
                         size_t n_send;
@@ -295,13 +295,13 @@ class NetIOMP {
         size_t n_msgs = n_elems / BLOCK_SIZE_MIN;
         size_t last_msg_size = n_elems % BLOCK_SIZE_MIN;
 
-        if (!(save_to_disk && src == D)) buffer.resize(n_elems);
+        if (!(ssd && src == D)) buffer.resize(n_elems);
 
         auto &tmp = tmp_buf[src];
 
         for (size_t i = 0; i < n_msgs; i++) {
             recv(src, tmp.data(), sizeof(Ring) * BLOCK_SIZE_MIN);
-            if (save_to_disk && src == D) {
+            if (ssd && src == D) {
                 recv_disk.write_vec({tmp.begin(), tmp.begin() + BLOCK_SIZE_MIN});
             } else {
                 std::memcpy(buffer.data() + (i * BLOCK_SIZE_MIN), tmp.data(), sizeof(Ring) * BLOCK_SIZE_MIN);
@@ -312,7 +312,7 @@ class NetIOMP {
         if (last_msg_size > 0) {
             recv(src, tmp.data(), sizeof(Ring) * last_msg_size);
 
-            if (save_to_disk && src == D) {
+            if (ssd && src == D) {
                 recv_disk.write_vec({tmp.begin(), tmp.begin() + last_msg_size});
             } else {
                 std::memcpy(buffer.data() + (n_msgs * BLOCK_SIZE_MIN), tmp.data(), sizeof(Ring) * last_msg_size);
@@ -332,7 +332,7 @@ class NetIOMP {
 
         std::vector<Ring> chunk;
 
-        if (save_to_disk) {  // Read from file
+        if (ssd) {  // Read from file
             chunk = recv_disk.read(n_elems);
         } else {  // Read from buffer
             auto &buffer = recv_buffer[src];

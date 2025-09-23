@@ -5,15 +5,15 @@
 #include "../src/utils/graph.h"
 
 void test_socket(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n, std::string input_file, Graph &g) {
-    bool save_to_disk = false;
-    auto network = std::make_shared<io::NetIOMP>(net_conf, save_to_disk);
+    bool ssd = false;
+    auto network = std::make_shared<io::NetIOMP>(net_conf, ssd);
 
     std::vector<Ring> weights = {10000000, 100000, 1000, 1};
     const size_t n_vertices = 4;
     const size_t n_iterations = weights.size();
     size_t n_bits = std::ceil(std::log2(n_vertices + 2));
     n = 16;
-    MPProtocol mp(id, rngs, network, n, n_bits, n_iterations, weights, save_to_disk);
+    MPProtocol mp(id, rngs, network, n, n_bits, n_iterations, weights, ssd);
 
     std::cout << "Graph size: " << g.size() << std::endl;
     std::cout << "Nodes: " << g.n_vertices() << std::endl;

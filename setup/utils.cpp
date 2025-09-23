@@ -124,7 +124,7 @@ void setup::setupClient(const bpo::variables_map &opts, int &id, size_t &start_i
 }
 
 void setup::setupExecution(const bpo::variables_map &opts, size_t &pid, size_t &nP, size_t &nC, size_t &repeat, size_t &threads, size_t &nodes,
-                           io::NetworkConfig &net_conf, uint64_t *seeds_h, uint64_t *seeds_l, bool &save_output, std::string &save_file, bool &save_to_disk,
+                           io::NetworkConfig &net_conf, uint64_t *seeds_h, uint64_t *seeds_l, bool &save_output, std::string &save_file, bool &ssd,
                            std::string &input_file, std::string &passwords_file, int &input_port) {
     save_output = false;
     if (opts.count("output") != 0) {
@@ -209,7 +209,7 @@ void setup::setupExecution(const bpo::variables_map &opts, size_t &pid, size_t &
         net_conf.localhost = false;
     }
 
-    save_to_disk = opts["ssd"].as<bool>();
+    ssd = opts["ssd"].as<bool>();
     input_port = opts["input-port"].as<int>();
     if (pid == 1 && input_port == 4242) {
         input_port++;
@@ -227,24 +227,17 @@ void setup::run_test(const bpo::variables_map &opts,
     uint64_t seeds_l[9];
     bool save_output;
     std::string save_file;
-    bool save_to_disk;
+    bool ssd;
     std::string input_file;
     std::string passwords_file;
     int input_port;
 
-    setup::setupExecution(opts, pid, nP, nC, repeat, threads, nodes, net_conf, seeds_h, seeds_l, save_output, save_file, save_to_disk, input_file,
-                          passwords_file, input_port);
+    setup::setupExecution(opts, pid, nP, nC, repeat, threads, nodes, net_conf, seeds_h, seeds_l, save_output, save_file, ssd, input_file, passwords_file,
+                          input_port);
 
     size_t n_bits = std::ceil(std::log2(nodes));
-    output_data["details"] = {{"pid", pid},
-                              {"seeds_h", seeds_h},
-                              {"seeds_l", seeds_l},
-                              {"repeat", repeat},
-                              {"size", n},
-                              {"bits", n_bits},
-                              {"nodes", nodes},
-                              {"edges", (n - nodes)},
-                              {"SSD utilization", save_to_disk}};
+    output_data["details"] = {{"pid", pid},     {"seeds_h", seeds_h}, {"seeds_l", seeds_l},   {"repeat", repeat},      {"size", n},
+                              {"bits", n_bits}, {"nodes", nodes},     {"edges", (n - nodes)}, {"SSD utilization", ssd}};
 
     std::cout << "--- Details ---\n";
     for (const auto &[key, value] : output_data["details"].items()) {
@@ -279,7 +272,7 @@ void setup::run_test(const bpo::variables_map &opts,
 
 void setup::run_benchmark(const bpo::variables_map &opts,
                           std::function<void(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n, size_t repeat, size_t n_vertices,
-                                             bool save_output, std::string save_file, bool save_to_disk, std::string input_file, Graph &g)>
+                                             bool save_output, std::string save_file, bool ssd, std::string input_file, Graph &g)>
                               func) {
     auto n = opts["size"].as<size_t>();
 
@@ -290,23 +283,16 @@ void setup::run_benchmark(const bpo::variables_map &opts,
     uint64_t seeds_l[9];
     bool save_output;
     std::string save_file;
-    bool save_to_disk;
+    bool ssd;
     std::string input_file;
     std::string passwords_file;
     int input_port;
 
-    setup::setupExecution(opts, pid, nP, nC, repeat, threads, nodes, net_conf, seeds_h, seeds_l, save_output, save_file, save_to_disk, input_file,
-                          passwords_file, input_port);
+    setup::setupExecution(opts, pid, nP, nC, repeat, threads, nodes, net_conf, seeds_h, seeds_l, save_output, save_file, ssd, input_file, passwords_file,
+                          input_port);
     size_t n_bits = std::ceil(std::log2(nodes));
-    output_data["details"] = {{"pid", pid},
-                              {"seeds_h", seeds_h},
-                              {"seeds_l", seeds_l},
-                              {"repeat", repeat},
-                              {"size", n},
-                              {"bits", n_bits},
-                              {"nodes", nodes},
-                              {"edges", (n - nodes)},
-                              {"SSD utilization", save_to_disk}};
+    output_data["details"] = {{"pid", pid},     {"seeds_h", seeds_h}, {"seeds_l", seeds_l},   {"repeat", repeat},      {"size", n},
+                              {"bits", n_bits}, {"nodes", nodes},     {"edges", (n - nodes)}, {"SSD utilization", ssd}};
 
     std::cout << "--- Details ---\n";
     for (const auto &[key, value] : output_data["details"].items()) {
@@ -336,5 +322,5 @@ void setup::run_benchmark(const bpo::variables_map &opts,
         }
     }
 
-    func(id, rngs, net_conf, n, repeat, nodes, save_output, save_file, save_to_disk, input_file, g);
+    func(id, rngs, net_conf, n, repeat, nodes, save_output, save_file, ssd, input_file, g);
 }
