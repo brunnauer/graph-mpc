@@ -7,12 +7,10 @@
 #include <functional>
 #include <tuple>
 
-#include "../setup/comm.h"
-#include "../setup/utils.h"
-#include "sort.h"
-#include "utils/bits.h"
-#include "utils/graph.h"
-#include "utils/preprocessings.h"
+#include "../io/netmp.h"
+#include "../utils/preprocessings.h"
+#include "../utils/sharing.h"
+#include "shuffle.h"
 
 namespace mp {
 

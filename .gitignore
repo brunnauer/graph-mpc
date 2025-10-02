@@ -25,3 +25,7 @@ socket-cpp-master
 GraphMPC.code-workspace
 config
 example_graphs
+certs_old
+memory.sh
+run_LAN_benchmarks.sh
+net_config.json

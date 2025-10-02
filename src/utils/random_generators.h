@@ -17,9 +17,13 @@ class RandomGenerators {
     emp::PRG _rng_D1_comp;
     emp::PRG _rng_D;
     emp::PRG _rng_self;
+    std::vector<uint64_t> seeds_hi;
+    std::vector<uint64_t> seeds_lo;
 
    public:
-    RandomGenerators(uint64_t seeds_hi[9], uint64_t seeds_lo[9]) {
+    RandomGenerators(std::vector<uint64_t> seeds_hi, std::vector<uint64_t> seeds_lo) : seeds_hi(seeds_hi), seeds_lo(seeds_lo) { reseed(); }
+
+    void reseed() {
         auto seed_block = emp::makeBlock(seeds_hi[0], seeds_lo[0]);
         _rng_self.reseed(&seed_block, 0);
 
@@ -57,4 +61,15 @@ class RandomGenerators {
     emp::PRG &rng_D1_comp() { return _rng_D1_comp; }
     emp::PRG &rng_D() { return _rng_D; }
     emp::PRG &rng_self() { return _rng_self; }
+
+    void print_state() {
+        std::cout << "--- RNG counters --- " << std::endl;
+        std::cout << "01: " << _rng_01.counter << std::endl;
+        std::cout << "D0: " << _rng_D0.counter << std::endl;
+        std::cout << "D0_u: " << _rng_D0_unshuffle.counter << std::endl;
+        std::cout << "D0_c: " << _rng_D0_comp.counter << std::endl;
+        std::cout << "D1: " << _rng_D1.counter << std::endl;
+        std::cout << "D1_u: " << _rng_D1_unshuffle.counter << std::endl;
+        std::cout << "D1_c: " << _rng_D1_comp.counter << std::endl << std::endl;
+    }
 };

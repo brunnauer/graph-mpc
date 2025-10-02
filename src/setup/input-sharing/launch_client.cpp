@@ -2,8 +2,7 @@
 #include <iostream>
 #include <thread>
 
-#include "../../src/utils/types.h"
-#include "../utils.h"
+#include "../cmdline.h"
 #include "input_client.h"
 
 void launch_client(int id, size_t start_idx, std::string ip_0, std::string ip_1, int port_0, int port_1, std::string input_file, emp::PRG rng, size_t n_bits,

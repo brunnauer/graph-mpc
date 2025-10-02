@@ -1,20 +1,19 @@
 #pragma once
 
-#include "../message_passing.h"
+#include "../src/graphmpc/clip.h"
+#include "../src/graphmpc/mp_protocol.h"
 
-class PiRProtocol : public ProtocolDef {
+class PiRProtocol : public MPProtocol {
    public:
-    PiRProtocol(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t n_bits, size_t n_vertices, size_t n_iterations,
-                bool ssd, bool save_output = false, std::string save_file = "")
-        : ProtocolDef(id, rngs, network, n, n_bits, n_vertices, n_iterations, ssd, save_output, save_file) {}
+    PiRProtocol(ProtocolConfig &conf, std::shared_ptr<io::NetIOMP> &network) : MPProtocol(conf, network) {}
 
     virtual void pre_mp_preprocessing(MPPreprocessing &preproc) {}
 
     virtual void apply_preprocessing(MPPreprocessing &preproc) {}
 
     virtual void post_mp_preprocessing(MPPreprocessing &preproc) {
-        clip::equals_zero_preprocess(id, rngs, network, n_vertices, preproc, recv_mul, ssd);
-        clip::B2A_preprocess(id, rngs, network, n_vertices, preproc, recv_mul, ssd);
+        clip::equals_zero_preprocess(id, rngs, network, nodes, preproc, recv_mul, ssd);
+        clip::B2A_preprocess(id, rngs, network, nodes, preproc, recv_mul, ssd);
     }
 
     virtual void pre_mp_evaluation(MPPreprocessing &preproc, Graph &g) {}
@@ -26,11 +25,11 @@ class PiRProtocol : public ProtocolDef {
     }
 
     virtual void post_mp_evaluation(MPPreprocessing &preproc, Graph &g) {
-        std::vector<Ring> nodes_data(n_vertices);
+        std::vector<Ring> nodes_data(nodes);
         std::copy(g._data.begin(), g._data.begin() + nodes_data.size(), nodes_data.begin());
 
         auto data_p = clip::equals_zero_evaluate(id, rngs, network, preproc, nodes_data, ssd);
-        data_p = clip::B2A_evaluate(id, rngs, network, n_vertices, preproc, data_p, ssd);
+        data_p = clip::B2A_evaluate(id, rngs, network, nodes, preproc, data_p, ssd);
         data_p = clip::flip(id, data_p);
 
         std::copy(data_p.begin(), data_p.end(), g._data.begin());

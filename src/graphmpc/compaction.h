@@ -10,7 +10,6 @@
 #include "../io/netmp.h"
 #include "../utils/permutation.h"
 #include "../utils/sharing.h"
-#include "../utils/types.h"
 #include "mul.h"
 
 namespace compaction {

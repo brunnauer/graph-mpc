@@ -5,8 +5,7 @@
 
 #include <future>
 
-#include "../../src/utils/graph.h"
-#include "../../src/utils/types.h"
+#include "../../utils/graph.h"
 
 class InputClient {
    public:

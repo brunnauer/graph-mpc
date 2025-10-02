@@ -40,25 +40,13 @@
 #include <stdexcept>
 #include <vector>
 
-#include "../utils/types.h"
+#include "../setup/configs.h"
 #include "disk.h"
 #include "emp-tool/emp-tool.h"
 #include "tls_net_io_channel.h"
 
 namespace io {
 using namespace emp;
-
-struct NetworkConfig {
-    Party id;
-    int n_parties;
-    int port;
-    char **IP;
-    std::string certificate_path;
-    std::string private_key_path;
-    std::string trusted_cert_path;
-    bool localhost;
-    size_t BLOCK_SIZE;
-};
 
 class NetIOMP {
    public:
@@ -121,7 +109,7 @@ class NetIOMP {
                     if (conf.localhost) {
                         ios[j] = std::make_unique<TLSNetIO>("127.0.0.1", conf.port + 2 * (i * nP + j), conf.trusted_cert_path, true);
                     } else {
-                        ios[j] = std::make_unique<TLSNetIO>(conf.IP[j], conf.port + 2 * (i * nP + j), conf.trusted_cert_path, true);
+                        ios[j] = std::make_unique<TLSNetIO>(conf.IP[j].c_str(), conf.port + 2 * (i * nP + j), conf.trusted_cert_path, true);
                     }
                     ios[j]->set_nodelay();
 
@@ -145,7 +133,7 @@ class NetIOMP {
                     if (conf.localhost) {
                         ios2[i] = std::make_unique<TLSNetIO>("127.0.0.1", conf.port + 2 * (i * nP + j) + 1, conf.trusted_cert_path, true);
                     } else {
-                        ios2[i] = std::make_unique<TLSNetIO>(conf.IP[i], conf.port + 2 * (i * nP + j) + 1, conf.trusted_cert_path, true);
+                        ios2[i] = std::make_unique<TLSNetIO>(conf.IP[i].c_str(), conf.port + 2 * (i * nP + j) + 1, conf.trusted_cert_path, true);
                     }
                     ios2[i]->set_nodelay();
                 }
@@ -218,6 +206,7 @@ class NetIOMP {
                     }
                 } else {
                     send_vec((Party)i, send_buffer[i].size(), send_buffer[i]);
+                    send_buffer[i].clear();
                 }
                 /* Clear n_send */
                 n_send[(Party)i] = 0;
@@ -318,6 +307,8 @@ class NetIOMP {
                 std::memcpy(buffer.data() + (n_msgs * BLOCK_SIZE_MIN), tmp.data(), sizeof(Ring) * last_msg_size);
             }
         }
+
+        tmp.clear();
     }
 
     Ring read_one(Party src) {

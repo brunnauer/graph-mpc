@@ -1,12 +1,10 @@
 #pragma once
 
-#include "../message_passing.h"
+#include "../src/graphmpc/mp_protocol.h"
 
-class PiMProtocol : public ProtocolDef {
+class PiMProtocol : public MPProtocol {
    public:
-    PiMProtocol(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t n_bits, size_t n_vertices, size_t n_iterations,
-                bool ssd, bool save_output = false, std::string save_file = "")
-        : ProtocolDef(id, rngs, network, n, n_bits, n_vertices, n_iterations, ssd, save_output, save_file) {}
+    PiMProtocol(ProtocolConfig &conf, std::shared_ptr<io::NetIOMP> &network) : MPProtocol(conf, network) {}
 
     virtual void pre_mp_preprocessing(MPPreprocessing &preproc) {}
 

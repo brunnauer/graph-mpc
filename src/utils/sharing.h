@@ -3,11 +3,8 @@
 #include <omp.h>
 
 #include "../io/netmp.h"
-#include "../setup/stats.h"
 #include "bits.h"
 #include "permutation.h"
-#include "random_generators.h"
-#include "types.h"
 
 namespace share {
 

@@ -8,14 +8,16 @@
 #include <functional>
 #include <iostream>
 #include <nlohmann/json.hpp>
+
 using json = nlohmann::json;
 
-#include "../src/io/netmp.h"
-#include "../src/utils/graph.h"
-#include "../src/utils/random_generators.h"
-#include "comm.h"
+#include "../graphmpc/mp_protocol.h"
+#include "../io/netmp.h"
+#include "../utils/comm.h"
+#include "../utils/graph.h"
+#include "../utils/random_generators.h"
+#include "configs.h"
 #include "input-sharing/input_server.h"
-#include "stats.h"
 
 namespace bpo = boost::program_options;
 
@@ -23,6 +25,10 @@ namespace setup {
 void print_vec(std::vector<Ring> &vec);
 
 bpo::options_description programOptions();
+
+bpo::options_description programOptionsBenchmark();
+
+bpo::options_description programOptionsTest();
 
 bpo::options_description clientProgramOptions();
 
@@ -32,14 +38,18 @@ void setupClient(const bpo::variables_map &opts, int &id, size_t &start_idx, std
                  std::string &input_file, size_t &n_bits, std::string &password);
 
 void setupExecution(const bpo::variables_map &opts, size_t &pid, size_t &nP, size_t &nC, size_t &repeat, size_t &threads, size_t &nodes,
-                    io::NetworkConfig &net_config, uint64_t *seeds_h, uint64_t *seeds_l, bool &save_output, std::string &save_file, bool &ssd,
-                    std::string &input_file, std::string &passwords_file, int &input_port);
+                    NetworkConfig &net_config, uint64_t *seeds_h, uint64_t *seeds_l, bool &save_output, std::string &save_file, bool &ssd,
+                    std::string &input_file, std::string &passwords_file, int &input_port, size_t &depth);
+
+RandomGenerators setupRNGs(const bpo::variables_map &opts);
+
+std::shared_ptr<io::NetIOMP> setupNetwork(const bpo::variables_map &opts);
+
+ProtocolConfig setupProtocol(const bpo::variables_map &opts);
+
+BenchmarkConfig setupBenchmark(const bpo::variables_map &opts);
 
 void run_test(const bpo::variables_map &opts,
-              std::function<void(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n, std::string input_file, Graph &g)> func);
+              std::function<void(Party id, RandomGenerators &rngs, NetworkConfig &net_conf, size_t n, std::string input_file, Graph &g)> func);
 
-void run_benchmark(const bpo::variables_map &opts,
-                   std::function<void(Party id, RandomGenerators &rngs, io::NetworkConfig &net_conf, size_t n, size_t repeat, size_t n_vertices,
-                                      bool save_output, std::string save_file, bool ssd, std::string input_file, Graph &g)>
-                       func);
 }  // namespace setup

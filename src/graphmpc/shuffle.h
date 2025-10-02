@@ -9,8 +9,6 @@
 #include "../io/netmp.h"
 #include "../utils/permutation.h"
 #include "../utils/preprocessings.h"
-#include "../utils/random_generators.h"
-#include "../utils/types.h"
 
 namespace shuffle {
 

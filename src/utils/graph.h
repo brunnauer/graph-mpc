@@ -9,7 +9,6 @@
 #include "../graphmpc/sort.h"
 #include "permutation.h"
 #include "sharing.h"
-#include "types.h"
 
 class Graph {
    public:

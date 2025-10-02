@@ -2,8 +2,6 @@
 
 #include <stdio.h>
 
-#include "../src/utils/types.h"
-
 /**
  * List of macros that compute the specified communication costs in #Ring-elements
  */

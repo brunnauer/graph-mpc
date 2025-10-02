@@ -7,7 +7,6 @@
 
 #include "../graphmpc/mul.h"
 #include "../utils/sharing.h"
-#include "../utils/types.h"
 
 namespace clip {
 /**
