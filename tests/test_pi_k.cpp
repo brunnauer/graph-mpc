@@ -70,7 +70,9 @@ class TestPiK : public Test {
             g.add_list_entry(2, 4, 0);
             g.add_list_entry(4, 2, 0);
         }
-        return g.share_subgraphs(id, rngs, network, bits);
+        Graph g_shared = g.share_subgraphs(id, rngs, network, bits);
+        g_shared.init_mp(id);
+        return g_shared;
     }
 
     virtual void run_assertions(Graph &result) {

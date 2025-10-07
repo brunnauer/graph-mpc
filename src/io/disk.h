@@ -14,11 +14,13 @@ class FileWriter {
    public:
     FileWriter() = default;
 
-    FileWriter(Party id, std::string filename) : id(id), filename(filename), read_idx(0), size(0) {}
+    FileWriter(Party id, std::string filename) : id(id), filename(filename), read_idx(0), _size(0) {}
 
     ~FileWriter() { std::filesystem::remove(filename); }
 
     void reset_idx() { read_idx = 0; }
+
+    size_t size() { return _size; }
 
     void write_shuffle(ShufflePre &shuffle) {
         std::vector<Ring> log(6);
@@ -43,7 +45,7 @@ class FileWriter {
         std::ofstream out(filename, std::ios::binary | std::ios::app);
         if (!out) throw std::runtime_error("Failed to open file for writing.");
         out.write(reinterpret_cast<const char *>(data.data()), data.size() * sizeof(Ring));
-        size += data.size();
+        _size += data.size();
     }
 
     ShufflePre read_shuffle(size_t n, bool repeat = false) {
@@ -86,7 +88,7 @@ class FileWriter {
     }
 
     void print_content() {
-        auto vec = read(size);
+        auto vec = read(_size);
         for (size_t i = 0; i < vec.size(); ++i) {
             if (i != vec.size() - 1) {
                 std::cout << vec[i] << ", ";
@@ -135,5 +137,5 @@ class FileWriter {
     Party id;
     std::string filename;
     size_t read_idx;
-    size_t size;  // n_elems
+    size_t _size;  // n_elems
 };

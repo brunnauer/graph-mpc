@@ -6,7 +6,6 @@
 #include <cassert>
 #include <vector>
 
-#include "../graphmpc/sort.h"
 #include "permutation.h"
 #include "sharing.h"
 
@@ -231,8 +230,6 @@ class Graph {
     }
 
     Graph share_subgraphs(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n_bits) {
-        size_t size_other;
-
         if (id == P0) {
             auto g1 = secret_share_parties(id, rngs, network, n_bits, id);
             auto g2 = secret_share_parties(id, rngs, network, n_bits, P1);

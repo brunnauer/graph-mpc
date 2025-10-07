@@ -40,6 +40,17 @@ class Permutation {
         return p;
     }
 
+    //[[nodiscard]] static std::vector<Ring> random(int size, emp::PRG &rng) {
+    // std::vector<Ring> p(size);
+    // for (int i = 0; i < size; ++i) {
+    // size_t k;
+    // rng.random_data(&k, sizeof(size_t));
+    // k %= (size - i);
+    // std::swap(p[i], p[i + k]);
+    //}
+    // return p;
+    //}
+
     [[nodiscard]] Permutation inverse() {
         std::vector<Ring> inverse_vec(perm_vec.size());
 #pragma omp parallel for if (perm_vec.size() > 10000)
@@ -47,6 +58,15 @@ class Permutation {
             inverse_vec[perm_vec[i]] = i;
         }
         return Permutation(inverse_vec);
+    }
+
+    [[nodiscard]] static const std::vector<Ring> inverse(std::vector<Ring> &perm) {
+        std::vector<Ring> inverse_vec(perm.size());
+#pragma omp parallel for if (perm.size() > 10000)
+        for (size_t i = 0; i < perm.size(); ++i) {
+            inverse_vec[perm[i]] = i;
+        }
+        return inverse_vec;
     }
 
     [[nodiscard]] size_t size() const { return perm_vec.size(); }
@@ -74,6 +94,19 @@ class Permutation {
         for (size_t i = 0; i < perm_vec.size(); ++i) {
             if (perm_vec[i] > perm.perm_vec.size()) throw std::logic_error("Cannot apply secret shared permutation.");
             result[perm_vec[i]] = perm.perm_vec[i];
+        }
+        return result;
+    }
+
+    [[nodiscard]] static std::vector<Ring> chain(std::vector<Ring> &p1, std::vector<Ring> &p2) {
+        if (p1.size() != p2.size()) throw new std::logic_error("Cannot chain two permutations of unequal size.");
+
+        size_t n = p1.size();
+        std::vector<Ring> result(n);
+
+#pragma omp parallel for if (p1.size() > 10000)
+        for (size_t i = 0; i < p1.size(); ++i) {
+            result[i] = p1[p2[i]];
         }
         return result;
     }

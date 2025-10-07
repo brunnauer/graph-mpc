@@ -29,8 +29,10 @@ class Test {
 
     void run(bool parallel = false) {
         MPProtocol *prot = create_protocol();
-        prot->print();
         Graph g = create_graph();
+        prot->set_input(g);
+        prot->print();
+        prot->build();
 
         network->sync();
         size_t bytes_sent_pre = 0;
@@ -38,7 +40,8 @@ class Test {
 
         /* Preprocessing */
         StatsPoint start_pre(*network);
-        prot->mp_preprocess(parallel);
+        // prot->preprocess(parallel);
+        prot->preprocess();
         StatsPoint end_pre(*network);
 
         auto rbench_pre = end_pre - start_pre;
@@ -55,7 +58,8 @@ class Test {
 
         /* Evaluation */
         StatsPoint start_online(*network);
-        prot->mp_evaluate(g, parallel);
+        // prot->evaluate(g, parallel);
+        prot->evaluate();
         StatsPoint end_online(*network);
 
         auto rbench = end_online - start_online;

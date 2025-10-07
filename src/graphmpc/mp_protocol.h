@@ -1,47 +1,110 @@
 #pragma once
 
+#include <cmath>   // std::log2, std::ceil
+#include <memory>  // std::unique_ptr, std::make_unique
+#include <unordered_map>
+#include <vector>
+
 #include "../io/netmp.h"
 #include "../setup/configs.h"
 #include "../utils/graph.h"
-#include "../utils/preprocessings.h"
-#include "message_passing.h"
+#include "add_weights.h"
+#include "bit2a.h"
+#include "compaction.h"
+#include "deduplication.h"
+#include "equals_zero.h"
+#include "function.h"
+#include "gather.h"
+#include "merged_shuffle.h"
+#include "permute.h"
+#include "propagate.h"
+#include "reveal.h"
+#include "shuffle.h"
+#include "unshuffle.h"
+#include "update.h"
+
+struct MPContext {
+    std::unordered_map<Party, std::vector<Ring>> preproc;
+    std::vector<Ring> data_recv;
+    std::vector<Ring> mult_vals;
+    std::vector<Ring> and_vals;
+    std::vector<Ring> shuffle_vals;
+    std::vector<Ring> reveal_vals;
+
+    std::vector<Ring> vtx_order;
+    std::vector<Ring> src_order;
+    std::vector<Ring> dst_order;
+    std::vector<Ring> clear_shuffled_vtx_order;
+    std::vector<Ring> clear_shuffled_src_order;
+    std::vector<Ring> clear_shuffled_dst_order;
+
+    /* Shuffles for Switching Permutations */
+    ShufflePre vtx_order_shuffle;
+    ShufflePre src_order_shuffle;
+    ShufflePre dst_order_shuffle;
+    ShufflePre vtx_src_merge;
+    ShufflePre src_dst_merge;
+    ShufflePre dst_vtx_merge;
+};
+
+struct Wires {
+    std::vector<Ring> mp_data_vtx;
+    std::vector<Ring> mp_data;
+    std::vector<Ring> mp_data_corr;
+    std::vector<Ring> sort_perm;
+    std::vector<Ring> sort_bits;
+    std::vector<Ring> deduplication_perm;
+    std::vector<Ring> deduplication_src;
+    std::vector<Ring> deduplication_dst;
+    std::vector<Ring> deduplication_src_dupl;
+    std::vector<Ring> deduplication_dst_dupl;
+    std::vector<Ring> deduplication_duplicates;
+};
 
 class MPProtocol {
    public:
     MPProtocol(ProtocolConfig &conf, std::shared_ptr<io::NetIOMP> &network)
-        : id(conf.id),
+        : conf(conf),
+          id(conf.id),
           size(conf.size),
           nodes(conf.nodes),
           depth(conf.depth),
-          bits(std::ceil(std::log2(nodes + 2))),
+          bits(static_cast<size_t>(std::ceil(std::log2(static_cast<double>(nodes) + 2.0)))),
           rngs(conf.rngs),
           weights(conf.weights),
           network(network),
-          ssd(conf.ssd) {}
+          ssd(conf.ssd) {
+        ctx.preproc[P0] = {};
+        ctx.preproc[P1] = {};
+        ctx.vtx_order.resize(size);
+        ctx.src_order.resize(size);
+        ctx.dst_order.resize(size);
+        ctx.clear_shuffled_vtx_order.resize(size);
+        ctx.clear_shuffled_src_order.resize(size);
+        ctx.clear_shuffled_dst_order.resize(size);
+        w.mp_data_vtx.resize(size);
+        w.mp_data.resize(size);
+        w.mp_data_corr.resize(size);
+        w.sort_perm.resize(size);
+        w.sort_bits.resize(size);
+        f_queue.resize(1);
+    }
 
-    virtual void pre_mp_preprocessing(MPPreprocessing &preproc) = 0;
+    virtual void build() {
+        pre_mp();
+        build_initialization();
+        build_message_passing();
+        post_mp();
+    }
 
-    virtual void apply_preprocessing(MPPreprocessing &preproc) = 0;
+    virtual void pre_mp() = 0;
+    virtual void apply() = 0;
+    virtual void post_mp() = 0;
 
-    virtual void post_mp_preprocessing(MPPreprocessing &preproc) = 0;
+    void preprocess();
+    void evaluate();
 
-    virtual void pre_mp_evaluation(MPPreprocessing &preproc, Graph &g) = 0;
-
-    virtual void apply_evaluation(MPPreprocessing &preproc, Graph &g, std::vector<Ring> &new_payload) = 0;
-
-    virtual void post_mp_evaluation(MPPreprocessing &preproc, Graph &g) = 0;
-
-    Party id;
-    size_t size, nodes, depth, bits;
-    RandomGenerators rngs;
-    std::vector<Ring> weights;
-    std::shared_ptr<io::NetIOMP> network;
-    bool ssd;
-
-    MPPreprocessing preproc;
-
-    Party recv_shuffle = P0;
-    Party recv_mul = P0;
+    void set_input(Graph &graph) { g = graph; }
 
     void print() {
         std::cout << "----- Protocol Configuration -----" << std::endl;
@@ -54,176 +117,144 @@ class MPProtocol {
         std::cout << std::endl;
     }
 
-    void reset() {
-        preproc = {};
-        rngs.reseed();
-        recv_shuffle = P0;
-        recv_mul = P0;
+   protected:
+    ProtocolConfig conf;
+    Party id;
+    size_t size, nodes, depth, bits;
+    RandomGenerators rngs;
+    std::vector<Ring> weights;
+    std::shared_ptr<io::NetIOMP> network;
+    bool ssd;
+
+    Graph g;
+
+    std::vector<std::vector<std::unique_ptr<Function>>> f_queue;
+    Shuffle *current_shuffle;
+    size_t current_layer = 0;
+
+    MPContext ctx;
+    Wires w;
+
+    Party recv_shuffle = P0;
+    Party recv_mul = P0;
+
+    void online_communication();
+
+    void add_compute_sorts();
+
+    void add_sort(std::vector<std::vector<Ring>> &bit_keys, std::vector<Ring> &output);
+
+    void add_sort_iteration(std::vector<Ring> &perm, std::vector<Ring> &keys, std::vector<Ring> &output);
+
+    void build_initialization();
+
+    void build_message_passing();
+
+    void add_function(std::unique_ptr<Function> func) {
+        auto &layer = f_queue[current_layer];
+        if (is_independent_of_layer(func, layer)) {
+            layer.push_back(std::move(func));
+            return;
+        }
+
+        std::vector<std::unique_ptr<Function>> new_layer;
+        new_layer.push_back(std::move(func));
+        f_queue.push_back(std::move(new_layer));
+        current_layer++;
     }
 
-    Graph benchmark_graph() {
-        Graph g;
-        if (id == P0) {
-            for (size_t i = 0; i < nodes / 2; i++) g.add_list_entry(i + 1, i + 1, 1);
-            for (size_t i = 0; i < (size - nodes) / 2; i++) g.add_list_entry(1, 2, 0);
-        }
-        if (id == P1) {
-            for (size_t i = nodes / 2; i < nodes; i++) g.add_list_entry(i + 1, i + 1, 1);
-            for (size_t i = (size - nodes) / 2; i < size - nodes; i++) g.add_list_entry(1, 2, 0);
-        }
-        return g.share_subgraphs(id, rngs, network, bits);
-    }
-
-    void mp_preprocess(bool parallel = false) {
-        if (id != D) network->recv_buffered(D);
-
-        pre_mp_preprocessing(preproc);
-
-        /* Sort preprocessing */
-        if (preproc.deduplication) {  // TODO: change branch condition
-            sort::get_sort_preprocess(id, rngs, network, size, bits + 2, preproc, recv_shuffle, recv_mul,
-                                      ssd);  // One bit more, as deduplication appends a bit to the end
-            sort::sort_iteration_preprocess(id, rngs, network, size, preproc, recv_shuffle, recv_mul,
-                                            ssd);  // Only one iteration, as dst_sort has almost been completed during deduplication
-        } else {
-            sort::get_sort_preprocess(id, rngs, network, size, bits + 1, preproc, recv_shuffle, recv_mul, ssd);
-            sort::get_sort_preprocess(id, rngs, network, size, bits + 1, preproc, recv_shuffle, recv_mul, ssd);
-        }
-        sort::sort_iteration_preprocess(id, rngs, network, size, preproc, recv_shuffle, recv_mul, ssd);  // vtx_order sort iteration
-
-        /* Apply / Switch Perm Preprocessing */
-        preproc.vtx_order_shuffle = shuffle::get_shuffle(id, rngs, network, size, recv_shuffle);  // Shuffle for applying/switching to vertex order
-        preproc.src_order_shuffle = shuffle::get_shuffle(id, rngs, network, size, recv_shuffle);  // Shuffle for switching to src order
-        preproc.dst_order_shuffle = shuffle::get_shuffle(id, rngs, network, size, recv_shuffle);  // Shuffle for switching to dst order
-
-        preproc.vtx_src_merge = shuffle::get_merged_shuffle(id, rngs, network, size, preproc.vtx_order_shuffle,
-                                                            preproc.src_order_shuffle);  // Merged shuffle to switch between vtx and src order
-        preproc.src_dst_merge = shuffle::get_merged_shuffle(id, rngs, network, size, preproc.src_order_shuffle,
-                                                            preproc.dst_order_shuffle);  // Merged shuffle to swtich from src order to dst order
-        preproc.dst_vtx_merge = shuffle::get_merged_shuffle(id, rngs, network, size, preproc.dst_order_shuffle,
-                                                            preproc.vtx_order_shuffle);  // Merged shuffle to switch from dst order to vtx order
-
-        size_t n_parallel_executions = parallel ? nodes : 1;
-        for (size_t i = 0; i < n_parallel_executions; ++i) {
-            /* Post-MP Preprocessing (clipping) */
-            post_mp_preprocessing(preproc);
-        }
-
-        if (id != D) network->recv_disk.~FileWriter();
-        if (id == D) network->send_all();
-    }
-
-    void run_preparation(Graph &g) {
-        g.init_mp(id);
-
-        /* Run PreMP */
-        pre_mp_evaluation(preproc, g);
-
-        /* Compute the three orders */
-        preproc.src_order = sort::get_sort_evaluate(id, rngs, network, size, preproc, g.src_order_bits, ssd);
-
-        if (preproc.deduplication) {
-            /* One more sort iteration to get dst_order */
-            preproc.dst_order =
-                sort::sort_iteration_evaluate(id, rngs, network, size, preproc.dst_order, preproc, g.dst_order_bits[g.dst_order_bits.size() - 1], ssd);
-        } else {
-            preproc.dst_order = sort::get_sort_evaluate(id, rngs, network, size, preproc, g.dst_order_bits, ssd);
-        }
-
-        preproc.vtx_order = sort::sort_iteration_evaluate(id, rngs, network, size, preproc.src_order, preproc, g.isV_inv, ssd);
-
-        /* Prepare Permutations for apply / switch perm */
-        mp::prepare_permutations(id, rngs, network, size, preproc);
-
-        /* Apply Perm */
-        std::vector<Ring> shuffled_input_share = shuffle::shuffle(id, rngs, network, size, preproc.vtx_order_shuffle, g._data);
-        g._data = preproc.clear_shuffled_vtx_order(shuffled_input_share);
-    }
-
-    void run_message_passing(Graph &g, std::vector<Ring> &data_v, std::vector<Ring> &weights) {
-        for (size_t i = 0; i < depth; ++i) {
-            /* Add current weight only to vertices */
-            if (id == P0 && weights.size() > 0) {
-#pragma omp parallel for if (nodes > 10000)
-                for (size_t j = 0; j < nodes; ++j) data_v[j] += weights[weights.size() - 1 - i];
-            }
-            /* Propagate-1 */
-            auto data_p = mp::propagate_1(data_v, nodes);
-
-            /* Switch Perm from vtx to src order */
-            auto shuffled_data_p = preproc.clear_shuffled_vtx_order.inverse()(data_p);
-            auto double_shuffled_data_p = shuffle::shuffle(id, rngs, network, size, preproc.vtx_src_merge, shuffled_data_p);
-            auto data_src = preproc.clear_shuffled_src_order(double_shuffled_data_p);
-
-            auto shuffled_data_v = preproc.clear_shuffled_vtx_order.inverse()(data_v);
-            auto double_shuffled_data_v = shuffle::shuffle(id, rngs, network, size, preproc.vtx_src_merge, shuffled_data_v);
-            auto data_corr = preproc.clear_shuffled_src_order(double_shuffled_data_v);
-
-            /* Propagate-2 */
-            data_p = mp::propagate_2(data_src, data_corr);
-            auto data_1 = share::reveal_vec(id, network, data_p);
-
-            /* Switch Perm from src to dst order*/
-            shuffled_data_p = preproc.clear_shuffled_src_order.inverse()(data_p);
-            double_shuffled_data_p = shuffle::shuffle(id, rngs, network, size, preproc.src_dst_merge, shuffled_data_p);
-            auto data_dst = preproc.clear_shuffled_dst_order(double_shuffled_data_p);
-
-            /* Gather-1*/
-            data_p = mp::gather_1(data_dst);
-
-            /* Switch Perm from dst to vtx order */
-            shuffled_data_p = preproc.clear_shuffled_dst_order.inverse()(data_p);
-            double_shuffled_data_p = shuffle::shuffle(id, rngs, network, size, preproc.dst_vtx_merge, shuffled_data_p);
-            data_p = preproc.clear_shuffled_vtx_order(double_shuffled_data_p);
-
-            /* Gather-2 */
-            auto update = mp::gather_2(data_p, nodes);
-            auto data_2 = share::reveal_vec(id, network, update);
-
-            /* ApplyV */
-            apply_evaluation(preproc, g, update);
-        }
-    }
-
-    void mp_evaluate(Graph &g, bool parallel) {
-        if (id == D) return;
-
-        run_preparation(g);
-
-        /* Preparing payloads for pi_r if necessary */
-        size_t n_parallel_executions = parallel ? nodes : 1;
-        std::vector<std::vector<Ring>> payloads(n_parallel_executions);
-        for (size_t i = 0; i < n_parallel_executions; ++i) {
-            payloads[i] = g._data;
-            if (parallel) {
-                std::vector<Ring> one(size);
-                one[i] = 1;
-                auto shared_one = share::random_share_secret_vec_2P(id, rngs, one);
-                payloads[i][i] = shared_one[i];
+    bool is_independent_of_layer(const std::unique_ptr<Function> &func, const std::vector<std::unique_ptr<Function>> &layer) {
+        for (const auto &f : layer) {
+            if ((f->output == func->input || f->output == func->input2)) {
+                return false;
             }
         }
+        return true;
+    }
 
-        /* Run message-passing */
-        std::vector<Ring> result_payload(size);
-        for (size_t i = 0; i < n_parallel_executions; ++i) {
-            g._data = payloads[i];
+    void add_shuffle(std::vector<Ring> &input, std::vector<Ring> &output) {
+        auto shuffle_ptr = std::make_unique<Shuffle>(&conf, &ctx.preproc, &ctx.shuffle_vals, &input, &output, recv_shuffle);
+        current_shuffle = shuffle_ptr.get();
+        add_function(std::move(shuffle_ptr));
+    }
 
-            /* Run message passing */
-            run_message_passing(g, g._data, weights);
-            auto data = share::reveal_vec(id, network, g._data);
+    void add_shuffle(std::vector<Ring> &input, std::vector<Ring> &output, ShufflePre &perm_share) {
+        add_function(std::make_unique<Shuffle>(&conf, &ctx.preproc, &ctx.shuffle_vals, &input, &output, recv_shuffle, perm_share));
+    }
 
-            /* Run post-mp (clipping) */
-            post_mp_evaluation(preproc, g);
+    void add_unshuffle(std::vector<Ring> &input, std::vector<Ring> &output) {
+        add_function(std::make_unique<Unshuffle>(&conf, &ctx.preproc, &ctx.shuffle_vals, &input, &output, current_shuffle->perm_share, recv_shuffle));
+    }
 
-            if (parallel) {
-                auto sum = g._data[0];
-                for (size_t k = 1; k < size; k++) sum += g._data[k];
-                result_payload[i] = sum;
-            }
+    void add_compaction(std::vector<Ring> &input, std::vector<Ring> &output) {
+        add_function(std::make_unique<Compaction>(&conf, &ctx.preproc, &ctx.mult_vals, &input, &output, recv_mul));
+    }
+
+    void add_reveal(std::vector<Ring> &input, std::vector<Ring> &output) {
+        f_queue[current_layer].emplace_back(std::make_unique<Reveal>(&conf, &ctx.reveal_vals, &input, &output));
+    }
+
+    void add_permute(std::vector<Ring> &input, std::vector<Ring> &output, std::vector<Ring> &perm, bool inverse = false) {
+        f_queue[current_layer].emplace_back(std::make_unique<Permute>(&conf, &input, &output, &perm, inverse));
+    }
+
+    void add_update(std::vector<Ring> &input, std::vector<Ring> &output) {
+        f_queue[current_layer].emplace_back(std::make_unique<Update>(&conf, &input, &output));
+    }
+
+    void add_equals_zero(std::vector<Ring> &input, std::vector<Ring> &output) {
+        add_function(std::make_unique<EQZ>(&conf, &ctx.preproc, &ctx.and_vals, &input, &output, recv_mul));
+    }
+
+    void add_Bit2A(std::vector<Ring> &input, std::vector<Ring> &output) {
+        add_function(std::make_unique<Bit2A>(&conf, &ctx.preproc, &ctx.mult_vals, &input, &output, recv_mul));
+    }
+
+    void add_deduplication_sub(std::vector<Ring> &vec_p, std::vector<Ring> &vec_dupl) {
+        f_queue[current_layer].emplace_back(std::make_unique<DeduplicationSub>(&conf, &vec_p, &vec_dupl));
+    }
+
+    void add_mul(std::vector<Ring> &x, std::vector<Ring> &y, std::vector<Ring> &output, bool binary = false) {
+        add_function(std::make_unique<Mul>(&conf, &ctx.preproc, &ctx.mult_vals, &x, &y, &output, recv_mul, binary));
+    }
+
+    void add_mul(std::vector<Ring> &x, std::vector<Ring> &y, std::vector<Ring> &output, size_t size, bool binary = false) {
+        add_function(std::make_unique<Mul>(&conf, &ctx.preproc, &ctx.mult_vals, &x, &y, &output, recv_mul, binary, size));
+    }
+
+    void add_deduplication() {
+        w.deduplication_perm.resize(size);
+        w.deduplication_src.resize(size);
+        w.deduplication_dst.resize(size);
+
+        add_sort(g.dst_order_bits, ctx.dst_order);
+        add_update(ctx.dst_order, w.deduplication_perm);
+        for (size_t i = 0; i < g.src_bits().size(); ++i) {
+            add_sort_iteration(w.deduplication_perm, g.src_bits()[i], w.deduplication_perm);
         }
 
-        if (parallel) {
-            g._data = result_payload;
-        }
+        add_shuffle(w.deduplication_perm, w.deduplication_perm);
+        add_reveal(w.deduplication_perm, w.deduplication_perm);
+        repeat_shuffle(g.src(), w.deduplication_src);
+        repeat_shuffle(g.dst(), w.deduplication_dst);
+        add_permute(w.deduplication_src, w.deduplication_src, w.deduplication_perm);
+        add_permute(w.deduplication_dst, w.deduplication_dst, w.deduplication_perm);
+
+        w.deduplication_src_dupl.resize(size - 1);
+        w.deduplication_dst_dupl.resize(size - 1);
+        w.deduplication_duplicates.resize(size - 1);
+
+        add_deduplication_sub(w.deduplication_src, w.deduplication_src_dupl);
+        add_deduplication_sub(w.deduplication_dst, w.deduplication_dst_dupl);
+
+        add_equals_zero(w.deduplication_src_dupl, w.deduplication_src_dupl);
+        add_equals_zero(w.deduplication_dst_dupl, w.deduplication_dst_dupl);
+        add_mul(w.deduplication_src_dupl, w.deduplication_dst_dupl, w.deduplication_duplicates, size - 1, true);
+        add_Bit2A(w.deduplication_duplicates, w.deduplication_duplicates);
+
+        /* TODO: Handle insert */
+        add_permute(w.deduplication_duplicates, w.deduplication_duplicates, w.deduplication_perm, true);
+        add_unshuffle(w.deduplication_duplicates, w.deduplication_duplicates);
+        /* TODO: Handle push_back */
     }
 };

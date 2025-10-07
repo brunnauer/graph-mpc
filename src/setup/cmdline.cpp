@@ -212,144 +212,35 @@ void setup::setupClient(const bpo::variables_map &opts, int &id, size_t &start_i
     password = opts["password"].as<std::string>();
 }
 
-void setup::setupExecution(const bpo::variables_map &opts, size_t &pid, size_t &nP, size_t &nC, size_t &repeat, size_t &threads, size_t &nodes,
-                           NetworkConfig &net_conf, uint64_t *seeds_h, uint64_t *seeds_l, bool &save_output, std::string &save_file, bool &ssd,
-                           std::string &input_file, std::string &passwords_file, int &input_port, size_t &depth) {
-    save_output = false;
-    if (opts.count("output") != 0) {
-        save_output = true;
-        save_file = opts["output"].as<std::string>();
+void setup::setupServer(const bpo::variables_map &opts) {
+    size_t id = opts["pid"].as<size_t>();
+    size_t nodes = opts["nodes"].as<size_t>();
+    size_t bits = std::ceil(std::log2(nodes + 2));
+    int input_port = opts["input-port"].as<int>();
+    if (id == 1 && input_port == 4242) {
+        input_port++;
     }
+    size_t clients = opts["clients"].as<size_t>();
 
-    if (opts.count("input") != 0) {
-        input_file = opts["input"].as<std::string>();
-    }
-
+    std::string passwords_file;
     if (opts.count("passwords") != 0) {
         passwords_file = opts["passwords"].as<std::string>();
     }
 
-    pid = opts["pid"].as<size_t>();
-    nP = opts["num_parties"].as<size_t>();
-    nC = opts["clients"].as<size_t>();
-    threads = opts["threads"].as<size_t>();
-    nodes = opts["nodes"].as<size_t>();
-    depth = opts["depth"].as<size_t>();
-    seeds_h[0] = opts["seed_self_h"].as<uint64_t>();
-    seeds_h[1] = opts["seed_all_h"].as<uint64_t>();
-    seeds_h[2] = opts["seed_01_h"].as<uint64_t>();
-    seeds_h[3] = opts["seed_02_h"].as<uint64_t>();
-    seeds_h[4] = opts["seed_12_h"].as<uint64_t>();
-    seeds_h[5] = opts["seed_D0_unshuffle_h"].as<uint64_t>();
-    seeds_h[6] = opts["seed_D1_unshuffle_h"].as<uint64_t>();
-    seeds_h[7] = opts["seed_D0_comp_h"].as<uint64_t>();
-    seeds_h[8] = opts["seed_D1_comp_h"].as<uint64_t>();
-    seeds_l[0] = opts["seed_self_l"].as<uint64_t>();
-    if (seeds_l[0] == 0) {
-        // Default value, but as this is own seed, make unique per party
-        seeds_l[0] = pid;
-    }
-    seeds_l[1] = opts["seed_all_l"].as<uint64_t>();
-    seeds_l[2] = opts["seed_01_l"].as<uint64_t>();
-    seeds_l[3] = opts["seed_02_l"].as<uint64_t>();
-    seeds_l[4] = opts["seed_12_l"].as<uint64_t>();
-    seeds_l[5] = opts["seed_D0_unshuffle_l"].as<uint64_t>();
-    seeds_l[6] = opts["seed_D1_unshuffle_l"].as<uint64_t>();
-    seeds_l[7] = opts["seed_D0_comp_l"].as<uint64_t>();
-    seeds_l[8] = opts["seed_D1_comp_l"].as<uint64_t>();
+    Graph g;
 
-    repeat = opts["repeat"].as<size_t>();
-    auto port = opts["port"].as<int>();
-
-    auto certificate_path = opts["certificate_path"].as<std::string>();
-    auto private_key_path = opts["private_key_path"].as<std::string>();
-    auto trusted_cert_path = opts["trusted_cert_path"].as<std::string>();
-    size_t BLOCK_SIZE = opts["BLOCK_SIZE"].as<size_t>();
-
-    std::vector<std::string> IP;
-    bool localhost;
-    if (opts["localhost"].as<bool>()) {
-        localhost = true;
-
-    } else {
-        std::cout << "Reading net-config file." << std::endl;
-        std::ifstream fnet(opts["net-config"].as<std::string>());
-        if (!fnet.good()) {
-            fnet.close();
-            throw std::runtime_error("Could not open network config file");
+    if (clients > 0) {
+        if (id != D) {
+            std::cout << "Using pwds from " << passwords_file << std::endl;
+            InputServer server((Party)id, passwords_file, std::to_string(input_port), clients, bits);  // Server expecting two clients
+            std::cout << "Awaiting " << clients << " packets at " << "localhost:" << std::to_string(input_port) << std::endl;
+            server.connect_clients();
+            g = server.recv_graph();
+            g.print();
         }
-        json netdata;
-        fnet >> netdata;
-        fnet.close();
-
-        IP.resize(3);
-        for (size_t i = 0; i < 3; ++i) {
-            IP[i] = netdata[i].get<std::string>();
-        }
-        localhost = false;
-    }
-    // net_conf = NetworkConfig(id, parties, BLOCK_SIZE, port, IP, certificate_path, private_key_path, trusted_cert_path, localhost);
-
-    ssd = opts["ssd"].as<bool>();
-    input_port = opts["input-port"].as<int>();
-    if (pid == 1 && input_port == 4242) {
-        input_port++;
     }
 }
 
-void setup::run_test(const bpo::variables_map &opts,
-                     std::function<void(Party id, RandomGenerators &rngs, NetworkConfig &net_conf, size_t n, std::string input_file, Graph &g)> func) {
-    // auto n = opts["size"].as<size_t>();
-
-    // size_t pid, nP, nC, repeat, threads, shuffle_num, nodes, depth;
-    // json output_data;
-    // std::shared_ptr<NetworkConfig> net_conf = nullptr;
-    // uint64_t seeds_h[9];
-    // uint64_t seeds_l[9];
-    // bool save_output;
-    // std::string save_file;
-    // bool ssd;
-    // std::string input_file;
-    // std::string passwords_file;
-    // int input_port;
-
-    // setup::setupExecution(opts, pid, nP, nC, repeat, threads, nodes, net_conf, seeds_h, seeds_l, save_output, save_file, ssd, input_file, passwords_file,
-    // input_port, depth);
-
-    // size_t n_bits = std::ceil(std::log2(nodes));
-    // output_data["details"] = {{"pid", pid},     {"seeds_h", seeds_h}, {"seeds_l", seeds_l},   {"repeat", repeat},      {"size", n},
-    //{"bits", n_bits}, {"nodes", nodes},     {"edges", (n - nodes)}, {"SSD utilization", ssd}};
-
-    // std::cout << "--- Details ---\n";
-    // for (const auto &[key, value] : output_data["details"].items()) {
-    // std::cout << key << ": " << value << "\n";
-    //}
-    // std::cout << std::endl;
-
-    // Party id = (pid == 0) ? P0 : ((pid == 1) ? P1 : D);
-    // RandomGenerators rngs(seeds_h, seeds_l);
-    // Graph g;
-
-    // if (nC > 0) {
-    // if (id != D) {
-    // std::cout << "Using pwds from " << passwords_file << std::endl;
-    // InputServer server(id, passwords_file, std::to_string(input_port), nC, n_bits);  // Server expecting two clients
-    // std::cout << "Awaiting " << nC << " packets at " << "localhost:" << std::to_string(input_port) << std::endl;
-    // server.connect_clients();
-    // g = server.recv_graph();
-    // g.print();
-    //}
-    //} else if (input_file != "" && id != D) {
-    // try {
-    // g = Graph::parse(input_file);
-    //} catch (const std::exception &e) {
-    // std::cerr << e.what() << std::endl;
-    // return;
-    //}
-    //}
-
-    // func(id, rngs, *net_conf, n, input_file, g);
-}
 RandomGenerators setup::setupRNGs(const bpo::variables_map &opts) {
     std::vector<uint64_t> seeds_h(9);
     std::vector<uint64_t> seeds_l(9);
@@ -397,7 +288,6 @@ std::shared_ptr<io::NetIOMP> setup::setupNetwork(const bpo::variables_map &opts)
         localhost = true;
 
     } else {
-        std::cout << "Reading net-config file." << std::endl;
         std::ifstream fnet(opts["net-config"].as<std::string>());
         if (!fnet.good()) {
             fnet.close();

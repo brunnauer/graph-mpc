@@ -1,67 +1,71 @@
-#include "message_passing.h"
+#include "mp_protocol.h"
 
-void mp::prepare_permutations(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc) {
+void MPProtocol::add_compute_sorts() {
+    add_sort(g.src_order_bits, ctx.src_order);
+
+    // if (deduplication) {
+    ///* One more sort iteration to get dst_order */
+    add_sort_iteration(ctx.dst_order, g.dst_order_bits[g.dst_order_bits.size() - 1], ctx.dst_order);
+    //} else {
+    // add_sort(g.dst_order_bits, ctx.dst_order);
+    //}
+    add_sort_iteration(ctx.src_order, g.isV_inv, ctx.vtx_order);
+}
+
+void MPProtocol::build_initialization() {
+    add_compute_sorts();
     /* Prepare vtx order */
-    auto shuffled_vtx_order = shuffle::shuffle(id, rngs, network, n, preproc.vtx_order_shuffle, preproc.vtx_order);
-    auto clear_vtx_order = share::reveal_perm(id, network, shuffled_vtx_order);
-    preproc.clear_shuffled_vtx_order = clear_vtx_order;
+    add_shuffle(ctx.vtx_order, ctx.vtx_order, ctx.vtx_order_shuffle);
+    add_shuffle(ctx.src_order, ctx.src_order, ctx.src_order_shuffle);
+    add_shuffle(ctx.dst_order, ctx.dst_order, ctx.dst_order_shuffle);
 
-    /* Prepare src order */
-    auto shuffled_src_order = shuffle::shuffle(id, rngs, network, n, preproc.src_order_shuffle, preproc.src_order);
-    preproc.clear_shuffled_src_order = share::reveal_perm(id, network, shuffled_src_order);
+    add_reveal(ctx.vtx_order, ctx.clear_shuffled_vtx_order);
+    add_reveal(ctx.src_order, ctx.clear_shuffled_src_order);
+    add_reveal(ctx.dst_order, ctx.clear_shuffled_dst_order);
 
-    /* Prepare dst order */
-    auto shuffled_dst_order = shuffle::shuffle(id, rngs, network, n, preproc.dst_order_shuffle, preproc.dst_order);
-    preproc.clear_shuffled_dst_order = share::reveal_perm(id, network, shuffled_dst_order);
+    std::vector<Ring> shuffled_input_share;
+    add_shuffle(g._data, g._data, ctx.vtx_order_shuffle);
+    add_permute(g._data, w.mp_data_vtx, ctx.clear_shuffled_vtx_order);
 }
 
-/* Input vector needs to be in vertex order */
-std::vector<Ring> mp::propagate_1(std::vector<Ring> &input_vector, size_t n_vertices) {
-    std::vector<Ring> data(input_vector.size());
-    for (size_t i = n_vertices - 1; i > 0; --i) {
-        data[i] = input_vector[i] - input_vector[i - 1];
-    }
-    data[0] = input_vector[0];
-    for (size_t i = n_vertices; i < data.size(); ++i) {
-        data[i] = input_vector[i];
-    }
-    return data;
-}
+void MPProtocol::build_message_passing() {
+    add_update(w.mp_data_vtx, w.mp_data);
+    for (size_t i = 0; i < depth; ++i) {
+        f_queue[f_queue.size() - 1].emplace_back(std::make_unique<AddWeights>(&conf, &w.mp_data, &weights, i));
 
-/* Input vector needs to be in source order */
-std::vector<Ring> mp::propagate_2(std::vector<Ring> &input_vector, std::vector<Ring> &correction_vector) {
-    std::vector<Ring> data(input_vector.size());
-    Ring sum = 0;
-    for (size_t i = 0; i < data.size(); ++i) {
-        sum += input_vector[i];
-        data[i] = sum - correction_vector[i];
-    }
-    return data;
-}
+        /* Propagate-1 */
+        f_queue[f_queue.size() - 1].emplace_back(std::make_unique<Propagate_1>(&conf, &w.mp_data, &w.mp_data));
 
-/* Input vector needs to be in destination order */
-std::vector<Ring> mp::gather_1(std::vector<Ring> &input_vector) {
-    std::vector<Ring> data(input_vector.size());
-    Ring sum = 0;
-    for (size_t i = 0; i < data.size(); ++i) {
-        sum += input_vector[i];
-        data[i] = sum;
-    }
-    return data;
-}
+        /* Switch Perm from vtx to src order */
+        add_permute(w.mp_data, w.mp_data, ctx.clear_shuffled_vtx_order, true);
+        add_shuffle(w.mp_data, w.mp_data, ctx.vtx_src_merge);
+        add_permute(w.mp_data, w.mp_data, ctx.clear_shuffled_src_order);
 
-/* Input vector needs to be in vertex order */
-std::vector<Ring> mp::gather_2(std::vector<Ring> &input_vector, size_t n_vertices) {
-    std::vector<Ring> data(input_vector.size());
-    Ring sum = 0;
+        add_permute(w.mp_data, w.mp_data_corr, ctx.clear_shuffled_vtx_order, true);
+        add_shuffle(w.mp_data_corr, w.mp_data_corr, ctx.vtx_src_merge);
+        add_permute(w.mp_data_corr, w.mp_data_corr, ctx.clear_shuffled_src_order);
 
-    for (size_t i = 0; i < n_vertices; ++i) {
-        data[i] = input_vector[i] - sum;
-        sum += data[i];
+        /* Propagate-2 */
+        f_queue[f_queue.size() - 1].emplace_back(std::make_unique<Propagate_2>(&conf, &w.mp_data, &w.mp_data_corr, &w.mp_data));
+
+        /* Switch Perm from src to dst order */
+        add_permute(w.mp_data, w.mp_data, ctx.clear_shuffled_src_order, true);
+        add_shuffle(w.mp_data, w.mp_data, ctx.src_dst_merge);
+        add_permute(w.mp_data, w.mp_data, ctx.clear_shuffled_dst_order);
+
+        /* Gather-1 */
+        f_queue[f_queue.size() - 1].emplace_back(std::make_unique<Gather_1>(&conf, &w.mp_data, &w.mp_data));
+
+        /* Switch Perm from dst to vtx order */
+        add_permute(w.mp_data, w.mp_data, ctx.clear_shuffled_dst_order, true);
+        add_shuffle(w.mp_data, w.mp_data, ctx.dst_vtx_merge);
+        add_permute(w.mp_data, w.mp_data, ctx.clear_shuffled_vtx_order);
+
+        /* Gather-2 */
+        f_queue[f_queue.size() - 1].emplace_back(std::make_unique<Gather_2>(&conf, &w.mp_data, &w.mp_data));
+
+        apply();
+        /* ApplyV */
+        // apply_evaluation(preproc, g, update);
     }
-#pragma omp_parallel for if (data.size() - num_v > 1000)
-    for (size_t i = n_vertices; i < data.size(); ++i) {
-        data[i] = 0;
-    }
-    return data;
 }

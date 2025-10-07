@@ -279,33 +279,45 @@ class NetIOMP {
         }
     }
 
+    void recv_vec(Party src, size_t n_elems, FileWriter &disk) {
+        // const size_t BLOCK_SIZE_MIN = std::min(CHUNK_SIZE, BLOCK_SIZE);
+        size_t n_msgs = n_elems / BLOCK_SIZE;
+        size_t last_msg_size = n_elems % BLOCK_SIZE;
+
+        std::vector<Ring> tmp(BLOCK_SIZE);
+        for (size_t i = 0; i < n_msgs; i++) {
+            recv(src, tmp.data(), sizeof(Ring) * BLOCK_SIZE);
+            recv_disk.write_vec({tmp.begin(), tmp.end()});
+        }
+
+        /* Receive last elements */
+        if (last_msg_size > 0) {
+            tmp.resize(last_msg_size);
+            recv(src, tmp.data(), sizeof(Ring) * last_msg_size);
+            recv_disk.write_vec({tmp.begin(), tmp.end()});
+        }
+
+        tmp.clear();
+    }
+
     void recv_vec(Party src, size_t n_elems, std::vector<Ring> &buffer) {
         const size_t BLOCK_SIZE_MIN = std::min(CHUNK_SIZE, BLOCK_SIZE);
         size_t n_msgs = n_elems / BLOCK_SIZE_MIN;
         size_t last_msg_size = n_elems % BLOCK_SIZE_MIN;
 
-        if (!(ssd && src == D)) buffer.resize(n_elems);
+        buffer.resize(n_elems);
 
         auto &tmp = tmp_buf[src];
 
         for (size_t i = 0; i < n_msgs; i++) {
             recv(src, tmp.data(), sizeof(Ring) * BLOCK_SIZE_MIN);
-            if (ssd && src == D) {
-                recv_disk.write_vec({tmp.begin(), tmp.begin() + BLOCK_SIZE_MIN});
-            } else {
-                std::memcpy(buffer.data() + (i * BLOCK_SIZE_MIN), tmp.data(), sizeof(Ring) * BLOCK_SIZE_MIN);
-            }
+            std::memcpy(buffer.data() + (i * BLOCK_SIZE_MIN), tmp.data(), sizeof(Ring) * BLOCK_SIZE_MIN);
         }
 
         /* Receive last elements */
         if (last_msg_size > 0) {
             recv(src, tmp.data(), sizeof(Ring) * last_msg_size);
-
-            if (ssd && src == D) {
-                recv_disk.write_vec({tmp.begin(), tmp.begin() + last_msg_size});
-            } else {
-                std::memcpy(buffer.data() + (n_msgs * BLOCK_SIZE_MIN), tmp.data(), sizeof(Ring) * last_msg_size);
-            }
+            std::memcpy(buffer.data() + (n_msgs * BLOCK_SIZE_MIN), tmp.data(), sizeof(Ring) * last_msg_size);
         }
 
         tmp.clear();

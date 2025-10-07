@@ -1,28 +1,36 @@
 add_library(GraphMPC_lib STATIC)
 target_sources(GraphMPC_lib 
     PRIVATE 
-    #examples/pi_k.h
-    #examples/pi_m.h
-    #examples/pi_r.h
     utils/bits.h
+    utils/comm.h
     utils/graph.h
-    utils/preprocessings.h
     utils/permutation.h
+    utils/preprocessings.h
     utils/random_generators.h
     utils/sharing.cpp
-    utils/types.h
-    utils/comm.h
     utils/stats.cpp
-    io/netmp.h
+    utils/types.h
     io/disk.h
-    graphmpc/clip.cpp
-    graphmpc/compaction.cpp
-    graphmpc/deduplication.cpp
+    io/netmp.h
+    graphmpc/add_weights.h
+    graphmpc/bit2a.h
+    graphmpc/compaction.h
+    graphmpc/deduplication.h
+    graphmpc/equals_zero.h
+    graphmpc/flip.h
+    graphmpc/function.h
+    graphmpc/gather.h
+    graphmpc/merged_shuffle.h
     graphmpc/message_passing.cpp
-    graphmpc/mp_protocol.h
-    graphmpc/mul.cpp
-    graphmpc/shuffle.cpp
+    graphmpc/mp_protocol.cpp
+    graphmpc/mul.h
+    graphmpc/permute.h
+    graphmpc/propagate.h
+    graphmpc/reveal.h
+    graphmpc/shuffle.h
     graphmpc/sort.cpp
+    graphmpc/unshuffle.h
+    graphmpc/update.h
     setup/cmdline.cpp
     setup/configs.h
     setup/input-sharing/input_client.h

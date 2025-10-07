@@ -10,7 +10,7 @@ using json = nlohmann::json;
 
 class Benchmark {
    public:
-    Benchmark(bpo::variables_map &opts, MPProtocol *prot) : prot(prot), network(prot->network) {
+    Benchmark(bpo::variables_map &opts, MPProtocol *prot, std::shared_ptr<io::NetIOMP> network) : prot(prot), network(network) {
         auto conf = setup::setupBenchmark(opts);
         input_file = conf.input_file;
         save_file = conf.save_file;
@@ -43,7 +43,7 @@ class Benchmark {
 
             /* Preprocessing */
             StatsPoint start_pre(*network);
-            prot->mp_preprocess(parallel);
+            prot->preprocess(parallel);
             StatsPoint end_pre(*network);
 
             auto rbench_pre = end_pre - start_pre;
@@ -60,7 +60,7 @@ class Benchmark {
 
             /* Evaluation */
             StatsPoint start_online(*network);
-            prot->mp_evaluate(g, parallel);
+            prot->evaluate(g, parallel);
             StatsPoint end_online(*network);
 
             auto rbench = end_online - start_online;

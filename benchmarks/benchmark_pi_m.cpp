@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
         auto conf = setup::setupProtocol(opts);
 
         auto protocol = PiMProtocol(conf, network);
-        auto benchmark = Benchmark(opts, &protocol);
+        auto benchmark = Benchmark(opts, &protocol, network);
 
         benchmark.run(true);
 

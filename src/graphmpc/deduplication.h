@@ -1,14 +1,18 @@
 #pragma once
 
-#include "../utils/graph.h"
-#include "../utils/permutation.h"
-#include "../utils/preprocessings.h"
-#include "clip.h"
-#include "shuffle.h"
-#include "sort.h"
+#include "function.h"
 
-void deduplication_preprocess(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, size_t n_bits, MPPreprocessing &preproc,
-                              Party &recv_shuffle, Party &recv_mul, bool ssd = false);
+class DeduplicationSub : public Function {
+   public:
+    DeduplicationSub(ProtocolConfig *conf, std::vector<Ring> *vec_p, std::vector<Ring> *vec_dupl) : Function(conf, {}, {}, vec_p, vec_dupl) {}
 
-void deduplication_evaluate(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, MPPreprocessing &preproc, Graph &g,
-                            bool ssd = false);
+    void preprocess() override {}
+
+    void evaluate_send() override {}
+
+    void evaluate_recv() override {
+        for (size_t i = 1; i < size; ++i) {
+            output->at(i - 1) = input->at(i) - input->at(i - 1);
+        }
+    }
+};
