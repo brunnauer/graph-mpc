@@ -68,7 +68,7 @@ class TestPiM : public Test {
         g.add_list_entry(4, 2, 0);
 
         Graph g_shared = g.secret_share_parties(id, rngs, network, bits, P0);
-
+        g_shared.init_mp(id);
         return g_shared;
     }
 
@@ -76,10 +76,10 @@ class TestPiM : public Test {
         if (id != D) {
             result.print();
 
-            assert(result._data[0] == 31030096);  // 3 of length 1, 10 of length 2, 30 of length 3,  96 of length 4
-            assert(result._data[1] == 41036100);  // 4 of length 1, 10 of length 2, 36 of length 3, 100 of length 4
-            assert(result._data[2] == 31030096);  // 3 of length 1, 10 of length 2, 30 of length 3,  96 of length 4
-            assert(result._data[3] == 20820072);  // 2 of length 1,  8 of length 2, 20 of length 3,  72 of length 4
+            assert(result.data[0] == 31030096);  // 3 of length 1, 10 of length 2, 30 of length 3,  96 of length 4
+            assert(result.data[1] == 41036100);  // 4 of length 1, 10 of length 2, 36 of length 3, 100 of length 4
+            assert(result.data[2] == 31030096);  // 3 of length 1, 10 of length 2, 30 of length 3,  96 of length 4
+            assert(result.data[3] == 20820072);  // 2 of length 1,  8 of length 2, 20 of length 3,  72 of length 4
         }
     }
 };

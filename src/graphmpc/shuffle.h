@@ -109,7 +109,6 @@ class Shuffle : public Function {
                     D0_idx++;
                     D1_idx++;
                 }
-
                 auto &P0_buf = preproc_vals->at(P0);
                 P0_buf.insert(P0_buf.end(), D0.begin(), D0.end());
                 auto &P1_buf = preproc_vals->at(P1);
@@ -117,7 +116,11 @@ class Shuffle : public Function {
                 break;
             }
             case P0: {
-                D0 = read_preproc(P0_recv_size);
+                if (ssd) {
+                    D0 = shuffles_disk->read(P0_recv_size);
+                } else {
+                    D0 = read_preproc(P0_recv_size);
+                }
                 if (recv == P0) {
                     /* Receive pi_0_p */
                     std::vector<Ring> perm_vec(size);
@@ -137,7 +140,11 @@ class Shuffle : public Function {
                 break;
             }
             case P1: {
-                D1 = read_preproc(P1_recv_size);
+                if (ssd) {
+                    D1 = shuffles_disk->read(P1_recv_size);
+                } else {
+                    D1 = read_preproc(P1_recv_size);
+                }
                 if (recv == P1) {
                     /* Receive pi_1_p */
                     std::vector<Ring> perm_vec(size);
@@ -164,8 +171,6 @@ class Shuffle : public Function {
     }
 
     void evaluate_send() override {
-        if (id == D) return;
-
         std::vector<Ring> t(size);
         std::vector<Ring> R;
         Permutation perm;
@@ -248,7 +253,6 @@ class Shuffle : public Function {
     bool ssd;
 
     FileWriter *shuffles_disk;
-    FileWriter *repeat_disk;
 
     bool is_null(std::vector<Ring> &vec) {
         for (auto &elem : vec) {

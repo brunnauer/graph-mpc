@@ -96,7 +96,7 @@ void test_observation_2_4() {
     std::vector<Ring> a = std::vector<Ring>(n_elems);
     std::iota(a.begin(), a.end(), 0); /* 0, 1, 2, 3, ... */
 
-    auto left = Permutation(pi(sigma.get_perm_vec()));
+    auto left = Permutation(pi(sigma.perm_vec));
     auto right = (sigma * pi.inverse());
 
     assert(left == right);

@@ -111,6 +111,8 @@ class MPProtocol {
     virtual void apply() = 0;
     virtual void post_mp() = 0;
 
+    virtual void add_compute_sorts();  // Can be overwritten
+
     void preprocess();
     void evaluate();
 
@@ -172,8 +174,6 @@ class MPProtocol {
     Party recv_mul = P0;
 
     void online_communication();
-
-    void add_compute_sorts();
 
     void add_sort(std::vector<std::vector<Ring>> &bit_keys, std::vector<Ring> &output, size_t bits);
 

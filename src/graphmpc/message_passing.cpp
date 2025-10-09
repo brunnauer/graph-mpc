@@ -2,14 +2,8 @@
 
 /* Case deduplication */
 void MPProtocol::add_compute_sorts() {
-    add_sort(g.src_order_bits, ctx.src_order, bits + 2);
-
-    // if (deduplication) {
-    ///* One more sort iteration to get dst_order */
-    add_sort_iteration(ctx.dst_order, g.dst_order_bits[g.dst_order_bits.size() - 1], ctx.dst_order);
-    //} else {
-    // add_sort(g.dst_order_bits, ctx.dst_order);
-    //}
+    add_sort(g.src_order_bits, ctx.src_order, bits + 1);
+    add_sort(g.dst_order_bits, ctx.dst_order, bits + 1);
     add_sort_iteration(ctx.src_order, g.isV_inv, ctx.vtx_order);
 }
 

@@ -36,7 +36,7 @@ class MergedShuffle : public Shuffle {
                 Permutation pi = pi_share->pi_0 * pi_share->pi_1;
                 Permutation omega = omega_share->pi_0 * omega_share->pi_1;
 
-                Permutation merged = pi(omega.get_perm_vec());
+                Permutation merged = pi(omega.perm_vec);
 
                 Permutation sigma_0 = Permutation::random(size, rngs->rng_D0());
                 Permutation sigma_1_p = Permutation::random(size, rngs->rng_D1());
@@ -44,8 +44,8 @@ class MergedShuffle : public Shuffle {
                 Permutation sigma_0_p = sigma_1_p.inverse() * merged;
                 Permutation sigma_1 = sigma_0.inverse() * merged;
 
-                sigma_0_p_vec = sigma_0_p.get_perm_vec();
-                sigma_1_vec = sigma_1.get_perm_vec();
+                sigma_0_p_vec = sigma_0_p.perm_vec;
+                sigma_1_vec = sigma_1.perm_vec;
 
                 perm_share->pi_0 = sigma_0;
                 perm_share->pi_1 = sigma_1;

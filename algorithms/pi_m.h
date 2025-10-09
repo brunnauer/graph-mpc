@@ -6,15 +6,9 @@ class PiMProtocol : public MPProtocol {
    public:
     PiMProtocol(ProtocolConfig &conf, std::shared_ptr<io::NetIOMP> &network) : MPProtocol(conf, network) {}
 
-    virtual void pre_mp_preprocessing(MPPreprocessing &preproc) {}
+    void pre_mp() override {}
 
-    virtual void apply_preprocessing(MPPreprocessing &preproc) {}
+    void apply() override {}
 
-    virtual void post_mp_preprocessing(MPPreprocessing &preproc) {}
-
-    virtual void pre_mp_evaluation(MPPreprocessing &preproc, Graph &g) {}
-
-    virtual void apply_evaluation(MPPreprocessing &preproc, Graph &g, std::vector<Ring> &new_data) { g.data = new_data; }
-
-    virtual void post_mp_evaluation(MPPreprocessing &preproc, Graph &g) {}
+    void post_mp() override {}
 };

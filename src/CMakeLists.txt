@@ -5,9 +5,9 @@ target_sources(GraphMPC_lib
     utils/comm.h
     utils/graph.h
     utils/permutation.h
-    utils/preprocessings.h
     utils/random_generators.h
     utils/sharing.cpp
+    utils/shuffle_preproc.h
     utils/stats.cpp
     utils/types.h
     io/disk.h

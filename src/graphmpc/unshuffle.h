@@ -12,58 +12,47 @@ class Unshuffle : public Shuffle {
         std::vector<Ring> B_0(size);
         std::vector<Ring> B_1(size);
 
-        switch (id) {
-            case D: {
-                /* Sampling 1: R_0, R_1*/
-                std::vector<Ring> R_0, R_1;
-                Ring rand;
+        if (id == D) {
+            /* Sampling 1: R_0, R_1*/
+            std::vector<Ring> R_0, R_1;
+            Ring rand;
 
-                for (size_t i = 0; i < size; ++i) {
-                    rngs->rng_D0_unshuffle().random_data(&rand, sizeof(Ring));
-                    R_0.push_back(rand);
-                }
+            for (size_t i = 0; i < size; ++i) {
+                rngs->rng_D0_unshuffle().random_data(&rand, sizeof(Ring));
+                R_0.push_back(rand);
+            }
 
-                for (size_t i = 0; i < size; ++i) {
-                    rngs->rng_D1_unshuffle().random_data(&rand, sizeof(Ring));
-                    R_1.push_back(rand);
-                }
+            for (size_t i = 0; i < size; ++i) {
+                rngs->rng_D1_unshuffle().random_data(&rand, sizeof(Ring));
+                R_1.push_back(rand);
+            }
 
-                /* Compute B_0, B_1 */
-                Ring R;
-                rngs->rng_self().random_data(&R, sizeof(Ring));
+            /* Compute B_0, B_1 */
+            Ring R;
+            rngs->rng_self().random_data(&R, sizeof(Ring));
 
-                Permutation pi_inv = (perm_share->pi_0 * perm_share->pi_1).inverse();
+            Permutation pi_inv = (perm_share->pi_0 * perm_share->pi_1).inverse();
 
-                B_0 = pi_inv(R_1);
-                B_1 = pi_inv(R_0);
+            B_0 = pi_inv(R_1);
+            B_1 = pi_inv(R_0);
 
 #pragma omp parallel for if (size > 10000)
-                for (size_t i = 0; i < B_0.size(); ++i) B_0[i] -= R;
+            for (size_t i = 0; i < B_0.size(); ++i) B_0[i] -= R;
 
 #pragma omp parallel for if (size > 10000)
-                for (size_t i = 0; i < B_1.size(); ++i) B_1[i] += R;
+            for (size_t i = 0; i < B_1.size(); ++i) B_1[i] += R;
 
-                preproc_vals->at(P0).insert(preproc_vals->at(P0).end(), B_0.begin(), B_0.end());
-                preproc_vals->at(P1).insert(preproc_vals->at(P1).end(), B_1.begin(), B_1.end());
+            preproc_vals->at(P0).insert(preproc_vals->at(P0).end(), B_0.begin(), B_0.end());
+            preproc_vals->at(P1).insert(preproc_vals->at(P1).end(), B_1.begin(), B_1.end());
 
-                return;
+            return;
+        } else {
+            if (ssd) {
+                unshuffle = unshuffles_disk->read(size);
+            } else {
+                unshuffle = read_preproc(size);
             }
-            case P0: {
-                B_0 = read_preproc(size);
-                if (ssd)
-                    unshuffles_disk->write_vec(B_0);
-                else
-                    unshuffle = B_0;
-                return;
-            }
-            case P1: {
-                B_1 = read_preproc(size);
-                if (ssd)
-                    unshuffles_disk->write_vec(B_1);
-                else
-                    unshuffle = B_1;
-                return;
-            }
+            return;
         }
     }
 

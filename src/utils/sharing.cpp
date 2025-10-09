@@ -70,43 +70,6 @@ std::vector<Ring> share::random_share_vec_3P(Party id, RandomGenerators &rngs, s
     }
 }
 
-std::vector<Ring> share::random_share_secret_vec_3P(Party id, RandomGenerators &rngs, std::shared_ptr<io::NetIOMP> network, size_t n, std::vector<Ring> &secret,
-                                                    Party &recv, bool binary) {
-    if (id == D) {
-        assert(secret.size() == n);
-        std::vector<Ring> share_0(n);
-        std::vector<Ring> share_1(n);
-
-        if (recv == P1) {
-            for (size_t i = 0; i < n; ++i) rngs.rng_D0_comp().random_data(&share_0[i], sizeof(Ring));
-        }
-        if (recv == P0) {
-            for (size_t i = 0; i < n; ++i) rngs.rng_D1_comp().random_data(&share_0[i], sizeof(Ring));
-        }
-
-        if (binary) {
-            for (size_t i = 0; i < n; ++i) share_1[i] = (secret[i] ^ share_0[i]);
-        } else {
-            for (size_t i = 0; i < n; ++i) share_1[i] = (secret[i] - share_0[i]);
-        }
-
-        network->add_send(recv, share_1);
-        return secret;
-    } else if (id == recv) {
-        std::vector<Ring> share = network->read(D, n);
-        return share;
-    } else {
-        std::vector<Ring> share(n);
-        if (id == P0) {
-            for (size_t i = 0; i < n; ++i) rngs.rng_D0_comp().random_data(&share[i], sizeof(Ring));
-        }
-        if (id == P1) {
-            for (size_t i = 0; i < n; ++i) rngs.rng_D1_comp().random_data(&share[i], sizeof(Ring));
-        }
-        return share;
-    }
-}
-
 std::vector<Ring> share::reveal_vec(Party id, std::shared_ptr<io::NetIOMP> network, std::vector<Ring> &share) {
     std::vector<Ring> result(share.size());
 
@@ -164,7 +127,6 @@ std::vector<Ring> share::reveal_vec_bin(Party id, std::shared_ptr<io::NetIOMP> n
 }
 
 Permutation share::reveal_perm(Party id, std::shared_ptr<io::NetIOMP> network, Permutation &share) {
-    auto perm_vec = share.get_perm_vec();
-    std::vector<Ring> revealed_perm_vec = reveal_vec(id, network, perm_vec);
+    std::vector<Ring> revealed_perm_vec = reveal_vec(id, network, share.perm_vec);
     return Permutation(revealed_perm_vec);
 }

@@ -8,7 +8,7 @@
 #include <iostream>
 #include <sstream>
 
-#include "../utils/preprocessings.h"
+#include "../utils/shuffle_preproc.h"
 
 class FileWriter {
    public:
@@ -33,10 +33,10 @@ class FileWriter {
 
         write_vec(log);
 
-        if (shuffle.pi_0.not_null()) write_vec(shuffle.pi_0.get_perm_vec());
-        if (shuffle.pi_1.not_null()) write_vec(shuffle.pi_1.get_perm_vec());
-        if (shuffle.pi_0_p.not_null()) write_vec(shuffle.pi_0_p.get_perm_vec());
-        if (shuffle.pi_1_p.not_null()) write_vec(shuffle.pi_1_p.get_perm_vec());
+        if (shuffle.pi_0.not_null()) write_vec(shuffle.pi_0.perm_vec);
+        if (shuffle.pi_1.not_null()) write_vec(shuffle.pi_1.perm_vec);
+        if (shuffle.pi_0_p.not_null()) write_vec(shuffle.pi_0_p.perm_vec);
+        if (shuffle.pi_1_p.not_null()) write_vec(shuffle.pi_1_p.perm_vec);
         if (shuffle.B.size() > 0) write_vec(shuffle.B);
         if (shuffle.R.size() > 0) write_vec(shuffle.R);
     }

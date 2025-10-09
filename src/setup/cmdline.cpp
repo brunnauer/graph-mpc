@@ -283,7 +283,6 @@ std::shared_ptr<io::NetIOMP> setup::setupNetwork(const bpo::variables_map &opts)
     auto private_key_path = opts["private_key_path"].as<std::string>();
     auto trusted_cert_path = opts["trusted_cert_path"].as<std::string>();
     size_t BLOCK_SIZE = opts["BLOCK_SIZE"].as<size_t>();
-    bool ssd = opts["ssd"].as<bool>();
 
     std::vector<std::string> IP;
     bool localhost;
@@ -308,7 +307,7 @@ std::shared_ptr<io::NetIOMP> setup::setupNetwork(const bpo::variables_map &opts)
     }
 
     NetworkConfig net_conf = {id, parties, BLOCK_SIZE, port, IP, certificate_path, private_key_path, trusted_cert_path, localhost};
-    return std::make_shared<io::NetIOMP>(net_conf, ssd);
+    return std::make_shared<io::NetIOMP>(net_conf);
 }
 
 ProtocolConfig setup::setupProtocol(const bpo::variables_map &opts) {

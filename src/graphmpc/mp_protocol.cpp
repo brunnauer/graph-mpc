@@ -4,7 +4,7 @@ void MPProtocol::preprocess() {
     if (id != D) {
         size_t n_recv;
         network->recv(D, &n_recv, sizeof(size_t));
-        std::cout << "Receiving " << n_recv << " preprocessing values." << std::endl;
+        // std::cout << "Receiving " << n_recv << " preprocessing values." << std::endl;
         network->recv_vec(D, n_recv, ctx.preproc.at(id));
     }
 
@@ -21,7 +21,7 @@ void MPProtocol::preprocess() {
         for (auto &party : {P0, P1}) {
             auto &data_send = ctx.preproc.at(party);
             size_t n_send = data_send.size();
-            std::cout << "Sending " << n_send << " preprocessing values." << std::endl;
+            // std::cout << "Sending " << n_send << " preprocessing values." << std::endl;
             network->send(party, &n_send, sizeof(size_t));
             network->send_vec(party, n_send, data_send);
         }
