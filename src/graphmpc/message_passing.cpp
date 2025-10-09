@@ -24,7 +24,6 @@ void MPProtocol::build_initialization() {
 }
 
 void MPProtocol::build_message_passing() {
-    add_update(w.mp_data_vtx, w.mp_data);
     for (size_t i = 0; i < depth; ++i) {
         f_queue[f_queue.size() - 1].emplace_back(std::make_unique<AddWeights>(&conf, &w.mp_data, &weights, i));
 
@@ -62,8 +61,5 @@ void MPProtocol::build_message_passing() {
         f_queue[f_queue.size() - 1].emplace_back(std::make_unique<Gather_2>(&conf, &w.mp_data, &w.mp_data));
 
         apply();
-        /* ApplyV */
-        // apply_evaluation(preproc, g, update);
     }
-    add_update(w.mp_data, g.data);
 }

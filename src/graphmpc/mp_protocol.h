@@ -8,11 +8,14 @@
 #include "../io/netmp.h"
 #include "../setup/configs.h"
 #include "../utils/graph.h"
+#include "add.h"
 #include "add_weights.h"
 #include "bit2a.h"
 #include "compaction.h"
+#include "construct_payload.h"
 #include "deduplication.h"
 #include "equals_zero.h"
+#include "flip.h"
 #include "function.h"
 #include "gather.h"
 #include "merged_shuffle.h"
@@ -39,7 +42,6 @@ struct MPContext {
     std::vector<Ring> clear_shuffled_src_order;
     std::vector<Ring> clear_shuffled_dst_order;
 
-    /* Shuffles for Switching Permutations */
     ShufflePre vtx_order_shuffle;
     ShufflePre src_order_shuffle;
     ShufflePre dst_order_shuffle;
@@ -49,9 +51,11 @@ struct MPContext {
 };
 
 struct Wires {
+    std::vector<std::vector<Ring>> mp_data_parallel;
     std::vector<Ring> mp_data_vtx;
     std::vector<Ring> mp_data;
     std::vector<Ring> mp_data_corr;
+    std::vector<Ring> mp_buf;
     std::vector<Ring> sort_perm;
     std::vector<Ring> sort_bits;
     std::vector<Ring> sort_next_perm;
@@ -100,20 +104,33 @@ class MPProtocol {
         initialize_shuffle(ctx.dst_vtx_merge);
     }
 
-    virtual void build() {
-        pre_mp();
-        build_initialization();
-        build_message_passing();
-        post_mp();
-    }
-
     virtual void pre_mp() = 0;
     virtual void apply() = 0;
     virtual void post_mp() = 0;
 
     virtual void add_compute_sorts();  // Can be overwritten
 
+    void build() {
+        pre_mp();
+        build_initialization();
+        if (w.mp_data_parallel.size() > 0) {
+            for (size_t i = 0; i < w.mp_data_parallel.size(); ++i) {
+                add_update(w.mp_data_parallel[i], w.mp_data);
+                build_message_passing();
+                add_update(w.mp_data, w.mp_data_parallel[i]);
+            }
+        } else {
+            add_update(w.mp_data_vtx, w.mp_data);
+            build_message_passing();
+        }
+        post_mp();
+        add_update(w.mp_data, g.data);
+    }
+
+    void build_message_passing();
+
     void preprocess();
+
     void evaluate();
 
     void set_input(Graph &graph) { g = graph; }
@@ -180,8 +197,6 @@ class MPProtocol {
     void add_sort_iteration(std::vector<Ring> &perm, std::vector<Ring> &keys, std::vector<Ring> &output);
 
     void build_initialization();
-
-    void build_message_passing();
 
     void add_function(std::unique_ptr<Function> func) {
         auto &layer = f_queue[current_layer];
@@ -280,6 +295,16 @@ class MPProtocol {
         f_queue[current_layer].emplace_back(std::make_unique<PushBack>(&conf, &keys, &vec));
     }
 
+    void add_flip(std::vector<Ring> &input, std::vector<Ring> &output) { f_queue[current_layer].emplace_back(std::make_unique<Flip>(&conf, &input, &output)); }
+
+    void add_add(std::vector<Ring> &input1, std::vector<Ring> &input2, std::vector<Ring> &output) {
+        f_queue[current_layer].emplace_back(std::make_unique<Add>(&conf, &input1, &input2, &output));
+    }
+
+    void add_construct_payload(std::vector<std::vector<Ring>> &payloads, std::vector<Ring> &output) {
+        f_queue[current_layer].emplace_back(std::make_unique<ConstructPayload>(&conf, &payloads, &output));
+    }
+
     void add_deduplication() {
         w.deduplication_perm.resize(size);
         w.deduplication_src.resize(size);
@@ -325,7 +350,29 @@ class MPProtocol {
         add_unshuffle(w.deduplication_duplicates, w.deduplication_duplicates);
         add_push_back(g.src_order_bits, w.deduplication_duplicates);
         add_push_back(g.dst_order_bits, w.deduplication_duplicates);
-        /* TODO: Handle push_back */
+    }
+
+    void add_clip() {
+        for (size_t i = 0; i < w.mp_data_parallel.size(); ++i) {
+            std::vector<Ring> &wire = w.mp_data;
+            if (w.mp_data_parallel.size() == 0) {
+                add_equals_zero(wire, wire, size, 0);
+                add_equals_zero(wire, wire, size, 1);
+                add_equals_zero(wire, wire, size, 2);
+                add_equals_zero(wire, wire, size, 3);
+                add_equals_zero(wire, wire, size, 4);
+                add_Bit2A(wire, wire, size);
+                add_flip(wire, wire);
+            } else {
+                add_equals_zero(w.mp_data_parallel[i], w.mp_data_parallel[i], size, 0);
+                add_equals_zero(w.mp_data_parallel[i], w.mp_data_parallel[i], size, 1);
+                add_equals_zero(w.mp_data_parallel[i], w.mp_data_parallel[i], size, 2);
+                add_equals_zero(w.mp_data_parallel[i], w.mp_data_parallel[i], size, 3);
+                add_equals_zero(w.mp_data_parallel[i], w.mp_data_parallel[i], size, 4);
+                add_Bit2A(w.mp_data_parallel[i], w.mp_data_parallel[i], size);
+                add_flip(w.mp_data_parallel[i], w.mp_data_parallel[i]);
+            }
+        }
     }
 
     void initialize_shuffle(ShufflePre &perm_share) {

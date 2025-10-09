@@ -2,15 +2,16 @@ cmake_minimum_required(VERSION 3.10)
 
 project(GraphMPC VERSION 0.1 LANGUAGES C CXX)
 
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Debug)
-endif()
+#if(NOT CMAKE_BUILD_TYPE)
+  #set(CMAKE_BUILD_TYPE Release)
+#endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
+#set(CMAKE_CXX_FLAGS_DEBUG "-g")
 #set(CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+#set(CMAKE_C_FLAGS "-march=native -maes -mrdseed -lntl -g")
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS}")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 

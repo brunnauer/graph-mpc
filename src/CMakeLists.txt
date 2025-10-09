@@ -13,8 +13,10 @@ target_sources(GraphMPC_lib
     io/disk.h
     io/netmp.h
     graphmpc/add_weights.h
+    graphmpc/add.h
     graphmpc/bit2a.h
     graphmpc/compaction.h
+    graphmpc/construct_payload.h
     graphmpc/deduplication.h
     graphmpc/equals_zero.h
     graphmpc/flip.h

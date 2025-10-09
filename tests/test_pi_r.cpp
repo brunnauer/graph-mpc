@@ -17,7 +17,7 @@ class TestPiR : public Test {
         bits = std::ceil(std::log2(nodes + 2));
         size_t size = 17;
 
-        ProtocolConfig conf = {id, size, nodes, depth, rngs, ssd};
+        ProtocolConfig conf = {id, size, nodes, depth, rngs, ssd, weights};
         PiRProtocol *prot = new PiRProtocol(conf, network);
 
         return prot;
@@ -73,8 +73,8 @@ class TestPiR : public Test {
             g.add_list_entry(4, 2, 0);
         }
         Graph g_shared = g.share_subgraphs(id, rngs, network, bits);
-        g_shared._n_vertices = 5;  // For helper
-
+        g_shared.n_vertices = 5;  // For helper
+        g_shared.init_mp(id);
         return g_shared;
     }
 
@@ -82,11 +82,11 @@ class TestPiR : public Test {
         if (id != D) {
             result.print();
 
-            assert(result._data[0] == 4);
-            assert(result._data[1] == 5);
-            assert(result._data[2] == 3);
-            assert(result._data[3] == 4);
-            assert(result._data[4] == 3);
+            assert(result.data[0] == 4);
+            assert(result.data[1] == 5);
+            assert(result.data[2] == 3);
+            assert(result.data[3] == 4);
+            assert(result.data[4] == 3);
         }
     }
 };

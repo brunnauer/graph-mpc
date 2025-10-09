@@ -44,84 +44,19 @@ void MPProtocol::evaluate() {
         for (size_t f_idx = 0; f_idx < level.size(); ++f_idx) {
             auto &f = level[f_idx];
             if (f) f->evaluate_recv();
-            if (level_idx == 61 && f_idx == 6) {  // propagate-1
+            if (level_idx == 31 && f_idx == 3) {  // mp_data = mp_data_parallel[0]
                 auto data_rev = share::reveal_vec(id, network, w.mp_data);
                 std::cout << "";
             }
-            if (level_idx == 63 && f_idx == 2) {  // propagate-2
+            if (level_idx == 35 && f_idx == 2) {  // gather-2 first iteration
                 auto data_rev = share::reveal_vec(id, network, w.mp_data);
                 std::cout << "";
             }
-            if (level_idx == 64 && f_idx == 2) {  // gather-1
+            if (level_idx == 35 && f_idx == 5) {  // mp_data += mp_data
                 auto data_rev = share::reveal_vec(id, network, w.mp_data);
                 std::cout << "";
             }
-            if (level_idx == 65 && f_idx == 2) {  // gather-2
-                auto data_rev = share::reveal_vec(id, network, w.mp_data);
-                std::cout << "";
-            }
-            if (level_idx == 65 && f_idx == 4) {  // AddWeights
-                auto data_rev = share::reveal_vec(id, network, w.mp_data);
-                auto data_corr_rev = share::reveal_vec(id, network, w.mp_data_corr);
-                std::cout << "";
-            }
-            if (level_idx == 65 && f_idx == 5) {  // update mp_data -> mp_data_corr
-                auto data_rev = share::reveal_vec(id, network, w.mp_data);
-                std::cout << "";
-            }
-            if (level_idx == 65 && f_idx == 6) {  // propagate-1
-                auto data_rev = share::reveal_vec(id, network, w.mp_data);
-                std::cout << "";
-            }
-            if (level_idx == 67 && f_idx == 2) {  // propagate-2
-                auto data_rev = share::reveal_vec(id, network, w.mp_data);
-                std::cout << "";
-            }
-            if (level_idx == 68 && f_idx == 2) {  // gather-1
-                auto data_rev = share::reveal_vec(id, network, w.mp_data);
-                std::cout << "";
-            }
-            if (level_idx == 69 && f_idx == 2) {  // gather-2
-                auto data_rev = share::reveal_vec(id, network, w.mp_data);
-                std::cout << "";
-            }
-            if (level_idx == 69 && f_idx == 4) {  // AddWeights
-                auto data_rev = share::reveal_vec(id, network, w.mp_data);
-                std::cout << "";
-            }
-            if (level_idx == 69 && f_idx == 6) {  // propagate-1
-                auto data_rev = share::reveal_vec(id, network, w.mp_data);
-                std::cout << "";
-            }
-            if (level_idx == 71 && f_idx == 2) {  // propagate-2
-                auto data_rev = share::reveal_vec(id, network, w.mp_data);
-                std::cout << "";
-            }
-            if (level_idx == 72 && f_idx == 2) {  // gather-1
-                auto data_rev = share::reveal_vec(id, network, w.mp_data);
-                std::cout << "";
-            }
-            if (level_idx == 73 && f_idx == 2) {  // gather-2
-                auto data_rev = share::reveal_vec(id, network, w.mp_data);
-                std::cout << "";
-            }
-            if (level_idx == 73 && f_idx == 4) {  // AddWeights
-                auto data_rev = share::reveal_vec(id, network, w.mp_data);
-                std::cout << "";
-            }
-            if (level_idx == 73 && f_idx == 6) {  // propagate-1
-                auto data_rev = share::reveal_vec(id, network, w.mp_data);
-                std::cout << "";
-            }
-            if (level_idx == 75 && f_idx == 2) {  // propagate-2
-                auto data_rev = share::reveal_vec(id, network, w.mp_data);
-                std::cout << "";
-            }
-            if (level_idx == 76 && f_idx == 2) {  // gather-1
-                auto data_rev = share::reveal_vec(id, network, w.mp_data);
-                std::cout << "";
-            }
-            if (level_idx == 77 && f_idx == 2) {  // gather-2
+            if (level_idx == 39 && f_idx == 2) {  // gather-2 second iteration
                 auto data_rev = share::reveal_vec(id, network, w.mp_data);
                 std::cout << "";
             }
