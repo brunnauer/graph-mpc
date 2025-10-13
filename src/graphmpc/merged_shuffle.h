@@ -24,11 +24,11 @@ class MergedShuffle : public Shuffle {
 
                 /* Sampling 1: R_0 / R_1 */
                 for (int i = 0; i < size; ++i) {
-                    rngs->rng_D0().random_data(&R_0[i], sizeof(Ring));
+                    rngs->rng_D0_send().random_data(&R_0[i], sizeof(Ring));
                 }
 
                 for (int i = 0; i < size; ++i) {
-                    rngs->rng_D1().random_data(&R_1[i], sizeof(Ring));
+                    rngs->rng_D1_send().random_data(&R_1[i], sizeof(Ring));
                 }
 
                 /* Computing / Sampling merged permutation */
@@ -37,8 +37,8 @@ class MergedShuffle : public Shuffle {
 
                 Permutation merged = pi(omega.perm_vec);
 
-                Permutation sigma_0 = Permutation::random(size, rngs->rng_D0());
-                Permutation sigma_1_p = Permutation::random(size, rngs->rng_D1());
+                Permutation sigma_0 = Permutation::random(size, rngs->rng_D0_recv());
+                Permutation sigma_1_p = Permutation::random(size, rngs->rng_D1_recv());
 
                 Permutation sigma_0_p = sigma_1_p.inverse() * merged;
                 Permutation sigma_1 = sigma_0.inverse() * merged;

@@ -18,11 +18,11 @@ class Unshuffle : public Shuffle {
             std::vector<Ring> R_1(size);
 
             for (size_t i = 0; i < size; ++i) {
-                rngs->rng_D0_unshuffle().random_data(&R_0[i], sizeof(Ring));
+                rngs->rng_D0_send().random_data(&R_0[i], sizeof(Ring));
             }
 
             for (size_t i = 0; i < size; ++i) {
-                rngs->rng_D1_unshuffle().random_data(&R_1[i], sizeof(Ring));
+                rngs->rng_D1_send().random_data(&R_1[i], sizeof(Ring));
             }
 
             /* Compute B_0, B_1 */
@@ -65,9 +65,9 @@ class Unshuffle : public Shuffle {
         /* Sampling 1: R_0 / R_1 */
         for (size_t i = 0; i < size; ++i) {
             if (id == P0)
-                rngs->rng_D0_unshuffle().random_data(&R[i], sizeof(Ring));
+                rngs->rng_D0_send().random_data(&R[i], sizeof(Ring));
             else
-                rngs->rng_D1_unshuffle().random_data(&R[i], sizeof(Ring));
+                rngs->rng_D1_send().random_data(&R[i], sizeof(Ring));
         }
 
 #pragma omp parallel for if (size > 10000)

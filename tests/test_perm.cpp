@@ -35,9 +35,9 @@ void test_plausibility() {
 
 void test_associativity() {
     const int n_elems = 100;
-    Permutation pi_0 = Permutation::random(n_elems, rngs.rng_D0());
-    Permutation pi_1 = Permutation::random(n_elems, rngs.rng_D1());
-    Permutation pi_2 = Permutation::random(n_elems, rngs.rng_D1());
+    Permutation pi_0 = Permutation::random(n_elems, rngs.rng_D0_recv());
+    Permutation pi_1 = Permutation::random(n_elems, rngs.rng_D1_recv());
+    Permutation pi_2 = Permutation::random(n_elems, rngs.rng_D1_recv());
 
     std::vector<Ring> test_table = std::vector<Ring>(n_elems);
     std::iota(test_table.begin(), test_table.end(), 0);
@@ -50,7 +50,7 @@ void test_associativity() {
 
 void test_inverse() {
     const int n_elems = 100;
-    Permutation perm = Permutation::random(n_elems, rngs.rng_D());
+    Permutation perm = Permutation::random(n_elems, rngs.rng_self());
     Permutation inv = perm.inverse();
 
     std::vector<Ring> test_vec = std::vector<Ring>(n_elems);
@@ -61,9 +61,9 @@ void test_inverse() {
 
 void test_pi_1_p() {
     const int n_elems = 100;
-    Permutation pi_0 = Permutation::random(n_elems, rngs.rng_D0());
-    Permutation pi_1 = Permutation::random(n_elems, rngs.rng_D1());
-    Permutation pi_0_p = Permutation::random(n_elems, rngs.rng_D0());
+    Permutation pi_0 = Permutation::random(n_elems, rngs.rng_D0_recv());
+    Permutation pi_1 = Permutation::random(n_elems, rngs.rng_D1_recv());
+    Permutation pi_0_p = Permutation::random(n_elems, rngs.rng_D0_recv());
 
     Permutation pi_1_p = pi_0_p.inverse() * (pi_0 * pi_1);
     assert((pi_0_p * pi_1_p == pi_0 * pi_1));
@@ -71,8 +71,8 @@ void test_pi_1_p() {
 
 void test_fact_2_3() {
     const int n_elems = 100;
-    Permutation pi = Permutation::random(n_elems, rngs.rng_D());
-    Permutation sigma = Permutation::random(n_elems, rngs.rng_D());
+    Permutation pi = Permutation::random(n_elems, rngs.rng_self());
+    Permutation sigma = Permutation::random(n_elems, rngs.rng_self());
 
     std::vector<Ring> a = std::vector<Ring>(n_elems);
     std::iota(a.begin(), a.end(), 0); /* 0, 1, 2, 3, ... */
@@ -90,8 +90,8 @@ void test_fact_2_3() {
 
 void test_observation_2_4() {
     const int n_elems = 100;
-    Permutation pi = Permutation::random(n_elems, rngs.rng_D());
-    Permutation sigma = Permutation::random(n_elems, rngs.rng_D());
+    Permutation pi = Permutation::random(n_elems, rngs.rng_self());
+    Permutation sigma = Permutation::random(n_elems, rngs.rng_self());
 
     std::vector<Ring> a = std::vector<Ring>(n_elems);
     std::iota(a.begin(), a.end(), 0); /* 0, 1, 2, 3, ... */

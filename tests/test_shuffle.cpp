@@ -47,9 +47,9 @@ void test_shuffle(bpo::variables_map &opts) {
         network->recv_vec(D, n_recv, preproc.at(id));
     }
     shuffle.preprocess();
+    shuffle2.preprocess();
     repeat.preprocess();
     unshuffle.preprocess();
-    shuffle2.preprocess();
     merged.preprocess();
     if (id == D) {
         for (auto &party : {P0, P1}) {
@@ -63,9 +63,10 @@ void test_shuffle(bpo::variables_map &opts) {
     }
 
     shuffle.evaluate_send();
+    shuffle2.evaluate_send();
     repeat.evaluate_send();
-    size_t n_send = 20;
-    size_t n_recv = 20;
+    size_t n_send = 30;
+    size_t n_recv = 30;
     if (id == P0) {
         network->send_vec(P1, n_send, online_vals);
         network->recv_vec(P1, n_recv, online_vals);
@@ -76,21 +77,20 @@ void test_shuffle(bpo::variables_map &opts) {
         online_vals = data_recv;
     }
     shuffle.evaluate_recv();
+    shuffle2.evaluate_recv();
     repeat.evaluate_recv();
 
-    shuffle2.evaluate_send();
-    n_send = 10;
-    n_recv = 10;
-    if (id == P0) {
-        network->send_vec(P1, n_send, online_vals);
-        network->recv_vec(P1, n_recv, online_vals);
-    } else {
-        std::vector<Ring> data_recv(n_recv);
-        network->recv_vec(P0, n_recv, data_recv);
-        network->send_vec(P0, n_send, online_vals);
-        online_vals = data_recv;
-    }
-    shuffle2.evaluate_recv();
+    // n_send = 10;
+    // n_recv = 10;
+    // if (id == P0) {
+    // network->send_vec(P1, n_send, online_vals);
+    // network->recv_vec(P1, n_recv, online_vals);
+    //} else {
+    // std::vector<Ring> data_recv(n_recv);
+    // network->recv_vec(P0, n_recv, data_recv);
+    // network->send_vec(P0, n_send, online_vals);
+    // online_vals = data_recv;
+    //}
 
     unshuffle.evaluate_send();
     n_send = 10;

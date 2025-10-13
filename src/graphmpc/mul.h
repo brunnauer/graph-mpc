@@ -99,10 +99,10 @@ class Mul : public Function {
             std::vector<Ring> share_1(size);
 
             if (recv == P1) {
-                for (size_t i = 0; i < size; ++i) rngs->rng_D0_comp().random_data(&share_0[i], sizeof(Ring));
+                for (size_t i = 0; i < size; ++i) rngs->rng_D0_prep().random_data(&share_0[i], sizeof(Ring));
             }
             if (recv == P0) {
-                for (size_t i = 0; i < size; ++i) rngs->rng_D1_comp().random_data(&share_0[i], sizeof(Ring));
+                for (size_t i = 0; i < size; ++i) rngs->rng_D1_prep().random_data(&share_0[i], sizeof(Ring));
             }
 
             if (binary) {
@@ -119,10 +119,10 @@ class Mul : public Function {
         } else {
             std::vector<Ring> share(size);
             if (id == P0) {
-                for (size_t i = 0; i < size; ++i) rngs->rng_D0_comp().random_data(&share[i], sizeof(Ring));
+                for (size_t i = 0; i < size; ++i) rngs->rng_D0_prep().random_data(&share[i], sizeof(Ring));
             }
             if (id == P1) {
-                for (size_t i = 0; i < size; ++i) rngs->rng_D1_comp().random_data(&share[i], sizeof(Ring));
+                for (size_t i = 0; i < size; ++i) rngs->rng_D1_prep().random_data(&share[i], sizeof(Ring));
             }
             return share;
         }

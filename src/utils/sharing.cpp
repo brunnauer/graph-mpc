@@ -43,20 +43,20 @@ std::vector<Ring> share::random_share_vec_3P(Party id, RandomGenerators &rngs, s
     switch (id) {
         case P0: {
             std::vector<Ring> share(n);
-            for (size_t i = 0; i < n; ++i) rngs.rng_D0_comp().random_data(&share[i], sizeof(Ring));
+            for (size_t i = 0; i < n; ++i) rngs.rng_D0_prep().random_data(&share[i], sizeof(Ring));
             return share;
         }
         case P1: {
             std::vector<Ring> share(n);
-            for (size_t i = 0; i < n; ++i) rngs.rng_D1_comp().random_data(&share[i], sizeof(Ring));
+            for (size_t i = 0; i < n; ++i) rngs.rng_D1_prep().random_data(&share[i], sizeof(Ring));
             return share;
         }
         case D: {
             std::vector<Ring> share_1(n);
             std::vector<Ring> share_2(n);
             std::vector<Ring> sum(n);
-            for (size_t i = 0; i < n; ++i) rngs.rng_D0_comp().random_data(&share_1[i], sizeof(Ring));
-            for (size_t i = 0; i < n; ++i) rngs.rng_D1_comp().random_data(&share_2[i], sizeof(Ring));
+            for (size_t i = 0; i < n; ++i) rngs.rng_D0_prep().random_data(&share_1[i], sizeof(Ring));
+            for (size_t i = 0; i < n; ++i) rngs.rng_D1_prep().random_data(&share_2[i], sizeof(Ring));
 
             if (binary) {
 #pragma omp parallel for if (n > 10000)

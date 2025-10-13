@@ -40,11 +40,11 @@ class Shuffle : public Function {
                 std::vector<Ring> R_1(size);
 
                 for (size_t i = 0; i < size; ++i) {
-                    rngs->rng_D0().random_data(&R_0[i], sizeof(Ring));
+                    rngs->rng_D0_send().random_data(&R_0[i], sizeof(Ring));
                 }
 
                 for (size_t i = 0; i < size; ++i) {
-                    rngs->rng_D1().random_data(&R_1[i], sizeof(Ring));
+                    rngs->rng_D1_send().random_data(&R_1[i], sizeof(Ring));
                 }
 
                 Permutation pi_0;
@@ -54,16 +54,16 @@ class Shuffle : public Function {
 
                 /* Sampling 2: pi_0_p, pi_0, pi_1*/
                 if (recv == P1) {
-                    pi_0_p = Permutation::random(size, rngs->rng_D0());
-                    pi_0 = Permutation::random(size, rngs->rng_D0());
-                    pi_1 = Permutation::random(size, rngs->rng_D1());
+                    pi_0_p = Permutation::random(size, rngs->rng_D0_send());
+                    pi_0 = Permutation::random(size, rngs->rng_D0_recv());
+                    pi_1 = Permutation::random(size, rngs->rng_D1_send());
 
                     Permutation pi_0_p_inv = pi_0_p.inverse();
                     pi_1_p = (pi_0 * pi_1 * pi_0_p_inv);
                 } else {
-                    pi_1 = Permutation::random(size, rngs->rng_D1());
-                    pi_1_p = Permutation::random(size, rngs->rng_D1());
-                    pi_0 = Permutation::random(size, rngs->rng_D0());
+                    pi_1 = Permutation::random(size, rngs->rng_D1_send());
+                    pi_1_p = Permutation::random(size, rngs->rng_D1_recv());
+                    pi_0 = Permutation::random(size, rngs->rng_D0_recv());
 
                     Permutation pi_1_p_inv = pi_1_p.inverse();
                     pi_0_p = (pi_1_p_inv * pi_0 * pi_1);
@@ -179,9 +179,9 @@ class Shuffle : public Function {
             /* Sampling 1: R_0 / R_1 */
             for (size_t i = 0; i < size; ++i) {
                 if (id == P0)
-                    rngs->rng_D0().random_data(&R[i], sizeof(Ring));
+                    rngs->rng_D0_send().random_data(&R[i], sizeof(Ring));
                 else if (id == P1)
-                    rngs->rng_D1().random_data(&R[i], sizeof(Ring));
+                    rngs->rng_D1_send().random_data(&R[i], sizeof(Ring));
             }
             perm_share->R = R;
             perm_share->has_R = true;
@@ -195,7 +195,7 @@ class Shuffle : public Function {
             if (perm_share->has_pi_0_p) {
                 perm = perm_share->pi_0_p;
             } else {
-                perm = Permutation::random(size, rngs->rng_D0());
+                perm = Permutation::random(size, rngs->rng_D0_send());
                 perm_share->pi_0_p = perm;
                 perm_share->has_pi_0_p = true;
             }
@@ -204,10 +204,9 @@ class Shuffle : public Function {
             if (perm_share->has_pi_1) {
                 perm = perm_share->pi_1;
             } else {
-                perm = Permutation::random(size, rngs->rng_D1());
+                perm = Permutation::random(size, rngs->rng_D1_send());
                 perm_share->pi_1 = perm;
                 perm_share->has_pi_1 = true;
-                ;
             }
         }
 
@@ -231,7 +230,7 @@ class Shuffle : public Function {
             if (perm_share->has_pi_0) {
                 perm = perm_share->pi_0;
             } else {
-                perm = Permutation::random(size, rngs->rng_D0());
+                perm = Permutation::random(size, rngs->rng_D0_recv());
                 perm_share->pi_0 = perm;
                 perm_share->has_pi_0 = true;
             }
@@ -239,7 +238,7 @@ class Shuffle : public Function {
             if (perm_share->has_pi_1_p) {
                 perm = perm_share->pi_1_p;
             } else {
-                perm = Permutation::random(size, rngs->rng_D1());
+                perm = Permutation::random(size, rngs->rng_D1_recv());
                 perm_share->pi_1_p = perm;
                 perm_share->has_pi_1_p = true;
             }
