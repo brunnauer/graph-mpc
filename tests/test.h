@@ -31,8 +31,8 @@ class Test {
         MPProtocol *prot = create_protocol();
         Graph g = create_graph();
         prot->set_input(g);
-        prot->print();
         prot->build();
+        prot->print();
 
         network->sync();
         size_t bytes_sent_pre = 0;
@@ -40,7 +40,6 @@ class Test {
 
         /* Preprocessing */
         StatsPoint start_pre(*network);
-        // prot->preprocess(parallel);
         prot->preprocess();
         StatsPoint end_pre(*network);
 
@@ -58,7 +57,6 @@ class Test {
 
         /* Evaluation */
         StatsPoint start_online(*network);
-        // prot->evaluate(g, parallel);
         prot->evaluate();
         StatsPoint end_online(*network);
 
@@ -85,6 +83,4 @@ class Test {
         result = result.reveal(id, network);
         run_assertions(result);
     }
-
-    void print() {}
 };

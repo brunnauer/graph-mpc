@@ -11,12 +11,11 @@ void MPProtocol::build_initialization() {
     add_compute_sorts();
     /* Prepare vtx order */
     add_shuffle(ctx.vtx_order, ctx.vtx_order, &ctx.vtx_order_shuffle);
-    add_reveal(ctx.vtx_order, ctx.clear_shuffled_vtx_order);
-
     add_shuffle(ctx.src_order, ctx.src_order, &ctx.src_order_shuffle);
-    add_reveal(ctx.src_order, ctx.clear_shuffled_src_order);
-
     add_shuffle(ctx.dst_order, ctx.dst_order, &ctx.dst_order_shuffle);
+
+    add_reveal(ctx.vtx_order, ctx.clear_shuffled_vtx_order);
+    add_reveal(ctx.src_order, ctx.clear_shuffled_src_order);
     add_reveal(ctx.dst_order, ctx.clear_shuffled_dst_order);
 
     add_shuffle(g.data, g.data, &ctx.vtx_order_shuffle);

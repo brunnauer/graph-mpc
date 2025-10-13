@@ -93,19 +93,21 @@ class MPProtocol {
     virtual void add_compute_sorts();  // Can be overwritten
 
     json details() {
+        size_t rounds = f_queue.size();
         json output;
-        output["details"] = {{"party", id}, {"size", size}, {"nodes", nodes}, {"depth", depth}, {"bits", bits}, {"ssd", ssd}};
+        output["details"] = {
+            {"party", id}, {"size", size}, {"nodes", nodes}, {"depth", depth}, {"bits", bits}, {"ssd", ssd}, {"Communication rounds: ", rounds}};
         return output;
     }
 
     void build() {
         pre_mp();
         build_initialization();
-        if (w.mp_data_parallel.size() > 0) {
+        if (w.mp_data_parallel.size() > 0) {  // Only the case for pi_r
             for (size_t i = 0; i < w.mp_data_parallel.size(); ++i) {
                 add_update(w.mp_data_parallel[i], w.mp_buf);
                 add_update(w.mp_data_parallel[i], w.mp_data);
-                build_message_passing();
+                build_message_passing();  // TODO: Handle wires & parallelizability!
                 add_update(w.mp_data, w.mp_data_parallel[i]);
             }
         } else {
@@ -149,6 +151,7 @@ class MPProtocol {
         std::cout << "Depth: " << depth << std::endl;
         std::cout << "Bits: " << bits << std::endl;
         std::cout << "SSD utilization: " << ssd << std::endl;
+        std::cout << "Communication rounds: " << f_queue.size() << std::endl;
         std::cout << std::endl;
     }
 
@@ -161,21 +164,44 @@ class MPProtocol {
         f_queue.resize(1);
         current_layer = 0;
 
-        ctx.preproc[P0] = {};
-        ctx.preproc[P1] = {};
-        ctx.vtx_order = std::vector<Ring>(size);
-        ctx.src_order = std::vector<Ring>(size);
-        ctx.dst_order = std::vector<Ring>(size);
-        ctx.clear_shuffled_vtx_order = std::vector<Ring>(size);
-        ctx.clear_shuffled_src_order = std::vector<Ring>(size);
-        ctx.clear_shuffled_dst_order = std::vector<Ring>(size);
-        w.mp_data_vtx = std::vector<Ring>(size);
-        w.mp_data = std::vector<Ring>(size);
-        w.mp_buf = std::vector<Ring>(size);
-        w.mp_data_corr = std::vector<Ring>(size);
-        w.sort_next_perm = std::vector<Ring>(size);
-        w.sort_perm = std::vector<Ring>(size);
-        w.sort_bits = std::vector<Ring>(size);
+        ctx.preproc[P0].clear();
+        ctx.preproc[P1].clear();
+
+        ctx.mult_vals.clear();
+        ctx.and_vals.clear();
+        ctx.shuffle_vals.clear();
+        ctx.reveal_vals.clear();
+        ctx.data_recv.clear();
+
+        ctx.vtx_order.clear();
+        ctx.src_order.clear();
+        ctx.dst_order.clear();
+
+        ctx.vtx_order.resize(size);
+        ctx.src_order.resize(size);
+        ctx.dst_order.resize(size);
+
+        ctx.clear_shuffled_vtx_order.clear();
+        ctx.clear_shuffled_src_order.clear();
+        ctx.clear_shuffled_dst_order.clear();
+
+        ctx.clear_shuffled_vtx_order.resize(size);
+        ctx.clear_shuffled_src_order.resize(size);
+        ctx.clear_shuffled_dst_order.resize(size);
+        w.mp_data_vtx.clear();
+        w.mp_data_vtx.resize(size);
+        w.mp_data.clear();
+        w.mp_data.resize(size);
+        w.mp_buf.clear();
+        w.mp_buf.resize(size);
+        w.mp_data_corr.clear();
+        w.mp_data_corr.resize(size);
+        w.sort_next_perm.clear();
+        w.sort_next_perm.resize(size);
+        w.sort_perm.clear();
+        w.sort_perm.resize(size);
+        w.sort_bits.clear();
+        w.sort_bits.resize(size);
 
         ctx.vtx_order_shuffle.initialize(id, size);
         ctx.src_order_shuffle.initialize(id, size);
@@ -183,6 +209,19 @@ class MPProtocol {
         ctx.vtx_src_merge.initialize(id, size);
         ctx.src_dst_merge.initialize(id, size);
         ctx.dst_vtx_merge.initialize(id, size);
+
+        w.deduplication_perm.clear();
+        w.deduplication_perm.resize(size);
+        w.deduplication_src.clear();
+        w.deduplication_src.resize(size);
+        w.deduplication_dst.clear();
+        w.deduplication_dst.resize(size);
+        w.deduplication_src_dupl.clear();
+        w.deduplication_src_dupl.resize(size);
+        w.deduplication_dst_dupl.clear();
+        w.deduplication_dst_dupl.resize(size);
+        w.deduplication_duplicates.clear();
+        w.deduplication_duplicates.resize(size);
     }
 
    protected:
@@ -339,10 +378,6 @@ class MPProtocol {
         repeat_shuffle(g.dst, w.deduplication_dst);
         add_permute(w.deduplication_src, w.deduplication_src, w.deduplication_perm);
         add_permute(w.deduplication_dst, w.deduplication_dst, w.deduplication_perm);
-
-        w.deduplication_src_dupl = std::vector<Ring>(size - 1);
-        w.deduplication_dst_dupl = std::vector<Ring>(size - 1);
-        w.deduplication_duplicates = std::vector<Ring>(size - 1);
 
         add_deduplication_sub(w.deduplication_src, w.deduplication_src_dupl);
         add_deduplication_sub(w.deduplication_dst, w.deduplication_dst_dupl);

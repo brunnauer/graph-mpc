@@ -4,7 +4,6 @@ void MPProtocol::preprocess() {
     if (id != D) {
         size_t n_recv;
         network->recv(D, &n_recv, sizeof(size_t));
-        // std::cout << "Receiving " << n_recv << " preprocessing values." << std::endl;
         network->recv_vec(D, n_recv, ctx.preproc.at(id));
     }
 
@@ -29,24 +28,24 @@ void MPProtocol::preprocess() {
 }
 
 void MPProtocol::evaluate() {
-    if (id == D) return;
+    if (id != D) {
+        for (size_t level_idx = 0; level_idx < f_queue.size(); ++level_idx) {
+            auto &level = f_queue[level_idx];
 
-    for (size_t level_idx = 0; level_idx < f_queue.size(); ++level_idx) {
-        auto &level = f_queue[level_idx];
+            for (size_t f_idx = 0; f_idx < level.size(); ++f_idx) {
+                auto &f = level[f_idx];
+                if (f) f->evaluate_send();
+            }
 
-        for (size_t f_idx = 0; f_idx < level.size(); ++f_idx) {
-            auto &f = level[f_idx];
-            if (f) f->evaluate_send();
-        }
+            online_communication();
 
-        online_communication();
-
-        for (size_t f_idx = 0; f_idx < level.size(); ++f_idx) {
-            auto &f = level[f_idx];
-            if (f) f->evaluate_recv();
+            for (size_t f_idx = 0; f_idx < level.size(); ++f_idx) {
+                auto &f = level[f_idx];
+                if (f) f->evaluate_recv();
+            }
         }
     }
-    std::cout << "";
+    reset();
 }
 
 void MPProtocol::online_communication() {

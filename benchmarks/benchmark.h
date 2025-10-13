@@ -12,6 +12,10 @@ class Benchmark {
    public:
     Benchmark(bpo::variables_map &opts, MPProtocol *prot, std::shared_ptr<io::NetIOMP> network) : prot(prot), network(network) {
         auto conf = setup::setupBenchmark(opts);
+
+        Graph g = prot->benchmark_graph();
+        prot->set_input(g);
+
         input_file = conf.input_file;
         save_file = conf.save_file;
         repeat = conf.repeat;
@@ -33,22 +37,19 @@ class Benchmark {
     json output_data;
 
     void run(bool parallel = false) {
+        /* Construct and share graph */
         print();
+
+        network->sync();
         for (size_t r = 0; r < repeat; ++r) {
             std::cout << "--- Repetition " << r + 1 << " ---" << std::endl;
-            /* Construct and share graph */
-            Graph g = prot->benchmark_graph();
-            prot->set_input(g);
             prot->build();
-
-            network->sync();
 
             size_t bytes_sent_pre = 0;
             size_t bytes_sent_eval = 0;
 
             /* Preprocessing */
             StatsPoint start_pre(*network);
-            // prot->preprocess(parallel);
             prot->preprocess();
             StatsPoint end_pre(*network);
 
@@ -66,14 +67,12 @@ class Benchmark {
 
             /* Evaluation */
             StatsPoint start_online(*network);
-            // prot->evaluate(g, parallel);
             prot->evaluate();
             StatsPoint end_online(*network);
 
             auto rbench = end_online - start_online;
             output_data["benchmarks"].push_back(rbench);
 
-            // prot->reset();
             network->sync();
 
             for (const auto &val : rbench["communication"]) {
@@ -81,8 +80,6 @@ class Benchmark {
             }
             std::cout << "online time: " << rbench["time"] << " ms" << std::endl;
             std::cout << "online sent: " << bytes_sent_eval << " bytes" << std::endl << std::endl;
-
-            prot->reset();
         }
         output_data["stats"] = {{"peak_virtual_memory", peakVirtualMemory()}, {"peak_resident_set_size", peakResidentSetSize()}};
 
