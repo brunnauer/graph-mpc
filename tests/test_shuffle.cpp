@@ -16,8 +16,11 @@ void test_shuffle(bpo::variables_map &opts) {
     auto network = setup::setupNetwork(opts);
     auto rngs = setup::setupRNGs(opts);
 
+    conf.ssd = true;
+
     Party recv = P0;
     std::unordered_map<Party, std::vector<Ring>> preproc;
+    FileWriter shuffles_disk(id, "shuffles_" + std::to_string(id) + ".bin");
     std::vector<Ring> online_vals;
     preproc[P0] = {};
     preproc[P1] = {};
@@ -34,17 +37,20 @@ void test_shuffle(bpo::variables_map &opts) {
     ShufflePre omega;
     ShufflePre pi_omega;
 
-    Shuffle shuffle(&conf, &preproc, &online_vals, &test_vector_shared, &pi_shuffled_vector, recv, &pi);
-    ShuffleRepeat repeat(&conf, &preproc, &online_vals, &test_vector_shared, &repeat_vector, &pi, recv);
-    Unshuffle unshuffle(&conf, &preproc, &online_vals, &pi_shuffled_vector, &unshuffle_vector, &pi, recv);
-    Shuffle shuffle2(&conf, &preproc, &online_vals, &test_vector_shared, &omega_shuffled_vector, recv, &omega);
-    MergedShuffle merged(&conf, &preproc, &online_vals, &test_vector_shared, &merged_shuffled_vector, recv, &pi_omega, &pi, &omega);
+    Shuffle shuffle(&conf, &preproc, &online_vals, &test_vector_shared, &pi_shuffled_vector, recv, &pi, &shuffles_disk);
+    ShuffleRepeat repeat(&conf, &preproc, &online_vals, &test_vector_shared, &repeat_vector, &pi, recv, &shuffles_disk);
+    Unshuffle unshuffle(&conf, &preproc, &online_vals, &pi_shuffled_vector, &unshuffle_vector, &pi, recv, &shuffles_disk);
+    Shuffle shuffle2(&conf, &preproc, &online_vals, &test_vector_shared, &omega_shuffled_vector, recv, &omega, &shuffles_disk);
+    MergedShuffle merged(&conf, &preproc, &online_vals, &test_vector_shared, &merged_shuffled_vector, recv, &pi_omega, &pi, &omega, &shuffles_disk);
 
     if (id != D) {
         size_t n_recv;
         network->recv(D, &n_recv, sizeof(size_t));
         std::cout << "Receiving " << n_recv << " preprocessing values." << std::endl;
-        network->recv_vec(D, n_recv, preproc.at(id));
+        if (conf.ssd)
+            network->recv_vec(D, n_recv, shuffles_disk);
+        else
+            network->recv_vec(D, n_recv, preproc.at(id));
     }
     shuffle.preprocess();
     shuffle2.preprocess();

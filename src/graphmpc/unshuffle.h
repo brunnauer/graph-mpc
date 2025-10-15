@@ -8,6 +8,10 @@ class Unshuffle : public Shuffle {
               std::vector<Ring> *output, ShufflePre *perm_share, Party &recv)
         : Shuffle(conf, preproc_vals, online_vals, input, output, recv, perm_share) {}
 
+    Unshuffle(ProtocolConfig *conf, std::unordered_map<Party, std::vector<Ring>> *preproc_vals, std::vector<Ring> *online_vals, std::vector<Ring> *input,
+              std::vector<Ring> *output, ShufflePre *perm_share, Party &recv, FileWriter *disk)
+        : Shuffle(conf, preproc_vals, online_vals, input, output, recv, perm_share, disk) {}
+
     void preprocess() override {
         std::vector<Ring> B_0(size);
         std::vector<Ring> B_1(size);
@@ -53,6 +57,9 @@ class Unshuffle : public Shuffle {
     }
 
     void evaluate_send() override {
+        /* Read preprocessing from SSD */
+        if (ssd) unshuffle = shuffles_disk->read(size);
+
         std::vector<Ring> output_share(size);
         std::vector<Ring> vec_t(size);
         std::vector<Ring> R(size);
@@ -79,8 +86,6 @@ class Unshuffle : public Shuffle {
     }
 
     void evaluate_recv() override {
-        if (ssd) unshuffle = unshuffles_disk->read(size);
-
         Permutation perm;
         perm = id == P0 ? perm_share->pi_0_p : perm_share->pi_1;
         std::vector<Ring> vec_t = read_online(size);
@@ -97,5 +102,4 @@ class Unshuffle : public Shuffle {
 
    protected:
     std::vector<Ring> unshuffle;
-    FileWriter *unshuffles_disk;
 };

@@ -9,8 +9,16 @@ class Shuffle : public Function {
         : Function(conf, preproc_vals, online_vals, input, output), recv(recv), ssd(conf->ssd), perm_share(new ShufflePre()) {}
 
     Shuffle(ProtocolConfig *conf, std::unordered_map<Party, std::vector<Ring>> *preproc_vals, std::vector<Ring> *online_vals, std::vector<Ring> *input,
+            std::vector<Ring> *output, Party &recv, FileWriter *disk)
+        : Function(conf, preproc_vals, online_vals, input, output), recv(recv), ssd(conf->ssd), perm_share(new ShufflePre()), shuffles_disk(disk) {}
+
+    Shuffle(ProtocolConfig *conf, std::unordered_map<Party, std::vector<Ring>> *preproc_vals, std::vector<Ring> *online_vals, std::vector<Ring> *input,
             std::vector<Ring> *output, Party &recv, ShufflePre *perm_share)
         : Function(conf, preproc_vals, online_vals, input, output), recv(recv), ssd(conf->ssd), perm_share(perm_share) {}
+
+    Shuffle(ProtocolConfig *conf, std::unordered_map<Party, std::vector<Ring>> *preproc_vals, std::vector<Ring> *online_vals, std::vector<Ring> *input,
+            std::vector<Ring> *output, Party &recv, ShufflePre *perm_share, FileWriter *disk)
+        : Function(conf, preproc_vals, online_vals, input, output), recv(recv), ssd(conf->ssd), perm_share(perm_share), shuffles_disk(disk) {}
 
     ShufflePre *perm_share;
 
@@ -114,7 +122,9 @@ class Shuffle : public Function {
                 break;
             }
             case P0: {
-                if (!ssd) {
+                if (ssd) {  // Set flags for SSD in order to know what to read from Disk
+                    perm_share->n_read_ssd = P0_recv_size;
+                } else {
                     D0 = read_preproc(P0_recv_size);
                     if (recv == P0) {
                         /* Receive pi_0_p */
@@ -137,10 +147,10 @@ class Shuffle : public Function {
                 break;
             }
             case P1: {
-                D1 = read_preproc(P1_recv_size);
                 if (ssd) {
-                    shuffles_disk->write_vec(D1);
+                    perm_share->n_read_ssd = P1_recv_size;
                 } else {
+                    D1 = read_preproc(P1_recv_size);
                     if (recv == P1) {
                         /* Receive pi_1_p */
                         std::vector<Ring> perm_vec(size);
@@ -158,7 +168,6 @@ class Shuffle : public Function {
                         D1_idx++;
                     }
                     perm_share->B = B;
-                    perm_share->has_B = true;
                 }
                 break;
             }
@@ -170,6 +179,44 @@ class Shuffle : public Function {
     }
 
     void evaluate_send() override {
+        /* Receive preprocessing vals from ssd */
+        if (ssd) {
+            if (id == P0) {
+                if (perm_share->merged) {
+                    auto pi_0_p_vec = shuffles_disk->read(size);
+                    perm_share->pi_0_p = Permutation(pi_0_p_vec);
+                    perm_share->has_pi_0_p = true;
+                    perm_share->B = shuffles_disk->read(size);
+                } else if (perm_share->n_read_ssd > size) {
+                    auto perm_vec = shuffles_disk->read(size);
+                    perm_share->pi_0_p = Permutation(perm_vec);
+                    perm_share->has_pi_0_p = true;
+                    perm_share->n_read_ssd -= size;
+                }
+                if (perm_share->n_read_ssd > 0) {
+                    perm_share->B = shuffles_disk->read(size);
+                    perm_share->n_read_ssd -= size;
+                }
+            } else {
+                if (perm_share->merged) {
+                    auto pi_1_vec = shuffles_disk->read(size);
+                    perm_share->pi_1 = Permutation(pi_1_vec);
+                    perm_share->has_pi_1 = true;
+                    perm_share->B = shuffles_disk->read(size);
+
+                } else if (perm_share->n_read_ssd > size) {
+                    auto perm_vec = shuffles_disk->read(size);
+                    perm_share->pi_1_p = Permutation(perm_vec);
+                    perm_share->has_pi_1_p = true;
+                    perm_share->n_read_ssd -= size;
+                }
+                if (perm_share->n_read_ssd > 0) {
+                    perm_share->B = shuffles_disk->read(size);
+                    perm_share->n_read_ssd -= size;
+                }
+            }
+        }
+
         std::vector<Ring> t(size);
         std::vector<Ring> R(size);
         Permutation perm;
@@ -190,7 +237,6 @@ class Shuffle : public Function {
 
         /* Sampling 2: pi_0_p / pi_1 */
         if (id == P0) {
-            /* Reuse pi_0_p if saved earlier */
             if (perm_share->has_pi_0_p) {
                 perm = perm_share->pi_0_p;
             } else {

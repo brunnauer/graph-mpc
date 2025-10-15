@@ -8,8 +8,13 @@ class MergedShuffle : public Shuffle {
                   std::vector<Ring> *output, Party &recv, ShufflePre *perm_share, ShufflePre *pi_share, ShufflePre *omega_share)
         : Shuffle(conf, preproc_vals, online_vals, input, output, recv, perm_share), pi_share(pi_share), omega_share(omega_share) {}
 
+    MergedShuffle(ProtocolConfig *conf, std::unordered_map<Party, std::vector<Ring>> *preproc_vals, std::vector<Ring> *online_vals, std::vector<Ring> *input,
+                  std::vector<Ring> *output, Party &recv, ShufflePre *perm_share, ShufflePre *pi_share, ShufflePre *omega_share, FileWriter *disk)
+        : Shuffle(conf, preproc_vals, online_vals, input, output, recv, perm_share, disk), pi_share(pi_share), omega_share(omega_share) {}
+
     void preprocess() override {
         if (perm_share->preprocessed) return;
+
         std::vector<Ring> sigma_0_p_vec(size);
         std::vector<Ring> sigma_1_vec(size);
 
@@ -71,22 +76,27 @@ class MergedShuffle : public Shuffle {
                 break;
             }
             case P0: {
-                sigma_0_p_vec = read_preproc(size);
-                B_0 = read_preproc(size);
-                perm_share->pi_0_p = Permutation(sigma_0_p_vec);
-                perm_share->B = B_0;
-                perm_share->has_pi_0_p = true;
+                if (!ssd) {
+                    sigma_0_p_vec = read_preproc(size);
+                    B_0 = read_preproc(size);
+                    perm_share->pi_0_p = Permutation(sigma_0_p_vec);
+                    perm_share->has_pi_0_p = true;
+                    perm_share->B = B_0;
+                }
                 break;
             }
             case P1: {
-                sigma_1_vec = read_preproc(size);
-                B_1 = read_preproc(size);
-                perm_share->pi_1 = Permutation(sigma_1_vec);
-                perm_share->B = B_1;
-                perm_share->has_pi_1 = true;
+                if (!ssd) {
+                    sigma_1_vec = shuffles_disk->read(size);
+                    B_1 = shuffles_disk->read(size);
+                    perm_share->pi_1 = Permutation(sigma_1_vec);
+                    perm_share->has_pi_1 = true;
+                    perm_share->B = B_1;
+                }
                 break;
             }
         }
+        perm_share->merged = true;
         perm_share->preprocessed = true;
     }
 

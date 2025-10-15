@@ -16,13 +16,18 @@ class ShufflePre {
     Permutation pi_1_p;
     std::vector<Ring> B;
     std::vector<Ring> R;
+
     bool preprocessed = false;
+    bool merged = false;
+
     bool has_pi_0 = false;
     bool has_pi_1 = false;
     bool has_pi_0_p = false;
     bool has_pi_1_p = false;
     bool has_B = false;
     bool has_R = false;
+
+    size_t n_read_ssd = 0;
 
     void initialize(Party id, size_t size) {
         if (id == P0) {
@@ -52,11 +57,13 @@ class ShufflePre {
             pi_1.perm_vec.resize(size);
         }
         preprocessed = false;
+        merged = false;
         has_pi_0 = false;
         has_pi_1 = false;
         has_pi_0_p = false;
         has_pi_1_p = false;
         has_B = false;
         has_R = false;
+        n_read_ssd = 0;
     }
 };

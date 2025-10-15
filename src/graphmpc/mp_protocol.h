@@ -82,7 +82,8 @@ class MPProtocol {
           rngs(conf.rngs),
           weights(conf.weights),
           network(network),
-          ssd(conf.ssd) {
+          ssd(conf.ssd),
+          preproc_vals(id, "preproc_" + std::to_string(id) + ".dat") {
         f_queue.resize(1);
         reset();
     }
@@ -244,6 +245,8 @@ class MPProtocol {
 
     MPContext ctx;
     Wires w;
+
+    FileWriter preproc_vals;
 
     Party recv_shuffle = P0;
     Party recv_mul = P0;
