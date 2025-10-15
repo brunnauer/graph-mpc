@@ -83,6 +83,7 @@ class MPProtocol {
           weights(conf.weights),
           network(network),
           ssd(conf.ssd) {
+        f_queue.resize(1);
         reset();
     }
 
@@ -160,9 +161,11 @@ class MPProtocol {
         recv_shuffle = P0;
         recv_mul = P0;
 
-        f_queue.clear();
-        f_queue.resize(1);
+        // f_queue.clear();
+        // f_queue.resize(1);
         current_layer = 0;
+        comm_ms = 0;
+        sr_ms = 0;
 
         ctx.preproc[P0].clear();
         ctx.preproc[P1].clear();
@@ -244,6 +247,9 @@ class MPProtocol {
 
     Party recv_shuffle = P0;
     Party recv_mul = P0;
+
+    long long comm_ms = 0;
+    long long sr_ms = 0;
 
     void online_communication();
 

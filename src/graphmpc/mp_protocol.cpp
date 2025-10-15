@@ -45,11 +45,14 @@ void MPProtocol::evaluate() {
             }
         }
     }
+    std::cout << "Communication round: " << comm_ms << " ms" << std::endl;
+    std::cout << "Sending/Receiving: " << sr_ms << " ms" << std::endl << std::endl;
+
     reset();
 }
 
 void MPProtocol::online_communication() {
-    if (id == D) return;
+    auto round_begin = std::chrono::high_resolution_clock::now();
 
     size_t n_send = ctx.mult_vals.size() + ctx.and_vals.size() + ctx.shuffle_vals.size() + ctx.reveal_vals.size();
     size_t n_recv = 0;
@@ -60,6 +63,7 @@ void MPProtocol::online_communication() {
     send_vals.insert(send_vals.end(), ctx.shuffle_vals.begin(), ctx.shuffle_vals.end());
     send_vals.insert(send_vals.end(), ctx.reveal_vals.begin(), ctx.reveal_vals.end());
 
+    auto comm_begin = std::chrono::high_resolution_clock::now();
     if (id == P0) {
         network->send(P1, &n_send, sizeof(size_t));
         network->send_vec(P1, n_send, send_vals);
@@ -73,6 +77,7 @@ void MPProtocol::online_communication() {
         network->send(P0, &n_send, sizeof(size_t));
         network->send_vec(P0, n_send, send_vals);
     }
+    auto comm_end = std::chrono::high_resolution_clock::now();
 
     for (size_t i = 0; i < ctx.mult_vals.size(); i++) {
         ctx.mult_vals[i] += ctx.data_recv[i];
@@ -87,4 +92,12 @@ void MPProtocol::online_communication() {
         ctx.reveal_vals[i] += ctx.data_recv[ctx.mult_vals.size() + ctx.and_vals.size() + ctx.shuffle_vals.size() + i];
     }
     ctx.data_recv.clear();
+
+    auto round_end = std::chrono::high_resolution_clock::now();
+
+    auto time_round = std::chrono::duration_cast<std::chrono::milliseconds>(round_end - round_begin);
+    auto time_comm = std::chrono::duration_cast<std::chrono::milliseconds>(comm_end - comm_begin);
+
+    comm_ms += time_round.count();
+    sr_ms += time_comm.count();
 }

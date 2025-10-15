@@ -15,6 +15,7 @@ class Benchmark {
 
         Graph g = prot->benchmark_graph();
         prot->set_input(g);
+        network->sync();
 
         input_file = conf.input_file;
         save_file = conf.save_file;
@@ -39,11 +40,11 @@ class Benchmark {
     void run(bool parallel = false) {
         /* Construct and share graph */
         print();
+        prot->build();
 
         network->sync();
         for (size_t r = 0; r < repeat; ++r) {
             std::cout << "--- Repetition " << r + 1 << " ---" << std::endl;
-            prot->build();
 
             size_t bytes_sent_pre = 0;
             size_t bytes_sent_eval = 0;

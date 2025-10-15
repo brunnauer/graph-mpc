@@ -114,53 +114,52 @@ class Shuffle : public Function {
                 break;
             }
             case P0: {
-                if (ssd) {
-                    D0 = shuffles_disk->read(P0_recv_size);
-                } else {
+                if (!ssd) {
                     D0 = read_preproc(P0_recv_size);
-                }
-                if (recv == P0) {
-                    /* Receive pi_0_p */
-                    std::vector<Ring> perm_vec(size);
+                    if (recv == P0) {
+                        /* Receive pi_0_p */
+                        std::vector<Ring> perm_vec(size);
+                        for (size_t i = 0; i < size; ++i) {
+                            perm_vec[i] = D0[D0_idx];
+                            D0_idx++;
+                        }
+                        perm_share->pi_0_p = Permutation(perm_vec);
+                        perm_share->has_pi_0_p = true;
+                    }
+
+                    std::vector<Ring> B(size);
                     for (size_t i = 0; i < size; ++i) {
-                        perm_vec[i] = D0[D0_idx];
+                        B[i] = D0[D0_idx];
                         D0_idx++;
                     }
-                    perm_share->pi_0_p = Permutation(perm_vec);
-                    perm_share->has_pi_0_p = true;
+                    perm_share->B = B;
                 }
-
-                std::vector<Ring> B(size);
-                for (size_t i = 0; i < size; ++i) {
-                    B[i] = D0[D0_idx];
-                    D0_idx++;
-                }
-                perm_share->B = B;
                 break;
             }
             case P1: {
+                D1 = read_preproc(P1_recv_size);
                 if (ssd) {
-                    D1 = shuffles_disk->read(P1_recv_size);
+                    shuffles_disk->write_vec(D1);
                 } else {
-                    D1 = read_preproc(P1_recv_size);
-                }
-                if (recv == P1) {
-                    /* Receive pi_1_p */
-                    std::vector<Ring> perm_vec(size);
-                    for (int i = 0; i < size; ++i) {
-                        perm_vec[i] = D1[D1_idx];
+                    if (recv == P1) {
+                        /* Receive pi_1_p */
+                        std::vector<Ring> perm_vec(size);
+                        for (int i = 0; i < size; ++i) {
+                            perm_vec[i] = D1[D1_idx];
+                            D1_idx++;
+                        }
+                        perm_share->pi_1_p = Permutation(perm_vec);
+                        perm_share->has_pi_1_p = true;
+                    }
+
+                    std::vector<Ring> B(size);
+                    for (size_t i = 0; i < size; ++i) {
+                        B[i] = D1[D1_idx];
                         D1_idx++;
                     }
-                    perm_share->pi_1_p = Permutation(perm_vec);
-                    perm_share->has_pi_1_p = true;
+                    perm_share->B = B;
+                    perm_share->has_B = true;
                 }
-
-                std::vector<Ring> B(size);
-                for (size_t i = 0; i < size; ++i) {
-                    B[i] = D1[D1_idx];
-                    D1_idx++;
-                }
-                perm_share->B = B;
                 break;
             }
         }

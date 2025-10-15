@@ -45,9 +45,7 @@ class Unshuffle : public Shuffle {
 
             return;
         } else {
-            if (ssd) {
-                unshuffle = unshuffles_disk->read(size);
-            } else {
+            if (!ssd) {
                 unshuffle = read_preproc(size);
             }
             return;
@@ -55,8 +53,6 @@ class Unshuffle : public Shuffle {
     }
 
     void evaluate_send() override {
-        if (id == D) return;
-
         std::vector<Ring> output_share(size);
         std::vector<Ring> vec_t(size);
         std::vector<Ring> R(size);
@@ -83,6 +79,8 @@ class Unshuffle : public Shuffle {
     }
 
     void evaluate_recv() override {
+        if (ssd) unshuffle = unshuffles_disk->read(size);
+
         Permutation perm;
         perm = id == P0 ? perm_share->pi_0_p : perm_share->pi_1;
         std::vector<Ring> vec_t = read_online(size);

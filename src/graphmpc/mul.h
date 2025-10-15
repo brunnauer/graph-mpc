@@ -31,20 +31,24 @@ class Mul : public Function {
 
         if (id != D) {
             if (ssd) {
-                std::vector<Ring> triples;
-                for (size_t i = 0; i < size; ++i) {
-                    triples.push_back(triples_a[i]);
-                    triples.push_back(triples_b[i]);
-                    triples.push_back(triples_c[i]);
-                }
-                triples_disk->write_vec(triples);
+                triples_disk->write_vec(triples_a);
+                triples_disk->write_vec(triples_b);
+                triples_disk->write_vec(triples_c);
             }
+            triples_a.clear();
+            triples_b.clear();
+            triples_c.clear();
         }
         /* Alternate receiver */
         recv = recv == P0 ? P1 : P0;
     }
 
     void evaluate_send() override {
+        if (ssd) {
+            triples_a = triples_disk->read(size);
+            triples_b = triples_disk->read(size);
+            triples_c = triples_disk->read(size);
+        }
         std::vector<Ring> data_send(2 * size);
 #pragma omp parallel for if (size > 10000)
         for (size_t i = 0; i < size; ++i) {

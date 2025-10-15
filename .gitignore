@@ -30,3 +30,4 @@ memory.sh
 run_LAN_benchmarks.sh
 net_config.json
 src/old
+test.sh
