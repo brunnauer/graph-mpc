@@ -58,7 +58,7 @@ class Unshuffle : public Shuffle {
 
     void evaluate_send() override {
         /* Read preprocessing from SSD */
-        if (ssd) unshuffle = shuffles_disk->read(size);
+        if (ssd) unshuffle = preproc_disk->read(size);
 
         std::vector<Ring> output_share(size);
         std::vector<Ring> vec_t(size);

@@ -82,8 +82,7 @@ class MPProtocol {
           rngs(conf.rngs),
           weights(conf.weights),
           network(network),
-          ssd(conf.ssd),
-          preproc_vals(id, "preproc_" + std::to_string(id) + ".dat") {
+          ssd(conf.ssd) {
         f_queue.resize(1);
         reset();
     }
@@ -158,12 +157,15 @@ class MPProtocol {
     }
 
     void reset() {
+        std::filesystem::remove("preproc_" + std::to_string(id) + ".bin");
+        std::filesystem::remove("triples_" + std::to_string(id) + ".bin");
+        preproc_disk = FileWriter(id, "preproc_" + std::to_string(id) + ".bin");
+        triples_disk = FileWriter(id, "triples_" + std::to_string(id) + ".bin");
+
         rngs.reseed();
         recv_shuffle = P0;
         recv_mul = P0;
 
-        // f_queue.clear();
-        // f_queue.resize(1);
         current_layer = 0;
         comm_ms = 0;
         sr_ms = 0;
@@ -246,7 +248,8 @@ class MPProtocol {
     MPContext ctx;
     Wires w;
 
-    FileWriter preproc_vals;
+    FileWriter preproc_disk;
+    FileWriter triples_disk;
 
     Party recv_shuffle = P0;
     Party recv_mul = P0;
@@ -285,34 +288,34 @@ class MPProtocol {
     }
 
     void add_shuffle(std::vector<Ring> &input, std::vector<Ring> &output) {
-        auto shuffle_ptr = std::make_unique<Shuffle>(&conf, &ctx.preproc, &ctx.shuffle_vals, &input, &output, recv_shuffle);
+        auto shuffle_ptr = std::make_unique<Shuffle>(&conf, &ctx.preproc, &ctx.shuffle_vals, &input, &output, recv_shuffle, &preproc_disk);
         current_shuffle = shuffle_ptr->perm_share;
         add_function(std::move(shuffle_ptr));
     }
 
     void add_shuffle(std::vector<Ring> &input, std::vector<Ring> &output, ShufflePre *perm_share) {
-        add_function(std::make_unique<Shuffle>(&conf, &ctx.preproc, &ctx.shuffle_vals, &input, &output, recv_shuffle, perm_share));
+        add_function(std::make_unique<Shuffle>(&conf, &ctx.preproc, &ctx.shuffle_vals, &input, &output, recv_shuffle, perm_share, &preproc_disk));
     }
 
     void repeat_shuffle(std::vector<Ring> &input, std::vector<Ring> &output) {
-        add_function(std::make_unique<ShuffleRepeat>(&conf, &ctx.preproc, &ctx.shuffle_vals, &input, &output, current_shuffle, recv_shuffle));
+        add_function(std::make_unique<ShuffleRepeat>(&conf, &ctx.preproc, &ctx.shuffle_vals, &input, &output, current_shuffle, recv_shuffle, &preproc_disk));
     }
 
     void repeat_shuffle(std::vector<Ring> &input, std::vector<Ring> &output, ShufflePre &perm_share) {
-        add_function(std::make_unique<ShuffleRepeat>(&conf, &ctx.preproc, &ctx.shuffle_vals, &input, &output, &perm_share, recv_shuffle));
+        add_function(std::make_unique<ShuffleRepeat>(&conf, &ctx.preproc, &ctx.shuffle_vals, &input, &output, &perm_share, recv_shuffle, &preproc_disk));
     }
 
     void add_unshuffle(std::vector<Ring> &input, std::vector<Ring> &output) {
-        add_function(std::make_unique<Unshuffle>(&conf, &ctx.preproc, &ctx.shuffle_vals, &input, &output, current_shuffle, recv_shuffle));
+        add_function(std::make_unique<Unshuffle>(&conf, &ctx.preproc, &ctx.shuffle_vals, &input, &output, current_shuffle, recv_shuffle, &preproc_disk));
     }
 
     void add_merged_shuffle(std::vector<Ring> &input, std::vector<Ring> &output, ShufflePre &perm_share, ShufflePre &pi_share, ShufflePre &omega_share) {
-        add_function(
-            std::make_unique<MergedShuffle>(&conf, &ctx.preproc, &ctx.shuffle_vals, &input, &output, recv_shuffle, &perm_share, &pi_share, &omega_share));
+        add_function(std::make_unique<MergedShuffle>(&conf, &ctx.preproc, &ctx.shuffle_vals, &input, &output, recv_shuffle, &perm_share, &pi_share,
+                                                     &omega_share, &preproc_disk));
     }
 
     void add_compaction(std::vector<Ring> &input, std::vector<Ring> &output) {
-        add_function(std::make_unique<Compaction>(&conf, &ctx.preproc, &ctx.mult_vals, &input, &output, recv_mul));
+        add_function(std::make_unique<Compaction>(&conf, &ctx.preproc, &ctx.mult_vals, &input, &output, recv_mul, &preproc_disk, &triples_disk));
     }
 
     void add_reveal(std::vector<Ring> &input, std::vector<Ring> &output) { add_function(std::make_unique<Reveal>(&conf, &ctx.reveal_vals, &input, &output)); }
@@ -326,11 +329,11 @@ class MPProtocol {
     }
 
     void add_equals_zero(std::vector<Ring> &input, std::vector<Ring> &output, size_t size, size_t layer) {
-        add_function(std::make_unique<EQZ>(&conf, &ctx.preproc, &ctx.and_vals, &input, &output, recv_mul, size, layer));
+        add_function(std::make_unique<EQZ>(&conf, &ctx.preproc, &ctx.and_vals, &input, &output, recv_mul, size, layer, &preproc_disk, &triples_disk));
     }
 
     void add_Bit2A(std::vector<Ring> &input, std::vector<Ring> &output, size_t size) {
-        add_function(std::make_unique<Bit2A>(&conf, &ctx.preproc, &ctx.mult_vals, &input, &output, recv_mul, size));
+        add_function(std::make_unique<Bit2A>(&conf, &ctx.preproc, &ctx.mult_vals, &input, &output, recv_mul, size, &preproc_disk, &triples_disk));
     }
 
     void add_insert(std::vector<Ring> &input) { f_queue[current_layer].emplace_back(std::make_unique<Insert>(&conf, &input)); }
@@ -341,17 +344,17 @@ class MPProtocol {
 
     void add_mul(std::vector<Ring> &x, std::vector<Ring> &y, std::vector<Ring> &output, bool binary = false) {
         if (binary) {
-            add_function(std::make_unique<Mul>(&conf, &ctx.preproc, &ctx.and_vals, &x, &y, &output, recv_mul, binary));
+            add_function(std::make_unique<Mul>(&conf, &ctx.preproc, &ctx.and_vals, &x, &y, &output, recv_mul, binary, &preproc_disk, &triples_disk));
         } else {
-            add_function(std::make_unique<Mul>(&conf, &ctx.preproc, &ctx.mult_vals, &x, &y, &output, recv_mul, binary));
+            add_function(std::make_unique<Mul>(&conf, &ctx.preproc, &ctx.mult_vals, &x, &y, &output, recv_mul, binary, &preproc_disk, &triples_disk));
         }
     }
 
     void add_mul(std::vector<Ring> &x, std::vector<Ring> &y, std::vector<Ring> &output, size_t size, bool binary = false) {
         if (binary) {
-            add_function(std::make_unique<Mul>(&conf, &ctx.preproc, &ctx.and_vals, &x, &y, &output, recv_mul, binary, size));
+            add_function(std::make_unique<Mul>(&conf, &ctx.preproc, &ctx.and_vals, &x, &y, &output, recv_mul, binary, size, &preproc_disk, &triples_disk));
         } else {
-            add_function(std::make_unique<Mul>(&conf, &ctx.preproc, &ctx.mult_vals, &x, &y, &output, recv_mul, binary, size));
+            add_function(std::make_unique<Mul>(&conf, &ctx.preproc, &ctx.mult_vals, &x, &y, &output, recv_mul, binary, size, &preproc_disk, &triples_disk));
         }
     }
 

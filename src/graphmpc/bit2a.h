@@ -8,7 +8,19 @@ class Bit2A : public Mul {
           std::vector<Ring> *output, Party &recv, size_t size)
         : Mul(conf, preproc_vals, online_vals, input, nullptr, output, recv, false, size) {}
 
+    Bit2A(ProtocolConfig *conf, std::unordered_map<Party, std::vector<Ring>> *preproc_vals, std::vector<Ring> *online_vals, std::vector<Ring> *input,
+          std::vector<Ring> *output, Party &recv, size_t size, FileWriter *preproc_disk, FileWriter *triples_disk)
+        : Mul(conf, preproc_vals, online_vals, input, nullptr, output, recv, false, size, preproc_disk, triples_disk) {}
+
     void evaluate_send() override {
+        if (ssd) {
+            triples_a = triples_disk->read(size);
+            triples_b = triples_disk->read(size);
+            if (id == read)
+                triples_c = preproc_disk->read(size);
+            else
+                triples_c = triples_disk->read(size);
+        }
         size_t old = online_vals->size();
         online_vals->resize(old + 2 * size);
         auto send_ptr = online_vals->data() + old;

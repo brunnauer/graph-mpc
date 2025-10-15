@@ -8,7 +8,19 @@ class EQZ : public Mul {
         std::vector<Ring> *output, Party &recv, size_t size, size_t layer)
         : Mul(conf, preproc_vals, online_vals, input, nullptr, output, recv, true, size), layer(layer) {}
 
+    EQZ(ProtocolConfig *conf, std::unordered_map<Party, std::vector<Ring>> *preproc_vals, std::vector<Ring> *online_vals, std::vector<Ring> *input,
+        std::vector<Ring> *output, Party &recv, size_t size, size_t layer, FileWriter *preproc_disk, FileWriter *triples_disk)
+        : Mul(conf, preproc_vals, online_vals, input, nullptr, output, recv, true, size, preproc_disk, triples_disk), layer(layer) {}
+
     void evaluate_send() override {
+        if (ssd) {
+            triples_a = triples_disk->read(size);
+            triples_b = triples_disk->read(size);
+            if (id == read)
+                triples_c = preproc_disk->read(size);
+            else
+                triples_c = triples_disk->read(size);
+        }
         std::vector<Ring> result(*input);
 
         /* x_0 == -x_1 <=> ~x_0 ^ -x_1 */

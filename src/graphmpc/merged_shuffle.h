@@ -82,16 +82,20 @@ class MergedShuffle : public Shuffle {
                     perm_share->pi_0_p = Permutation(sigma_0_p_vec);
                     perm_share->has_pi_0_p = true;
                     perm_share->B = B_0;
+                } else {
+                    perm_share->n_read_ssd = 2 * size;
                 }
                 break;
             }
             case P1: {
                 if (!ssd) {
-                    sigma_1_vec = shuffles_disk->read(size);
-                    B_1 = shuffles_disk->read(size);
+                    sigma_1_vec = read_preproc(size);
+                    B_1 = read_preproc(size);
                     perm_share->pi_1 = Permutation(sigma_1_vec);
                     perm_share->has_pi_1 = true;
                     perm_share->B = B_1;
+                } else {
+                    perm_share->n_read_ssd = 2 * size;
                 }
                 break;
             }

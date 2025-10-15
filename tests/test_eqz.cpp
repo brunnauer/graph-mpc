@@ -5,13 +5,14 @@
 #include "../src/setup/cmdline.h"
 #include "../src/utils/sharing.h"
 
-void test_shuffle(bpo::variables_map &opts) {
+void test_eqz(bpo::variables_map &opts) {
     std::cout << "--- Test EqualsZero ---" << std::endl;
 
     Party id = (Party)opts["pid"].as<size_t>();
     auto conf = setup::setupProtocol(opts);
     auto network = setup::setupNetwork(opts);
     auto rngs = setup::setupRNGs(opts);
+    conf.ssd = true;
 
     Party recv = P0;
     size_t size = 10;
@@ -20,21 +21,24 @@ void test_shuffle(bpo::variables_map &opts) {
     preproc[P0] = {};
     preproc[P1] = {};
 
+    FileWriter triples_disk(id, "triples_" + std::to_string(id) + ".bin");
+    FileWriter preproc_disk(id, "triples_" + std::to_string(id) + ".bin");
     std::vector<Ring> test_vector = {0, 1, 1, 1, 1, 1, 1, 1, 1, 0};
     auto test_vector_shared = share::random_share_secret_vec_2P(id, conf.rngs, test_vector);
     std::vector<Ring> result(10);
 
-    EQZ eqz0(&conf, &preproc, &online_vals, &test_vector_shared, &result, recv, size, 0);
-    EQZ eqz1(&conf, &preproc, &online_vals, &result, &result, recv, size, 1);
-    EQZ eqz2(&conf, &preproc, &online_vals, &result, &result, recv, size, 2);
-    EQZ eqz3(&conf, &preproc, &online_vals, &result, &result, recv, size, 3);
-    EQZ eqz4(&conf, &preproc, &online_vals, &result, &result, recv, size, 4);
+    EQZ eqz0(&conf, &preproc, &online_vals, &test_vector_shared, &result, recv, size, 0, &preproc_disk, &triples_disk);
+    EQZ eqz1(&conf, &preproc, &online_vals, &result, &result, recv, size, 1, &preproc_disk, &triples_disk);
+    EQZ eqz2(&conf, &preproc, &online_vals, &result, &result, recv, size, 2, &preproc_disk, &triples_disk);
+    EQZ eqz3(&conf, &preproc, &online_vals, &result, &result, recv, size, 3, &preproc_disk, &triples_disk);
+    EQZ eqz4(&conf, &preproc, &online_vals, &result, &result, recv, size, 4, &preproc_disk, &triples_disk);
 
     if (id != D) {
         size_t n_recv;
         network->recv(D, &n_recv, sizeof(size_t));
         std::cout << "Receiving " << n_recv << " preprocessing values." << std::endl;
-        network->recv_vec(D, n_recv, preproc.at(id));
+        // network->recv_vec(D, n_recv, preproc.at(id));
+        network->recv_vec(D, n_recv, preproc_disk);
     }
     eqz0.preprocess();
     eqz1.preprocess();
@@ -144,7 +148,7 @@ int main(int argc, char **argv) {
     bpo::variables_map opts = setup::parseOptions(cmdline, prog_opts, argc, argv);
 
     try {
-        test_shuffle(opts);
+        test_eqz(opts);
     } catch (const std::exception &ex) {
         std::cerr << ex.what() << "\nFatal error" << std::endl;
         return 1;

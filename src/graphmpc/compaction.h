@@ -8,8 +8,20 @@ class Compaction : public Mul {
                std::vector<Ring> *output, Party &recv)
         : Mul(conf, preproc_vals, online_vals, input, {}, output, recv, false) {}
 
+    Compaction(ProtocolConfig *conf, std::unordered_map<Party, std::vector<Ring>> *preproc_vals, std::vector<Ring> *online_vals, std::vector<Ring> *input,
+               std::vector<Ring> *output, Party &recv, FileWriter *preproc_disk, FileWriter *triples_disk)
+        : Mul(conf, preproc_vals, online_vals, input, {}, output, recv, false, preproc_disk, triples_disk) {}
+
     void evaluate_send() override {
         if (id == D) return;
+        if (ssd) {
+            triples_a = triples_disk->read(size);
+            triples_b = triples_disk->read(size);
+            if (id == read)
+                triples_c = preproc_disk->read(size);
+            else
+                triples_c = triples_disk->read(size);
+        }
 
         std::vector<Ring> f_0(size);
 

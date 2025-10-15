@@ -10,7 +10,7 @@ class TestPiR : public Test {
     TestPiR(bpo::variables_map &opts) : Test(opts) {}
 
     virtual MPProtocol *create_protocol() {
-        bool ssd = false;
+        bool ssd = true;
         const size_t nodes = 5;
         const size_t depth = 2;
         std::vector<Ring> weights(depth);

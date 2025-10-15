@@ -4,7 +4,11 @@ void MPProtocol::preprocess() {
     if (id != D) {
         size_t n_recv;
         network->recv(D, &n_recv, sizeof(size_t));
-        network->recv_vec(D, n_recv, ctx.preproc.at(id));
+        if (ssd) {
+            network->recv_vec(D, n_recv, preproc_disk);
+        } else {
+            network->recv_vec(D, n_recv, ctx.preproc.at(id));
+        }
     }
 
     for (size_t level_idx = 0; level_idx < f_queue.size(); ++level_idx) {

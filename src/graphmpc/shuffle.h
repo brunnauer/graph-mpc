@@ -10,7 +10,7 @@ class Shuffle : public Function {
 
     Shuffle(ProtocolConfig *conf, std::unordered_map<Party, std::vector<Ring>> *preproc_vals, std::vector<Ring> *online_vals, std::vector<Ring> *input,
             std::vector<Ring> *output, Party &recv, FileWriter *disk)
-        : Function(conf, preproc_vals, online_vals, input, output), recv(recv), ssd(conf->ssd), perm_share(new ShufflePre()), shuffles_disk(disk) {}
+        : Function(conf, preproc_vals, online_vals, input, output), recv(recv), ssd(conf->ssd), perm_share(new ShufflePre()), preproc_disk(disk) {}
 
     Shuffle(ProtocolConfig *conf, std::unordered_map<Party, std::vector<Ring>> *preproc_vals, std::vector<Ring> *online_vals, std::vector<Ring> *input,
             std::vector<Ring> *output, Party &recv, ShufflePre *perm_share)
@@ -18,7 +18,7 @@ class Shuffle : public Function {
 
     Shuffle(ProtocolConfig *conf, std::unordered_map<Party, std::vector<Ring>> *preproc_vals, std::vector<Ring> *online_vals, std::vector<Ring> *input,
             std::vector<Ring> *output, Party &recv, ShufflePre *perm_share, FileWriter *disk)
-        : Function(conf, preproc_vals, online_vals, input, output), recv(recv), ssd(conf->ssd), perm_share(perm_share), shuffles_disk(disk) {}
+        : Function(conf, preproc_vals, online_vals, input, output), recv(recv), ssd(conf->ssd), perm_share(perm_share), preproc_disk(disk) {}
 
     ShufflePre *perm_share;
 
@@ -179,39 +179,40 @@ class Shuffle : public Function {
     }
 
     void evaluate_send() override {
-        /* Receive preprocessing vals from ssd */
+        /* Read preprocessing from SSD */
         if (ssd) {
             if (id == P0) {
-                if (perm_share->merged) {
-                    auto pi_0_p_vec = shuffles_disk->read(size);
+                if (perm_share->merged && perm_share->n_read_ssd > 0) {
+                    auto pi_0_p_vec = preproc_disk->read(size);
                     perm_share->pi_0_p = Permutation(pi_0_p_vec);
                     perm_share->has_pi_0_p = true;
-                    perm_share->B = shuffles_disk->read(size);
+                    perm_share->B = preproc_disk->read(size);
+                    perm_share->n_read_ssd -= 2 * size;
                 } else if (perm_share->n_read_ssd > size) {
-                    auto perm_vec = shuffles_disk->read(size);
+                    auto perm_vec = preproc_disk->read(size);
                     perm_share->pi_0_p = Permutation(perm_vec);
                     perm_share->has_pi_0_p = true;
                     perm_share->n_read_ssd -= size;
                 }
                 if (perm_share->n_read_ssd > 0) {
-                    perm_share->B = shuffles_disk->read(size);
+                    perm_share->B = preproc_disk->read(size);
                     perm_share->n_read_ssd -= size;
                 }
             } else {
-                if (perm_share->merged) {
-                    auto pi_1_vec = shuffles_disk->read(size);
+                if (perm_share->merged && perm_share->n_read_ssd > 0) {
+                    auto pi_1_vec = preproc_disk->read(size);
                     perm_share->pi_1 = Permutation(pi_1_vec);
                     perm_share->has_pi_1 = true;
-                    perm_share->B = shuffles_disk->read(size);
-
+                    perm_share->B = preproc_disk->read(size);
+                    perm_share->n_read_ssd -= 2 * size;
                 } else if (perm_share->n_read_ssd > size) {
-                    auto perm_vec = shuffles_disk->read(size);
+                    auto perm_vec = preproc_disk->read(size);
                     perm_share->pi_1_p = Permutation(perm_vec);
                     perm_share->has_pi_1_p = true;
                     perm_share->n_read_ssd -= size;
                 }
                 if (perm_share->n_read_ssd > 0) {
-                    perm_share->B = shuffles_disk->read(size);
+                    perm_share->B = preproc_disk->read(size);
                     perm_share->n_read_ssd -= size;
                 }
             }
@@ -302,5 +303,5 @@ class Shuffle : public Function {
     Party &recv;
     bool ssd;
 
-    FileWriter *shuffles_disk;
+    FileWriter *preproc_disk;
 };

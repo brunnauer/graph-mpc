@@ -14,7 +14,7 @@ class FileWriter {
    public:
     FileWriter() = default;
 
-    FileWriter(Party id, std::string filename) : id(id), filename(filename), read_idx(0), _size(0) {}
+    FileWriter(Party id, std::string filename) : id(id), filename(filename), read_idx(0), _size(0) { std::ofstream out(filename, std::ios::binary); }
 
     ~FileWriter() { std::filesystem::remove(filename); }
 
