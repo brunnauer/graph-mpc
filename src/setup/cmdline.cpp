@@ -311,7 +311,7 @@ std::shared_ptr<io::NetIOMP> setup::setupNetwork(const bpo::variables_map &opts)
 }
 
 ProtocolConfig setup::setupProtocol(const bpo::variables_map &opts) {
-    size_t pid, size, nodes, depth;
+    size_t pid, size, nodes, depth, bits;
     // RandomGenerators rngs;
     std::vector<uint64_t> seeds_h(9);
     std::vector<uint64_t> seeds_l(9);
@@ -325,10 +325,11 @@ ProtocolConfig setup::setupProtocol(const bpo::variables_map &opts) {
     auto rngs = setupRNGs(opts);
 
     ssd = opts["ssd"].as<bool>();
+    bits = std::ceil(std::log2(nodes + 2));
 
     std::vector<Ring> weights(depth);
 
-    return {(Party)pid, size, nodes, depth, rngs, ssd, weights};
+    return {(Party)pid, size, nodes, depth, bits, rngs, ssd, weights};
 }
 
 BenchmarkConfig setup::setupBenchmark(const bpo::variables_map &opts) {

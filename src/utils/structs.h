@@ -1,5 +1,13 @@
 #pragma once
 
+#include <memory>
+#include <vector>
+
+#include "../io/disk.h"
+#include "../setup/configs.h"
+#include "shuffle_preproc.h"
+#include "types.h"
+
 struct MPContext {
     std::unordered_map<Party, std::vector<Ring>> preproc;
     std::vector<Ring> data_recv;
@@ -20,11 +28,9 @@ struct MPContext {
     size_t dst_shuffle_idx;
 };
 
-struct Wires {
+struct Inputs {
     std::vector<std::vector<Ring>> src_order_bits;
     std::vector<std::vector<Ring>> dst_order_bits;
     std::vector<Ring> isV_inv;
     std::vector<Ring> data;
-    std::vector<std::vector<Ring>> mp_data_parallel;
-    std::vector<Ring> buf;
 };

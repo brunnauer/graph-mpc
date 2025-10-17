@@ -11,7 +11,6 @@
 
 using json = nlohmann::json;
 
-#include "../graphmpc/mp_protocol.h"
 #include "../io/netmp.h"
 #include "../utils/comm.h"
 #include "../utils/graph.h"

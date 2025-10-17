@@ -1,20 +1,22 @@
 #pragma once
 
-#include "../src/graphmpc/mp_protocol.h"
+#include "../src/graphmpc/circuit.h"
 
-class PiKProtocol : public MPProtocol {
+class PiKCircuit : public Circuit {
    public:
-    PiKProtocol(ProtocolConfig &conf, std::shared_ptr<io::NetIOMP> &network) : MPProtocol(conf, network) {}
+    PiKCircuit(ProtocolConfig &conf) : Circuit(conf) {}
 
     void compute_sorts() override {
-        ctx.src_order = add_sort(g.src_order_bits, bits + 2);
-        ctx.dst_order = add_sort_iteration(ctx.dst_order, g.dst_order_bits[g.dst_order_bits.size() - 1]);
-        ctx.vtx_order = add_sort_iteration(ctx.src_order, g.isV_inv);
+        // ctx.src_order = add_sort(g.src_order_bits, bits + 2);
+        // ctx.dst_order = add_sort_iteration(ctx.dst_order, g.dst_order_bits[g.dst_order_bits.size() - 1]);
+        // ctx.vtx_order = add_sort_iteration(ctx.src_order, g.isV_inv);
     }
 
-    void pre_mp() override { add_deduplication(); }
+    void pre_mp() override {
+        // add_deduplication();
+    }
 
-    void apply() override {}
+    std::vector<Ring> apply(std::vector<Ring> &data_vtx) override { return data_vtx; }
 
-    void post_mp() override {}
+    std::vector<Ring> post_mp(std::vector<Ring> &data) override { return data; }
 };

@@ -2,7 +2,9 @@
 
 #include <nlohmann/json.hpp>
 
-#include "../src/graphmpc/mp_protocol.h"
+#include "../src/graphmpc/circuit.h"
+#include "../src/graphmpc/evaluator.h"
+#include "../src/graphmpc/preprocessor.h"
 #include "../src/setup/cmdline.h"
 #include "../src/utils/stats.h"
 
@@ -10,17 +12,19 @@ using json = nlohmann::json;
 
 class Benchmark {
    public:
-    Benchmark(bpo::variables_map &opts, MPProtocol *prot, std::shared_ptr<io::NetIOMP> network) : prot(prot), network(network) {
-        auto conf = setup::setupBenchmark(opts);
+    Benchmark(ProtocolConfig &conf, BenchmarkConfig &b_conf, Circuit *circ, std::shared_ptr<io::NetIOMP> network) : circ(circ) {
+        auto io = Storage(conf, circ);
+        preproc = new Preprocessor(conf, &io, network);
+        eval = new Evaluator(conf, &io, network);
 
-        prot->benchmark_graph();
+        g = Graph::benchmark_graph(conf, network);
         network->sync();
 
-        input_file = conf.input_file;
-        save_file = conf.save_file;
-        repeat = conf.repeat;
-        save_output = conf.save_output;
-        output_data = prot->details();
+        input_file = b_conf.input_file;
+        save_file = b_conf.save_file;
+        repeat = b_conf.repeat;
+        save_output = b_conf.save_output;
+        // output_data = prot->details();
         output_data["details"].push_back({"input file", input_file});
         output_data["details"].push_back({"save file", save_file});
         output_data["details"].push_back({"repeat", repeat});
@@ -29,7 +33,12 @@ class Benchmark {
         output_data["benchmarks"] = json::array();
     }
 
-    MPProtocol *prot;
+    Circuit *circ;
+    Preprocessor *preproc;
+    Evaluator *eval;
+
+    Graph g;
+
     std::shared_ptr<io::NetIOMP> network;
     std::string input_file, save_file;
     size_t repeat;
@@ -38,9 +47,6 @@ class Benchmark {
 
     void run(bool parallel = false) {
         /* Construct and share graph */
-        print();
-        prot->build();
-
         network->sync();
         for (size_t r = 0; r < repeat; ++r) {
             std::cout << "--- Repetition " << r + 1 << " ---" << std::endl;
@@ -50,7 +56,7 @@ class Benchmark {
 
             /* Preprocessing */
             StatsPoint start_pre(*network);
-            prot->preprocess();
+            preproc->run(circ);
             StatsPoint end_pre(*network);
 
             /* Network Sync */
@@ -67,7 +73,7 @@ class Benchmark {
 
             /* Evaluation */
             StatsPoint start_online(*network);
-            prot->evaluate();
+            eval->run(circ, g);
             StatsPoint end_online(*network);
 
             auto rbench = end_online - start_online;

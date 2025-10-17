@@ -1,14 +1,14 @@
 #pragma once
 
-#include "../src/graphmpc/mp_protocol.h"
+#include "../src/graphmpc/circuit.h"
 
-class PiMProtocol : public MPProtocol {
+class PiMCircuit : public Circuit {
    public:
-    PiMProtocol(ProtocolConfig &conf, std::shared_ptr<io::NetIOMP> &network) : MPProtocol(conf, network) {}
+    PiMCircuit(ProtocolConfig &conf) : Circuit(conf) {}
 
     void pre_mp() override {}
 
-    void apply() override {}
+    std::vector<Ring> apply(std::vector<Ring> &data_vtx) override { return data_vtx; }
 
-    void post_mp() override {}
+    std::vector<Ring> post_mp(std::vector<Ring> &data) override { return data; }
 };

@@ -7,7 +7,7 @@
 
 struct ProtocolConfig {
     Party id;
-    size_t size, nodes, depth;
+    size_t size, nodes, depth, bits;
     RandomGenerators rngs;
     bool ssd;
     std::vector<Ring> weights;

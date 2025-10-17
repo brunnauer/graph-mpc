@@ -6,6 +6,7 @@
 #include <cassert>
 #include <vector>
 
+#include "../setup/configs.h"
 #include "permutation.h"
 #include "sharing.h"
 
@@ -342,13 +343,31 @@ class Graph {
         }
 
         /* Generate vector containing { 1-isV, src_bits[0], src_bits[1], ..., src_bits[n_bits - 1] } */
-        src_order_bits.resize(src_bits.size() + 2);  // +2 if deduplication happens (in order to fix pointer issues)
+        src_order_bits.resize(src_bits.size() + 1);  // + 2 if deduplication happens (in order to fix pointer issues)
         std::copy(src_bits.begin(), src_bits.end(), src_order_bits.begin() + 1);
         src_order_bits[0] = isV_inv;
+        src_order_bits.push_back(std::vector<Ring>(size));
 
         /* Generate vector containing { isV, dst_bits[0], dst_bits[1], ..., dst_bits[n_bits - 1] } */
-        dst_order_bits.resize(dst_bits.size() + 2);  // +2 if deduplication happens (in order to fix pointer issues)
+        dst_order_bits.resize(dst_bits.size() + 1);  // + 2 if deduplication happens (in order to fix pointer issues)
         std::copy(dst_bits.begin(), dst_bits.end(), dst_order_bits.begin() + 1);
         dst_order_bits[0] = isV;
+        dst_order_bits.push_back(std::vector<Ring>(size));
+    }
+
+    static Graph benchmark_graph(ProtocolConfig &conf, std::shared_ptr<io::NetIOMP> network) {
+        Graph g;
+        size_t bits = std::ceil(std::log2(conf.nodes + 2));
+        if (conf.id == P0) {
+            for (size_t i = 0; i < conf.nodes / 2; i++) g.add_list_entry(i + 1, i + 1, 1);
+            for (size_t i = 0; i < (conf.size - conf.nodes) / 2; i++) g.add_list_entry(1, 2, 0);
+        }
+        if (conf.id == P1) {
+            for (size_t i = conf.nodes / 2; i < conf.nodes; i++) g.add_list_entry(i + 1, i + 1, 1);
+            for (size_t i = (conf.size - conf.nodes) / 2; i < conf.size - conf.nodes; i++) g.add_list_entry(1, 2, 0);
+        }
+        g.share_subgraphs(conf.id, conf.rngs, network, bits);
+        g.init_mp(conf.id);
+        return g;
     }
 };

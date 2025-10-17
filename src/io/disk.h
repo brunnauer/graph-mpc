@@ -20,7 +20,16 @@ class FileWriter {
 
     void reset_idx() { read_idx = 0; }
 
+    void skip(size_t n_elems) { read_idx += (n_elems * sizeof(Ring)); }
+
     size_t size() { return _size; }
+
+    void write_vec(const std::vector<Ring> &data) {
+        std::ofstream out(filename, std::ios::binary | std::ios::app);
+        if (!out) throw std::runtime_error("Failed to open file for writing.");
+        out.write(reinterpret_cast<const char *>(data.data()), data.size() * sizeof(Ring));
+        _size += data.size();
+    }
 
     void write_shuffle(ShufflePre &shuffle) {
         std::vector<Ring> log(6);
@@ -31,58 +40,50 @@ class FileWriter {
         if (shuffle.B.size() > 0) log[4] = 1;
         if (shuffle.R.size() > 0) log[5] = 1;
 
+        if (log[0]) log.insert(log.end(), shuffle.pi_0.perm_vec.begin(), shuffle.pi_0.perm_vec.end());
+        if (log[1]) log.insert(log.end(), shuffle.pi_1.perm_vec.begin(), shuffle.pi_1.perm_vec.end());
+        if (log[2]) log.insert(log.end(), shuffle.pi_0_p.perm_vec.begin(), shuffle.pi_0_p.perm_vec.end());
+        if (log[3]) log.insert(log.end(), shuffle.pi_1_p.perm_vec.begin(), shuffle.pi_1_p.perm_vec.end());
+        if (log[4]) log.insert(log.end(), shuffle.B.begin(), shuffle.B.end());
+        if (log[5]) log.insert(log.end(), shuffle.R.begin(), shuffle.R.end());
+
         write_vec(log);
-
-        if (shuffle.pi_0.not_null()) write_vec(shuffle.pi_0.perm_vec);
-        if (shuffle.pi_1.not_null()) write_vec(shuffle.pi_1.perm_vec);
-        if (shuffle.pi_0_p.not_null()) write_vec(shuffle.pi_0_p.perm_vec);
-        if (shuffle.pi_1_p.not_null()) write_vec(shuffle.pi_1_p.perm_vec);
-        if (shuffle.B.size() > 0) write_vec(shuffle.B);
-        if (shuffle.R.size() > 0) write_vec(shuffle.R);
     }
 
-    void write_vec(const std::vector<Ring> &data) {
-        std::ofstream out(filename, std::ios::binary | std::ios::app);
-        if (!out) throw std::runtime_error("Failed to open file for writing.");
-        out.write(reinterpret_cast<const char *>(data.data()), data.size() * sizeof(Ring));
-        _size += data.size();
-    }
-
-    ShufflePre read_shuffle(size_t n, bool repeat = false) {
+    ShufflePre read_shuffle(size_t size) {
         ShufflePre perm_share;
 
         std::vector<Ring> log = read(6);
         size_t n_read = 6;
 
         if (log[0] == 1) {
-            auto pi_0_vec = read(n);
+            auto pi_0_vec = read(size);
             perm_share.pi_0 = Permutation(pi_0_vec);
-            n_read += n;
+            n_read += size;
         }
         if (log[1] == 1) {
-            auto pi_1_vec = read(n);
+            auto pi_1_vec = read(size);
             perm_share.pi_1 = Permutation(pi_1_vec);
-            n_read += n;
+            n_read += size;
         }
         if (log[2] == 1) {
-            auto pi_0_p_vec = read(n);
+            auto pi_0_p_vec = read(size);
             perm_share.pi_0_p = Permutation(pi_0_p_vec);
-            n_read += n;
+            n_read += size;
         }
         if (log[3] == 1) {
-            auto pi_1_p_vec = read(n);
+            auto pi_1_p_vec = read(size);
             perm_share.pi_1_p = Permutation(pi_1_p_vec);
-            n_read += n;
+            n_read += size;
         }
         if (log[4] == 1) {
-            perm_share.B = read(n);
-            n_read += n;
+            perm_share.B = read(size);
+            n_read += size;
         }
         if (log[5] == 1) {
-            perm_share.R = read(n);
-            n_read += n;
+            perm_share.R = read(size);
+            n_read += size;
         }
-        if (repeat) read_idx -= (n_read * sizeof(Ring));
 
         return perm_share;
     }
@@ -118,19 +119,9 @@ class FileWriter {
 
         read_idx += bytes_read;
 
+        if (read_idx >= (_size * sizeof(Ring))) reset_idx();
+
         return output;
-    }
-
-    std::vector<std::tuple<Ring, Ring, Ring>> read_triples(size_t n) {
-        size_t n_elems = 3 * n;
-        std::vector<Ring> elems = read(n_elems);
-        std::vector<std::tuple<Ring, Ring, Ring>> triples;
-
-        for (size_t i = 0; i < n; ++i) {
-            std::tuple<Ring, Ring, Ring> triple = {elems[3 * i], elems[3 * i + 1], elems[3 * i + 2]};
-            triples.push_back(triple);
-        }
-        return triples;
     }
 
    private:

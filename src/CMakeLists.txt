@@ -13,28 +13,33 @@ target_sources(GraphMPC_lib
     utils/types.h
     io/disk.h
     io/netmp.h
-    graphmpc/add_const.h
-    graphmpc/add.h
-    graphmpc/bit2a.h
-    graphmpc/compaction.h
-    graphmpc/construct_payload.h
-    graphmpc/deduplication.h
-    graphmpc/equals_zero.h
-    graphmpc/flip.h
+    io/buffers.h
+    graphmpc/storage.h
+    graphmpc/preprocessor.cpp
+    graphmpc/evaluator.cpp
+    graphmpc/circuit.cpp
+    #graphmpc/add_const.h
+    #graphmpc/add.h
+    #graphmpc/bit2a.h
+    #graphmpc/compaction.h
+    #graphmpc/construct_payload.h
+    #graphmpc/deduplication.h
+    #graphmpc/equals_zero.h
+    #graphmpc/flip.h
     graphmpc/function.h
-    graphmpc/gather.h
-    graphmpc/input.h
-    graphmpc/merged_shuffle.h
-    graphmpc/message_passing.cpp
-    graphmpc/mp_protocol.cpp
-    graphmpc/f_queue.cpp
-    graphmpc/mul.h
-    graphmpc/permute.h
-    graphmpc/propagate.h
-    graphmpc/reveal.h
-    graphmpc/shuffle.h
-    graphmpc/sort.cpp
-    graphmpc/unshuffle.h
+    #graphmpc/gather.h
+    #graphmpc/input.h
+    #graphmpc/merged_shuffle.h
+    #graphmpc/message_passing.cpp
+    #graphmpc/mp_protocol.cpp
+    #graphmpc/f_queue.cpp
+    #graphmpc/mul.h
+    #graphmpc/permute.h
+    #graphmpc/propagate.h
+    #graphmpc/reveal.h
+    #graphmpc/shuffle.h
+    #graphmpc/sort.cpp
+    #graphmpc/unshuffle.h
     setup/cmdline.cpp
     setup/configs.h
     setup/input-sharing/input_client.h

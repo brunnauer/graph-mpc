@@ -6,5 +6,26 @@
 
 enum Party { P0 = 0, P1 = 1, D = 2 };
 enum Execution { BENCHMARK, TEST };
+enum FType {
+    Input,
+    Output,
+    Shuffle,
+    Unshuffle,
+    MergedShuffle,
+    Compaction,
+    Mul,
+    Reveal,
+    Permute,
+    AddConst,
+    Add,
+    Sub,
+    Bit2A,
+    EQZ,
+    Gather1,
+    Gather2,
+    Propagate1,
+    Propagate2,
+    Flip
+};
 
 typedef uint32_t Ring;

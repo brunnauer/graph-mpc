@@ -2,7 +2,10 @@
 
 #include <nlohmann/json.hpp>
 
-#include "../src/graphmpc/mp_protocol.h"
+#include "../src/graphmpc/circuit.h"
+#include "../src/graphmpc/evaluator.h"
+#include "../src/graphmpc/preprocessor.h"
+#include "../src/graphmpc/storage.h"
 #include "../src/setup/cmdline.h"
 #include "../src/utils/stats.h"
 
@@ -10,29 +13,32 @@ using json = nlohmann::json;
 
 class Test {
    public:
-    Test(bpo::variables_map &opts) : rngs(setup::setupRNGs(opts)) {
-        id = (Party)opts["pid"].as<size_t>();
-        network = setup::setupNetwork(opts);
-    }
+    Test(ProtocolConfig &conf, std::shared_ptr<io::NetIOMP> network) : id(conf.id), conf(conf), network(network) {}
+
+    Circuit *circ;
+    Preprocessor *preproc;
+    Evaluator *eval;
+
+    Graph g;
 
     Party id;
-    RandomGenerators rngs;
+    ProtocolConfig conf;
     std::shared_ptr<io::NetIOMP> network;
     json output_data;
-    size_t bits;
 
-    virtual MPProtocol *create_protocol() = 0;
+    virtual Circuit *create_circuit() = 0;
 
     virtual Graph create_graph() = 0;
 
     virtual void run_assertions(Graph &result) = 0;
 
     void run(bool parallel = false) {
-        MPProtocol *prot = create_protocol();
-        Graph g = create_graph();
-        prot->set_input(g);
-        prot->build();
-        prot->print();
+        circ = create_circuit();
+        g = create_graph();
+
+        auto io = Storage(conf, circ);
+        preproc = new Preprocessor(conf, &io, network);
+        eval = new Evaluator(conf, &io, network);
 
         network->sync();
         size_t bytes_sent_pre = 0;
@@ -40,7 +46,7 @@ class Test {
 
         /* Preprocessing */
         StatsPoint start_pre(*network);
-        prot->preprocess();
+        preproc->run(circ);
         StatsPoint end_pre(*network);
 
         auto rbench_pre = end_pre - start_pre;
@@ -57,7 +63,7 @@ class Test {
 
         /* Evaluation */
         StatsPoint start_online(*network);
-        prot->evaluate();
+        eval->run(circ, g);
         StatsPoint end_online(*network);
 
         auto rbench = end_online - start_online;
@@ -79,8 +85,7 @@ class Test {
         }
         std::cout << std::endl;
 
-        auto result = prot->get_output();
-        result = result.reveal(id, network);
+        auto result = g.reveal(id, network);
         run_assertions(result);
     }
 };

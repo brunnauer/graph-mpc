@@ -1,93 +1,65 @@
 #pragma once
 
 #include "../io/disk.h"
-#include "../setup/configs.h"
 #include "../utils/sharing.h"
 #include "../utils/types.h"
 
 class Function {
    public:
-    Function(size_t f_id, ProtocolConfig *conf, std::unordered_map<Party, std::vector<Ring>> *preproc_vals, std::vector<Ring> *online_vals,
-             std::vector<Ring> input, std::vector<Ring> output, bool interactive)
-        : f_id(f_id),
-          id(conf->id),
-          rngs(std::make_shared<RandomGenerators>(conf->rngs)),
-          size(conf->size),
-          ssd(conf->ssd),
-          preproc_vals(preproc_vals),
-          online_vals(online_vals),
-          input(std::move(input)),
-          output(output),
-          interactive(interactive) {}
+    Function(FType type, size_t f_id, std::vector<Ring> output) : type(type), f_id(f_id), output(output) {}
 
-    Function(size_t f_id, ProtocolConfig *conf, std::unordered_map<Party, std::vector<Ring>> *preproc_vals, std::vector<Ring> *online_vals,
-             std::vector<Ring> input, std::vector<Ring> input2, std::vector<Ring> output, bool interactive)
-        : f_id(f_id),
-          id(conf->id),
-          rngs(std::make_shared<RandomGenerators>(conf->rngs)),
-          size(conf->size),
-          ssd(conf->ssd),
-          preproc_vals(preproc_vals),
-          online_vals(online_vals),
-          input(std::move(input)),
-          input2(std::move(input2)),
-          output(output),
-          interactive(interactive) {}
+    Function(FType type, size_t f_id, Ring in1, Ring in2, Ring output) : type(type), f_id(f_id), _in1(std::move(in1)), _in2(std::move(in2)), _output(output) {}
 
-    Function(size_t f_id, ProtocolConfig *conf, std::unordered_map<Party, std::vector<Ring>> *preproc_vals, std::vector<Ring> *online_vals,
-             std::vector<Ring> input, std::vector<Ring> input2, std::vector<Ring> output, size_t &size, bool interactive)
-        : f_id(f_id),
-          id(conf->id),
-          rngs(&conf->rngs),
-          size(size),
-          ssd(conf->ssd),
-          preproc_vals(preproc_vals),
-          online_vals(online_vals),
-          input(std::move(input)),
-          input2(std::move(input2)),
-          output(output),
-          interactive(interactive) {}
+    Function(FType type, size_t f_id, std::vector<Ring> in1, std::vector<Ring> output) : type(type), f_id(f_id), in1(std::move(in1)), output(output) {}
+
+    Function(FType type, size_t f_id, std::vector<Ring> in1, std::vector<Ring> output, bool inverse)
+        : type(type), f_id(f_id), in1(std::move(in1)), output(output), inverse(inverse) {}
+
+    Function(FType type, size_t f_id, std::vector<Ring> in1, std::vector<Ring> output, size_t size, size_t layer)
+        : type(type), f_id(f_id), in1(std::move(in1)), output(output), size(size), layer(layer) {}
+
+    Function(FType type, size_t f_id, std::vector<Ring> in1, std::vector<Ring> output, size_t shuffle_idx)
+        : type(type), f_id(f_id), in1(std::move(in1)), output(output), shuffle_idx(shuffle_idx) {}
+
+    Function(FType type, size_t f_id, std::vector<Ring> in1, std::vector<Ring> output, size_t shuffle_idx, size_t pi_idx, size_t omega_idx)
+        : type(type), f_id(f_id), in1(std::move(in1)), output(output), shuffle_idx(shuffle_idx), pi_idx(pi_idx), omega_idx(omega_idx) {}
+
+    Function(FType type, size_t f_id, std::vector<Ring> in1, Ring in2, std::vector<Ring> output)
+        : type(type), f_id(f_id), in1(std::move(in1)), _in2(std::move(in2)), output(output) {}
+
+    Function(FType type, size_t f_id, std::vector<Ring> in1, std::vector<Ring> in2, std::vector<Ring> output)
+        : type(type), f_id(f_id), in1(std::move(in1)), in2(std::move(in2)), output(output) {}
+
+    Function(FType type, size_t f_id, std::vector<Ring> in1, std::vector<Ring> in2, std::vector<Ring> output, bool binary)
+        : type(type), f_id(f_id), in1(std::move(in1)), in2(std::move(in2)), output(output), binary(binary) {}
+
+    Function(FType type, size_t f_id, std::vector<Ring> in1, std::vector<Ring> in2, std::vector<Ring> output, size_t size, bool binary)
+        : type(type), f_id(f_id), in1(std::move(in1)), in2(std::move(in2)), output(output), size(size), binary(binary) {}
 
     virtual ~Function() = default;
 
+    inline bool interactive() {
+        return type == Shuffle || type == MergedShuffle || type == Unshuffle || type == Compaction || type == Mul || type == EQZ || type == Bit2A ||
+               type == Reveal;
+    }
+
     size_t f_id;
-    std::vector<Ring> input;
-    std::vector<Ring> input2;
+    FType type;
+    std::vector<Ring> in1;
+    std::vector<Ring> in2;
     std::vector<Ring> output;
-    bool interactive;
+    Ring _in1;
+    Ring _in2;
+    Ring _output;
 
-    virtual void preprocess() = 0;
-    virtual void evaluate_send() = 0;
-    virtual void evaluate_recv() = 0;
+    bool binary;
+    bool inverse;
+    Party recv;
 
-    std::vector<Ring> read_preproc(size_t n_elems) {
-        std::vector<Ring> data(n_elems);
+    size_t size;
+    size_t layer;
 
-        data = {preproc_vals->at(id).begin(), preproc_vals->at(id).begin() + n_elems};
-
-        /* Delete read values from buffer */
-        preproc_vals->at(id).erase(preproc_vals->at(id).begin(), preproc_vals->at(id).begin() + n_elems);
-
-        return data;
-    }
-
-    std::vector<Ring> read_online(size_t n_elems) {
-        std::vector<Ring> data(n_elems);
-
-        data = {online_vals->begin(), online_vals->begin() + n_elems};
-
-        /* Delete read values from buffer */
-        online_vals->erase(online_vals->begin(), online_vals->begin() + n_elems);
-
-        return data;
-    }
-
-   protected:
-    Party id;
-    std::shared_ptr<RandomGenerators> rngs;
-    const size_t size;
-    bool ssd;
-
-    std::unordered_map<Party, std::vector<Ring>> *preproc_vals;
-    std::vector<Ring> *online_vals;
+    size_t shuffle_idx;
+    size_t pi_idx;
+    size_t omega_idx;
 };

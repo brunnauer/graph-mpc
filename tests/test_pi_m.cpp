@@ -7,23 +7,16 @@
 
 class TestPiM : public Test {
    public:
-    TestPiM(bpo::variables_map &opts) : Test(opts) {}
+    TestPiM(ProtocolConfig &conf, std::shared_ptr<io::NetIOMP> network) : Test(conf, network) {}
 
-    virtual MPProtocol *create_protocol() {
-        bool ssd = false;
-        const size_t nodes = 4;
-        const size_t depth = 4;
-        std::vector<Ring> weights = {10000000, 100000, 1000, 1};
-        bits = std::ceil(std::log2(nodes + 2));
-        size_t size = 16;
-
-        ProtocolConfig conf = {id, size, nodes, depth, rngs, ssd, weights};
-        PiMProtocol *prot = new PiMProtocol(conf, network);
-
-        return prot;
+    Circuit *create_circuit() override {
+        auto circ = new PiMCircuit(conf);
+        circ->build();
+        circ->level_order();
+        return circ;
     }
 
-    virtual Graph create_graph() {
+    Graph create_graph() override {
         /*
             Graph instance:
             v1 - v2
@@ -67,13 +60,14 @@ class TestPiM : public Test {
         g.add_list_entry(2, 4, 0);
         g.add_list_entry(4, 2, 0);
 
-        Graph g_shared = g.secret_share_parties(id, rngs, network, bits, P0);
-        g_shared.init_mp(id);
+        Graph g_shared = g.secret_share_parties(conf.id, conf.rngs, network, conf.bits, P0);
+        auto test = g_shared.reveal(conf.id, network);
+        g_shared.init_mp(conf.id);
         return g_shared;
     }
 
-    virtual void run_assertions(Graph &result) {
-        if (id != D) {
+    void run_assertions(Graph &result) override {
+        if (conf.id != D) {
             result.print();
 
             assert(result.data[0] == 31030096);  // 3 of length 1, 10 of length 2, 30 of length 3,  96 of length 4
@@ -95,7 +89,19 @@ int main(int argc, char **argv) {
     bpo::variables_map opts = setup::parseOptions(cmdline, prog_opts, argc, argv);
 
     try {
-        auto test = TestPiM(opts);
+        Party id = (Party)opts["pid"].as<size_t>();
+        const size_t size = 16;
+        const size_t nodes = 4;
+        const size_t depth = 4;
+        const size_t bits = std::ceil(std::log2(nodes + 2));
+        auto rngs = setup::setupRNGs(opts);
+        bool ssd = false;
+        std::vector<Ring> weights = {10000000, 100000, 1000, 1};
+
+        ProtocolConfig conf = {id, size, nodes, depth, bits, rngs, ssd, weights};
+        auto network = setup::setupNetwork(opts);
+
+        auto test = TestPiM(conf, network);
         test.run();
     } catch (const std::exception &ex) {
         std::cerr << ex.what() << "\nFatal error" << std::endl;
