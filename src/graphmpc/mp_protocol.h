@@ -149,6 +149,7 @@ class MPProtocol {
             }
             /* Propagate-1 */
             auto data_p = mp::propagate_1(data_v, nodes);
+            auto data_p1 = share::reveal_vec(id, network, data_p);
 
             /* Switch Perm from vtx to src order */
             auto shuffled_data_p = preproc.clear_shuffled_vtx_order.inverse()(data_p);
@@ -161,7 +162,7 @@ class MPProtocol {
 
             /* Propagate-2 */
             data_p = mp::propagate_2(data_src, data_corr);
-            auto data_1 = share::reveal_vec(id, network, data_p);
+            auto data_p2 = share::reveal_vec(id, network, data_p);
 
             /* Switch Perm from src to dst order*/
             shuffled_data_p = preproc.clear_shuffled_src_order.inverse()(data_p);
@@ -170,6 +171,7 @@ class MPProtocol {
 
             /* Gather-1*/
             data_p = mp::gather_1(data_dst);
+            auto data_g1 = share::reveal_vec(id, network, data_p);
 
             /* Switch Perm from dst to vtx order */
             shuffled_data_p = preproc.clear_shuffled_dst_order.inverse()(data_p);
@@ -178,7 +180,7 @@ class MPProtocol {
 
             /* Gather-2 */
             auto update = mp::gather_2(data_p, nodes);
-            auto data_2 = share::reveal_vec(id, network, update);
+            auto data_g2 = share::reveal_vec(id, network, update);
 
             /* ApplyV */
             apply_evaluation(preproc, g, update);
