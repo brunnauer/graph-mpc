@@ -61,7 +61,6 @@ class TestPiM : public Test {
         g.add_list_entry(4, 2, 0);
 
         Graph g_shared = g.secret_share_parties(conf.id, conf.rngs, network, conf.bits, P0);
-        auto test = g_shared.reveal(conf.id, network);
         g_shared.init_mp(conf.id);
         return g_shared;
     }

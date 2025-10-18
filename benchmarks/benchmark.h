@@ -12,19 +12,24 @@ using json = nlohmann::json;
 
 class Benchmark {
    public:
-    Benchmark(ProtocolConfig &conf, BenchmarkConfig &b_conf, Circuit *circ, std::shared_ptr<io::NetIOMP> network) : circ(circ), network(network) {
-        auto io = Storage(conf, circ);
+    Benchmark(ProtocolConfig &conf, BenchmarkConfig &b_conf, Circuit *circ, std::shared_ptr<io::NetIOMP> network)
+        : circ(circ), network(network), io(conf, circ) {
+        g = Graph::benchmark_graph(conf, network);
+
         preproc = new Preprocessor(conf, &io, network);
         eval = new Evaluator(conf, &io, network);
-
-        g = Graph::benchmark_graph(conf, network);
-        network->sync();
 
         input_file = b_conf.input_file;
         save_file = b_conf.save_file;
         repeat = b_conf.repeat;
         save_output = b_conf.save_output;
-        // output_data = prot->details();
+
+        output_data["details"].push_back({"Party", conf.id});
+        output_data["details"].push_back({"Size", conf.size});
+        output_data["details"].push_back({"Nodes", conf.nodes});
+        output_data["details"].push_back({"Depth", conf.depth});
+        output_data["details"].push_back({"Bits", conf.bits});
+        output_data["details"].push_back({"SSD Utilization", conf.ssd});
         output_data["details"].push_back({"input file", input_file});
         output_data["details"].push_back({"save file", save_file});
         output_data["details"].push_back({"repeat", repeat});
@@ -36,6 +41,7 @@ class Benchmark {
     Circuit *circ;
     Preprocessor *preproc;
     Evaluator *eval;
+    Storage io;
 
     Graph g;
 
@@ -46,7 +52,7 @@ class Benchmark {
     json output_data;
 
     void run(bool parallel = false) {
-        /* Construct and share graph */
+        print();
         network->sync();
         for (size_t r = 0; r < repeat; ++r) {
             std::cout << "--- Repetition " << r + 1 << " ---" << std::endl;

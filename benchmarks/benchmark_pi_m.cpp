@@ -17,6 +17,9 @@ int main(int argc, char **argv) {
         auto network = setup::setupNetwork(opts);
 
         auto circuit = PiMCircuit(conf);
+        circuit.build();
+        circuit.level_order();
+
         auto benchmark = Benchmark(conf, b_conf, &circuit, network);
         benchmark.run(true);
 
