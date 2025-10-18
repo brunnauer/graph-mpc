@@ -321,6 +321,9 @@ void Preprocessor::preprocess(Circuit *circ) {
                     break;
                 }
                 case Unshuffle: {
+                    if (f->f_id == 17) {
+                        std::cout << "";
+                    }
                     auto perm_share = store->load_shuffle(f->shuffle_idx);
                     std::vector<Ring> B_0(size);
                     std::vector<Ring> B_1(size);

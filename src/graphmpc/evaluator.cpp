@@ -106,45 +106,10 @@ void Evaluator::evaluate_send(std::vector<std::shared_ptr<Function>> &layer) {
 
             case MergedShuffle:
             case Shuffle: {
+                if (f->f_id == 11 || f->f_id == 12) {
+                    std::cout << "";
+                }  // Shuffle, Repeat
                 auto perm_share = store->load_shuffle(f->shuffle_idx);
-                /* Read preprocessing from SSD */
-                // if (ssd) {
-                // if (id == P0) {
-                // if (perm_share->merged && perm_share->n_read_ssd > 0) {
-                // auto pi_0_p_vec = store->read_shuffle();
-                // perm_share->pi_0_p = Permutation(pi_0_p_vec);
-                // perm_share->has_pi_0_p = true;
-                // perm_share->B = store->read_shuffle();
-                // perm_share->n_read_ssd -= 2 * size;
-                //} else if (perm_share->n_read_ssd > size) {
-                // auto perm_vec = store->read_shuffle();
-                // perm_share->pi_0_p = Permutation(perm_vec);
-                // perm_share->has_pi_0_p = true;
-                // perm_share->n_read_ssd -= size;
-                //}
-                // if (perm_share->n_read_ssd > 0) {
-                // perm_share->B = store->read_shuffle();
-                // perm_share->n_read_ssd -= size;
-                //}
-                //} else {
-                // if (perm_share->merged && perm_share->n_read_ssd > 0) {
-                // auto pi_1_vec = store->read_shuffle();
-                // perm_share->pi_1 = Permutation(pi_1_vec);
-                // perm_share->has_pi_1 = true;
-                // perm_share->B = store->read_shuffle();
-                // perm_share->n_read_ssd -= 2 * size;
-                //} else if (perm_share->n_read_ssd > size) {
-                // auto perm_vec = store->read_shuffle();
-                // perm_share->pi_1_p = Permutation(perm_vec);
-                // perm_share->has_pi_1_p = true;
-                // perm_share->n_read_ssd -= size;
-                //}
-                // if (perm_share->n_read_ssd > 0) {
-                // perm_share->B = store->read_shuffle();
-                // perm_share->n_read_ssd -= size;
-                //}
-                //}
-                //}
 
                 std::vector<Ring> t(size);
                 std::vector<Ring> R(size);
@@ -468,7 +433,7 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Function>> &layer) {
 
                 for (size_t i = 0; i < size; ++i) wires[f->output[i]] = vec_t[i];
 
-                if (f->f_id == 17) {  // Shuffle, Repeat
+                if (f->f_id == 17) {
                     std::vector<Ring> input(size);
                     std::vector<Ring> output(size);
                     for (size_t i = 0; i < size; ++i) {
@@ -536,7 +501,7 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Function>> &layer) {
                     wires[f->output[i]] += s_0[i];
                     if (id == P0) wires[f->output[i]]--;
                 }
-                if (f->f_id == 10) {
+                if (f->f_id == 10 || f->f_id == 15) {
                     std::vector<Ring> input(size);
                     std::vector<Ring> output(size);
                     for (size_t i = 0; i < size; ++i) {
