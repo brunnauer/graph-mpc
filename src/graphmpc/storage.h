@@ -49,6 +49,7 @@ class Storage {
     std::vector<Ring> load_unshuffle() {
         auto unshuffle = unshuffles[unshuffles_idx];
         unshuffles_idx++;
+        if (unshuffles_idx == unshuffles.size()) unshuffles_idx = 0;
         return unshuffle;
     }
 

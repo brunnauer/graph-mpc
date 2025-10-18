@@ -24,6 +24,7 @@ void Evaluator::run(Circuit *circ, Graph &g) {
         evaluate_recv(layer);
     }
     g.data = output;
+    wires.clear();
 }
 
 void Evaluator::set_input(Graph &g) {

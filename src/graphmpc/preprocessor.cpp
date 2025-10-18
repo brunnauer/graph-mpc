@@ -20,6 +20,7 @@ void Preprocessor::run(Circuit *circ) {
             size_t n_send = data_send.size();
             network->send(party, &n_send, sizeof(size_t));
             network->send_vec(party, n_send, data_send);
+            preproc[party].clear();
         }
     }
 }
