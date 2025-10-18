@@ -24,9 +24,17 @@ class Benchmark {
         repeat = b_conf.repeat;
         save_output = b_conf.save_output;
 
-        output_data["details"] = {{"Party", conf.id},  {"Size", conf.size},           {"Nodes", conf.nodes},      {"Depth", conf.depth},
-                                  {"Bits", conf.bits}, {"SSD Utilization", conf.ssd}, {"input file", input_file}, {"save file", save_file},
-                                  {"repeat", repeat},  {"save output", save_output}};
+        output_data["details"] = {{"Party", conf.id},
+                                  {"Size", conf.size},
+                                  {"Nodes", conf.nodes},
+                                  {"Depth", conf.depth},
+                                  {"Bits", conf.bits},
+                                  {"SSD Utilization", conf.ssd},
+                                  {"Communication rounds", circ->get().size()},
+                                  {"input file", input_file},
+                                  {"save file", save_file},
+                                  {"repeat", repeat},
+                                  {"save output", save_output}};
         output_data["benchmarks_pre"] = json::array();
         output_data["benchmarks"] = json::array();
     }
