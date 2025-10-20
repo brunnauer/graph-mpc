@@ -168,6 +168,8 @@ void Evaluator::evaluate_send(std::vector<std::shared_ptr<Function>> &layer) {
                 t.swap(t_permuted);
 
                 shuffle_vals.insert(shuffle_vals.end(), t.begin(), t.end());
+
+                store->store_shuffle(f->shuffle_idx);
                 break;
             }
 
@@ -194,6 +196,8 @@ void Evaluator::evaluate_send(std::vector<std::shared_ptr<Function>> &layer) {
                 vec_t.swap(vec_t_permuted);
 
                 shuffle_vals.insert(shuffle_vals.end(), vec_t.begin(), vec_t.end());
+
+                store->store_shuffle(f->shuffle_idx);
                 break;
             }
 
@@ -397,6 +401,7 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Function>> &layer) {
                 for (size_t i = 0; i < size; ++i) {
                     wires[f->output[i]] = t[i] - perm_share->B[i];
                 }
+                store->store_shuffle(f->shuffle_idx);
                 break;
             }
 
@@ -416,6 +421,7 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Function>> &layer) {
 
                 for (size_t i = 0; i < size; ++i) wires[f->output[i]] = vec_t[i];
 
+                store->store_shuffle(f->shuffle_idx);
                 break;
             }
 

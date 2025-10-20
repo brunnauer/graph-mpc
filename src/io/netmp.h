@@ -193,14 +193,14 @@ class NetIOMP {
         std::vector<Ring> tmp(BLOCK_SIZE);
         for (size_t i = 0; i < n_msgs; i++) {
             recv(src, tmp.data(), sizeof(Ring) * BLOCK_SIZE);
-            disk.write_vec({tmp.begin(), tmp.end()});
+            disk.write({tmp.begin(), tmp.end()});
         }
 
         /* Receive last elements */
         if (last_msg_size > 0) {
             tmp.resize(last_msg_size);
             recv(src, tmp.data(), sizeof(Ring) * last_msg_size);
-            disk.write_vec({tmp.begin(), tmp.end()});
+            disk.write({tmp.begin(), tmp.end()});
         }
     }
 

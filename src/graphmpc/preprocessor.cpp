@@ -197,7 +197,6 @@ void Preprocessor::preprocess(Circuit *circ) {
                                 D0_idx++;
                             }
                             perm_share->B = B;
-                            store->store_shuffle(f->shuffle_idx);
                             break;
                         }
                         case P1: {
@@ -219,13 +218,13 @@ void Preprocessor::preprocess(Circuit *circ) {
                                 D1_idx++;
                             }
                             perm_share->B = B;
-                            store->store_shuffle(f->shuffle_idx);
                             break;
                         }
                     }
 
                     /* Alternate receiver of larger message */
                     perm_share->preprocessed = true;
+                    store->store_shuffle(f->shuffle_idx);
                     recv = recv == P0 ? P1 : P0;
                     break;
                 }
@@ -234,11 +233,11 @@ void Preprocessor::preprocess(Circuit *circ) {
                     auto perm_share = store->load_shuffle(f->shuffle_idx);
                     if (perm_share->preprocessed) break;  // Already preprocessed
 
-                    auto pi_share = store->load_shuffle(f->pi_idx);
-                    auto omega_share = store->load_shuffle(f->omega_idx);
-
                     switch (id) {
                         case D: {
+                            auto pi_share = store->load_shuffle(f->pi_idx);
+                            auto omega_share = store->load_shuffle(f->omega_idx);
+
                             std::vector<Ring> sigma_0_p_vec(size);
                             std::vector<Ring> sigma_1_vec(size);
 
@@ -294,6 +293,8 @@ void Preprocessor::preprocess(Circuit *circ) {
                             P1_buf.insert(P1_buf.end(), sigma_1_vec.begin(), sigma_1_vec.end());
                             P1_buf.insert(P1_buf.end(), B_1.begin(), B_1.end());
 
+                            store->store_shuffle(f->pi_idx);
+                            store->store_shuffle(f->omega_idx);
                             break;
                         }
                         case P0: {
@@ -304,7 +305,6 @@ void Preprocessor::preprocess(Circuit *circ) {
                             perm_share->pi_0_p = Permutation(sigma_0_p_vec);
                             perm_share->has_pi_0_p = true;
                             perm_share->B = B_0;
-                            store->store_shuffle(f->shuffle_idx);
                             break;
                         }
                         case P1: {
@@ -315,30 +315,26 @@ void Preprocessor::preprocess(Circuit *circ) {
                             perm_share->pi_1 = Permutation(sigma_1_vec);
                             perm_share->has_pi_1 = true;
                             perm_share->B = B_1;
-                            store->store_shuffle(f->shuffle_idx);
                             break;
                         }
                     }
                     perm_share->preprocessed = true;
+                    store->store_shuffle(f->shuffle_idx);
                     break;
                 }
                 case Unshuffle: {
-                    auto perm_share = store->load_shuffle(f->shuffle_idx);
-                    std::vector<Ring> B_0(size);
-                    std::vector<Ring> B_1(size);
-
                     if (id == D) {
+                        auto perm_share = store->load_shuffle(f->shuffle_idx);
+                        std::vector<Ring> B_0(size);
+                        std::vector<Ring> B_1(size);
+
                         /* Sampling 1: R_0, R_1*/
                         std::vector<Ring> R_0(size);
                         std::vector<Ring> R_1(size);
 
-                        for (size_t i = 0; i < size; ++i) {
-                            rngs->rng_D0_send().random_data(&R_0[i], sizeof(Ring));
-                        }
+                        for (size_t i = 0; i < size; ++i) rngs->rng_D0_send().random_data(&R_0[i], sizeof(Ring));
 
-                        for (size_t i = 0; i < size; ++i) {
-                            rngs->rng_D1_send().random_data(&R_1[i], sizeof(Ring));
-                        }
+                        for (size_t i = 0; i < size; ++i) rngs->rng_D1_send().random_data(&R_1[i], sizeof(Ring));
 
                         /* Compute B_0, B_1 */
                         Ring R;
@@ -357,6 +353,8 @@ void Preprocessor::preprocess(Circuit *circ) {
 
                         preproc[P0].insert(preproc[P0].end(), B_0.begin(), B_0.end());
                         preproc[P1].insert(preproc[P1].end(), B_1.begin(), B_1.end());
+
+                        store->store_shuffle(f->shuffle_idx);
                     } else {
                         auto unshuffle = read_preproc(size);
                         store->store_unshuffle(unshuffle);
