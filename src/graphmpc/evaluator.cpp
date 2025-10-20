@@ -225,7 +225,9 @@ void Evaluator::evaluate_send(std::vector<std::shared_ptr<Function>> &layer) {
                     s_1[i] = s - s_0[i];
                 }
 
-                std::vector<Ring> data(2 * size);
+                size_t old = mul_vals.size();
+                mul_vals.resize(old + 2 * size);
+                auto send_ptr = mul_vals.data() + old;
 
 #pragma omp parallel for if (size > 10000)
                 for (size_t i = 0; i < size; ++i) {
@@ -234,11 +236,9 @@ void Evaluator::evaluate_send(std::vector<std::shared_ptr<Function>> &layer) {
 
                     auto xa = wires[f->in1[i]] + a;
                     auto yb = s_1[i] + b;
-                    data[2 * i] = xa;
-                    data[2 * i + 1] = yb;
+                    send_ptr[2 * i] = xa;
+                    send_ptr[2 * i + 1] = yb;
                 }
-
-                mul_vals.insert(mul_vals.end(), data.begin(), data.end());
                 break;
             }
 
@@ -549,27 +549,15 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Function>> &layer) {
             }
 
             case Permute: {
-                std::vector<Ring> perm(size);
 #pragma omp parallel for if (size > 10000)
-                for (size_t i = 0; i < size; ++i) {
-                    perm[i] = wires[f->in2[i]];
-                }
-
-#pragma omp parallel for if (size > 10000)
-                for (size_t i = 0; i < size; ++i) {
-                    wires[f->output[perm[i]]] = wires[f->in1[i]];
-                }
+                for (size_t i = 0; i < size; ++i) wires[f->output[wires[f->in2[i]]]] = wires[f->in1[i]];
+                break;
             }
 
             case ReversePermute: {
-                std::vector<Ring> inverse_vec(size);
 #pragma omp parallel for if (size > 10000)
                 for (size_t i = 0; i < size; ++i) {
-                    inverse_vec[wires[f->in2[i]]] = i;
-                }
-#pragma omp parallel for if (size > 10000)
-                for (size_t i = 0; i < inverse_vec.size(); ++i) {
-                    wires[f->output[inverse_vec[i]]] = wires[f->in1[i]];
+                    wires[f->output[i]] = wires[f->in1[wires[f->in2[i]]]];
                 }
                 break;
             }
