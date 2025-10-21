@@ -35,4 +35,5 @@ struct Inputs {
     size_t dst;
     size_t isV_inv;
     size_t data;
+    std::vector<size_t> data_parallel;
 };

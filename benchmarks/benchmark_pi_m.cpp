@@ -20,7 +20,9 @@ int main(int argc, char **argv) {
         circuit.build();
         circuit.level_order();
 
-        auto benchmark = Benchmark(conf, b_conf, &circuit, network);
+        Graph g = Graph::benchmark_graph(conf, network);
+
+        auto benchmark = Benchmark(conf, b_conf, &circuit, network, g);
         benchmark.run();
 
     } catch (const std::exception &ex) {

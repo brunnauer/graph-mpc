@@ -23,6 +23,24 @@ class Function {
           inverse(false),
           binary(false) {}
 
+    /* Used by ConstructData */
+    Function(FType type, size_t f_id, size_t in1_idx, size_t out_idx, std::vector<size_t> &data_parallel)
+        : type(type),
+          f_id(f_id),
+          in1_idx(in1_idx),
+          in2_idx(0),
+          val(0),
+          out_idx(out_idx),
+          size(0),
+          layer(0),
+          shuffle_idx(0),
+          pi_idx(0),
+          omega_idx(0),
+          mult_idx(0),
+          inverse(false),
+          binary(false),
+          data_parallel(data_parallel) {}
+
     /* Used by Output, Propagate-1, Gather-1, Gather-2, Reveal, Sub */
     Function(FType type, size_t f_id, size_t in1_idx, size_t out_idx)
         : type(type),
@@ -174,4 +192,6 @@ class Function {
 
     bool inverse;
     bool binary;
+
+    std::vector<size_t> data_parallel;
 };

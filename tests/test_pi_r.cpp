@@ -7,23 +7,16 @@
 
 class TestPiR : public Test {
    public:
-    TestPiR(bpo::variables_map &opts) : Test(opts) {}
+    TestPiR(ProtocolConfig &conf, std::shared_ptr<io::NetIOMP> network) : Test(conf, network) {}
 
-    virtual MPProtocol *create_protocol() {
-        bool ssd = true;
-        const size_t nodes = 5;
-        const size_t depth = 2;
-        std::vector<Ring> weights(depth);
-        bits = std::ceil(std::log2(nodes + 2));
-        size_t size = 17;
-
-        ProtocolConfig conf = {id, size, nodes, depth, rngs, ssd, weights};
-        PiRProtocol *prot = new PiRProtocol(conf, network);
-
-        return prot;
+    Circuit *create_circuit() override {
+        auto circ = new PiRCircuit(conf);
+        circ->build();
+        circ->level_order();
+        return circ;
     }
 
-    virtual Graph create_graph() {
+    Graph create_graph() override {
         /*
          Graph instance:
          v1 - v2
@@ -51,6 +44,8 @@ class TestPiR : public Test {
          */
 
         Graph g;
+        std::vector<std::vector<Ring>> data_parallel(conf.nodes);
+
         if (id == P0) {
             g.add_list_entry(1, 1, 1);
             g.add_list_entry(2, 2, 1);
@@ -61,8 +56,6 @@ class TestPiR : public Test {
             g.add_list_entry(1, 3, 0);
             g.add_list_entry(3, 1, 0);
             g.add_list_entry(5, 5, 1);
-        }
-        if (id == P1) {
             g.add_list_entry(4, 4, 1);
             g.add_list_entry(3, 3, 1);
             g.add_list_entry(3, 1, 0);
@@ -71,14 +64,31 @@ class TestPiR : public Test {
             g.add_list_entry(2, 4, 0);
             g.add_list_entry(5, 4, 0);
             g.add_list_entry(4, 2, 0);
+
+            size_t idx = 0;
+            for (size_t i = 0; i < g.size; ++i) {
+                if (g.isV[i]) {
+                    std::vector<Ring> data(g.size);
+                    data[i] = 1;
+                    data_parallel[idx] = data;
+                    idx++;
+                }
+            }
         }
-        Graph g_shared = g.share_subgraphs(id, rngs, network, bits);
-        g_shared.n_vertices = 5;  // For helper
-        g_shared.init_mp(id);
+
+        for (size_t i = 0; i < conf.nodes; ++i) {
+            if (id == P1) data_parallel[i].resize(conf.size);
+            data_parallel[i] = share::random_share_secret_vec_2P(id, conf.rngs, data_parallel[i]);
+        }
+
+        Graph g_shared = g.secret_share_parties(conf.id, conf.rngs, network, conf.bits, P0);
+        g_shared.init_mp(conf.id);
+        g_shared.data_parallel = data_parallel;
+
         return g_shared;
     }
 
-    virtual void run_assertions(Graph &result) {
+    void run_assertions(Graph &result) override {
         if (id != D) {
             result.print();
 
@@ -102,8 +112,20 @@ int main(int argc, char **argv) {
     bpo::variables_map opts = setup::parseOptions(cmdline, prog_opts, argc, argv);
 
     try {
-        auto test = TestPiR(opts);
-        test.run(true);
+        Party id = (Party)opts["pid"].as<size_t>();
+        const size_t size = 17;
+        const size_t nodes = 5;
+        const size_t depth = 2;
+        const size_t bits = std::ceil(std::log2(nodes + 2));
+        auto rngs = setup::setupRNGs(opts);
+        bool ssd = false;
+        std::vector<Ring> weights(depth);
+
+        ProtocolConfig conf = {id, size, nodes, depth, bits, rngs, ssd, weights};
+        auto network = setup::setupNetwork(opts);
+
+        auto test = TestPiR(conf, network);
+        test.run();
     } catch (const std::exception &ex) {
         std::cerr << ex.what() << "\nFatal error" << std::endl;
         return 1;

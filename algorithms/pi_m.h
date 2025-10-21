@@ -8,7 +8,7 @@ class PiMCircuit : public Circuit {
 
     void pre_mp() override {}
 
-    size_t apply(size_t &data_vtx) override { return data_vtx; }
+    size_t apply(size_t &data_old, size_t &data_new) override { return data_new; }
 
     size_t post_mp(size_t &data) override { return data; }
 };

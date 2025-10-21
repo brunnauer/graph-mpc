@@ -78,9 +78,8 @@ class InputServer {
         size_t total_size = 0;
         for (auto &pkt : pkts) {
             size_t pkt_size = pkt.end - pkt.start;
-            size_t expected_size = (4 + 2 * n_bits) * pkt_size;
             assert(pkt.start < pkt.end);
-            assert(pkt.entries.size() == expected_size);
+            assert(pkt.entries.size() == (4 + 2 * n_bits) * pkt_size);
             total_size += pkt_size;
         }
 

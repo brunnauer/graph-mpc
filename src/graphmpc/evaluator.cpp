@@ -50,6 +50,11 @@ void Evaluator::set_input(Graph &g) {
         idx++;
         input_to_val[idx] = g.data;
         idx++;
+
+        for (size_t i = 0; i < g.data_parallel.size(); ++i) {
+            input_to_val[idx] = g.data_parallel[i];
+            idx++;
+        }
     }
 }
 
@@ -546,7 +551,6 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Function>> &layer) {
                     auto mul_result = (xa * yb * (id)) - (xa * b) - (yb * a) + c;
                     output[i] = (wires[f->in1_idx][i] & 1) - 2 * mul_result;
                 }
-                auto result = share::reveal_vec(id, network, output);
                 wires[f->out_idx] = output;
                 break;
             }
@@ -675,6 +679,19 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Function>> &layer) {
             case Insert: {
                 std::vector<Ring> output({wires[f->in1_idx].begin(), wires[f->in1_idx].end()});
                 output.insert(output.begin(), 0);
+                wires[f->out_idx] = output;
+                break;
+            }
+
+            case ConstructData: {
+                std::vector<Ring> output(size);
+                for (size_t i = 0; i < nodes; ++i) {
+                    auto sum = wires[f->data_parallel[i]][0];
+                    for (size_t j = 1; j < nodes; ++j) {
+                        sum += wires[f->data_parallel[i]][j];
+                    }
+                    output[i] = sum;
+                }
                 wires[f->out_idx] = output;
                 break;
             }

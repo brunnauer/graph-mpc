@@ -5,7 +5,15 @@ void Circuit::build() {
     pre_mp();
     compute_sorts();
     prepare_shuffles();
-    auto data_out = message_passing(in.data);
+    size_t data_out;
+    if (in.data_parallel.size() > 0) {
+        for (size_t i = 0; i < in.data_parallel.size(); ++i) {
+            in.data_parallel[i] = message_passing(in.data_parallel[i]);
+        }
+    } else {
+        data_out = message_passing(in.data);
+    }
+    shuffle_idx += 3;
     auto data_post_mp = post_mp(data_out);
     output(data_post_mp);
 }
@@ -23,6 +31,10 @@ void Circuit::set_inputs() {
     in.dst = input();
     in.isV_inv = input();
     in.data = input();
+
+    for (size_t i = 0; i < in.data_parallel.size(); ++i) {
+        in.data_parallel[i] = input();
+    }
 }
 
 void Circuit::level_order() {
@@ -91,11 +103,12 @@ size_t Circuit::message_passing(size_t &data) {
     auto data_shuffled = shuffle(data, ctx.vtx_shuffle_idx);
     auto data_vtx = permute(data_shuffled, ctx.clear_shuffled_vtx_order);
 
-    size_t vtx_src_idx = ++shuffle_idx;
-    size_t src_dst_idx = ++shuffle_idx;
-    size_t dst_vtx_idx = ++shuffle_idx;
+    size_t vtx_src_idx = shuffle_idx + 1;
+    size_t src_dst_idx = shuffle_idx + 2;
+    size_t dst_vtx_idx = shuffle_idx + 3;
 
     for (size_t i = 0; i < depth; ++i) {
+        auto data_old = data_vtx;
         data_vtx = add_const(data_vtx, weights[weights.size() - 1 - i]);
 
         /* Propagate-1 */
@@ -129,7 +142,7 @@ size_t Circuit::message_passing(size_t &data) {
         /* Gather-2 */
         data_vtx = gather_2(data_vtx);
 
-        data_vtx = apply(data_vtx);
+        data_vtx = apply(data_old, data_vtx);
     }
     return data_vtx;
 }
@@ -316,5 +329,12 @@ size_t Circuit::add_const(size_t &data, Ring val) {
     size_t output = n_wires;
     n_wires++;
     f_queue.push_back(std::make_shared<Function>(AddConst, f_queue.size(), data, val, output));
+    return output;
+}
+
+size_t Circuit::construct_data(std::vector<size_t> &parallel_data) {
+    size_t output = n_wires;
+    n_wires++;
+    f_queue.push_back(std::make_shared<Function>(ConstructData, f_queue.size(), parallel_data[parallel_data.size() - 1], output, parallel_data));
     return output;
 }

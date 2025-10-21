@@ -60,6 +60,8 @@ class Graph {
     size_t size = 0;
     size_t n_vertices = 0;
 
+    std::vector<std::vector<Ring>> data_parallel;
+
     void add_list_entry(Ring _src, Ring _dst, Ring _isV, Ring _data) {
         src.push_back(_src);
         dst.push_back(_dst);
@@ -373,6 +375,30 @@ class Graph {
         }
         auto g_shared = g.share_subgraphs(conf.id, conf.rngs, network, conf.bits);
         g_shared.init_mp(conf.id);
+        return g_shared;
+    }
+
+    static Graph benchmark_graph_PiR(ProtocolConfig &conf, std::shared_ptr<io::NetIOMP> network) {
+        Graph g;
+        if (conf.id == P0) {
+            for (size_t i = 0; i < conf.nodes / 2; i++) g.add_list_entry(i + 1, i + 1, 1);
+            for (size_t i = 0; i < (conf.size - conf.nodes) / 2; i++) g.add_list_entry(1, 2, 0);
+        }
+        if (conf.id == P1) {
+            for (size_t i = conf.nodes / 2; i < conf.nodes; i++) g.add_list_entry(i + 1, i + 1, 1);
+            for (size_t i = (conf.size - conf.nodes) / 2; i < conf.size - conf.nodes; i++) g.add_list_entry(1, 2, 0);
+        }
+
+        auto g_shared = g.share_subgraphs(conf.id, conf.rngs, network, conf.bits);
+        g_shared.init_mp(conf.id);
+
+        for (size_t i = 0; i < conf.nodes; ++i) {
+            std::vector<Ring> data(conf.size);
+            data[i] = 1;
+            auto data_shared = share::random_share_secret_vec_2P(conf.id, conf.rngs, data);
+            g_shared.data_parallel.push_back(data_shared);
+        }
+
         return g_shared;
     }
 };
