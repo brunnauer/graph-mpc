@@ -24,7 +24,7 @@ void Circuit::set_inputs() {
 }
 
 void Circuit::level_order() {
-    std::vector<size_t> wire_level(n_wires, 0);
+    std::vector<size_t> wire_level(f_queue.size(), 0);
     std::vector<size_t> function_level(f_queue.size(), 0);
     size_t depth = 0;
 
@@ -177,7 +177,7 @@ size_t Circuit::propagate_1(size_t &input) {
 }
 
 size_t Circuit::propagate_2(size_t &input1, size_t &input2) {
-    size_t output;
+    size_t output = n_wires;
     n_wires++;
     f_queue.push_back(std::make_shared<Function>(Propagate2, f_queue.size(), input1, input2, output));
     return output;
