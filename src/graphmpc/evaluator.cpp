@@ -29,6 +29,11 @@ void Evaluator::run(Circuit *circ) {
         evaluate_recv(layer);
         update_wires(layer);
     }
+
+    std::cout << "Communication (Entire round): " << comm_ms << std::endl;
+    std::cout << "Communication (Sending/Receiving): " << sr_ms << std::endl;
+    comm_ms = 0;
+    sr_ms = 0;
 }
 
 const std::vector<Ring> Evaluator::result() { return output; }
