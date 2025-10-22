@@ -18,9 +18,11 @@ void Evaluator::run(Circuit *circ, Graph &g) {
 
     if (!initialized) {
         waiting.resize(circ->n_wires);
+        wires.resize(circ->n_wires);
         set_input(g);
         initialized = true;
     }
+
     init_waiting(circ);  // Initialize mapping of how many functions wait for which output
     for (auto &layer : circ->get()) {
         evaluate_send(layer);

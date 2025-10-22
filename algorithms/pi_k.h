@@ -7,9 +7,10 @@ class PiKCircuit : public Circuit {
     PiKCircuit(ProtocolConfig &conf) : Circuit(conf) {}
 
     void compute_sorts() override {
-        ctx.src_order = sort(in.src_order_bits, bits + 2);
-        ctx.dst_order = sort_iteration(ctx.dst_order, in.dst_order_bits[in.dst_order_bits.size() - 1]);
-        ctx.vtx_order = sort_iteration(ctx.src_order, in.isV_inv);
+        ctx.src_order = sort(in.src_order_bits, bits + 2);  // Sorting src_order_bits + appended deduplication_bits
+        ctx.dst_order = sort_iteration(
+            ctx.dst_order, in.dst_order_bits[in.dst_order_bits.size() - 1]);  // Only one extra sort iteration for appended deduplication bits needed
+        ctx.vtx_order = sort_iteration(ctx.src_order, in.isV_inv);            // One iteration from src_order to vtx_order
     }
 
     void pre_mp() override { /* Deduplication */
@@ -33,14 +34,15 @@ class PiKCircuit : public Circuit {
         auto deduplication_dst_dupl = deduplication_sub(deduplication_dst);
 
         deduplication_src_dupl = equals_zero(deduplication_src_dupl, size - 1, 0);
-        deduplication_dst_dupl = equals_zero(deduplication_dst_dupl, size - 1, 0);
         deduplication_src_dupl = equals_zero(deduplication_src_dupl, size - 1, 1);
-        deduplication_dst_dupl = equals_zero(deduplication_dst_dupl, size - 1, 1);
         deduplication_src_dupl = equals_zero(deduplication_src_dupl, size - 1, 2);
-        deduplication_dst_dupl = equals_zero(deduplication_dst_dupl, size - 1, 2);
         deduplication_src_dupl = equals_zero(deduplication_src_dupl, size - 1, 3);
-        deduplication_dst_dupl = equals_zero(deduplication_dst_dupl, size - 1, 3);
         deduplication_src_dupl = equals_zero(deduplication_src_dupl, size - 1, 4);
+
+        deduplication_dst_dupl = equals_zero(deduplication_dst_dupl, size - 1, 0);
+        deduplication_dst_dupl = equals_zero(deduplication_dst_dupl, size - 1, 1);
+        deduplication_dst_dupl = equals_zero(deduplication_dst_dupl, size - 1, 2);
+        deduplication_dst_dupl = equals_zero(deduplication_dst_dupl, size - 1, 3);
         deduplication_dst_dupl = equals_zero(deduplication_dst_dupl, size - 1, 4);
 
         auto deduplication_duplicates = mul(deduplication_src_dupl, deduplication_dst_dupl, size - 1, true);

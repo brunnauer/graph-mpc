@@ -23,7 +23,7 @@ class Evaluator {
     std::vector<Ring> output;
     Storage *store;
 
-    std::unordered_map<size_t, std::vector<Ring>> wires;
+    std::vector<std::vector<Ring>> wires;
     std::vector<size_t> waiting;
     bool initialized;
 
@@ -64,10 +64,10 @@ class Evaluator {
                 waiting[f->in2_idx]--;
             }
         }
+#pragma omp parallel for
         for (size_t i = 0; i < waiting.size(); ++i) {
             if (waiting[i] == 0) {
                 std::vector<Ring>().swap(wires[i]);  // Free memory
-                wires.erase(i);
             }
         }
     }
