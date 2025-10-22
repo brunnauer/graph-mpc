@@ -5,10 +5,11 @@
 class Storage {
    public:
     Storage(ProtocolConfig &conf, Circuit *circ) : id(conf.id), size(conf.size), ssd(conf.ssd), unshuffles_idx(0) {
+        size_t n_shuffles = circ->shuffle_idx + 1;
         if (ssd) {
-            shuffles.resize(circ->n_shuffles);  // Shuffles need to be stored in RAM either way
+            shuffles.resize(n_shuffles);  // Shuffles need to be stored in RAM either way
 
-            for (size_t i = 0; i < circ->n_shuffles; ++i) {
+            for (size_t i = 0; i < n_shuffles; ++i) {
                 const std::string filename = "shuffle_" + std::to_string(i) + "_" + std::to_string(conf.id) + ".bin";
                 shuffles_disk.emplace_back(filename);
             }
@@ -19,7 +20,7 @@ class Storage {
                 triples_disk.emplace_back("triples_" + std::to_string(i) + "_" + std::to_string(conf.id) + ".bin");
             }
         } else {
-            for (size_t i = 0; i < circ->n_shuffles; ++i) {
+            for (size_t i = 0; i < n_shuffles; ++i) {
                 shuffles.push_back(std::make_shared<ShufflePre>());
             }
             unshuffles.resize(circ->n_unshuffles);

@@ -216,7 +216,6 @@ size_t Circuit::shuffle(size_t &input, size_t shuffle_idx) {
     size_t output = n_wires;
     n_wires++;
     f_queue.push_back(std::make_shared<Function>(Shuffle, f_queue.size(), input, output, shuffle_idx));
-    n_shuffles++;
     return output;
 }
 
@@ -232,7 +231,6 @@ size_t Circuit::merged_shuffle(size_t &input, size_t shuffle_idx, size_t pi_idx,
     size_t output = n_wires;
     n_wires++;
     f_queue.push_back(std::make_shared<Function>(MergedShuffle, f_queue.size(), input, output, shuffle_idx, pi_idx, omega_idx));
-    n_shuffles++;
     return output;
 }
 
