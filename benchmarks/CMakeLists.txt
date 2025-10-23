@@ -18,8 +18,6 @@ endmacro()
 add_benchmark(benchmark_pi_r)
 add_benchmark(benchmark_pi_k)
 add_benchmark(benchmark_pi_m)
-#add_benchmark(benchmark_shuffle)
-#add_benchmark(benchmark_sort)
 
 add_custom_target(benchmarks)
 add_dependencies(benchmarks ${benchbin})

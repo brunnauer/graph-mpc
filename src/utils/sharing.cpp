@@ -77,8 +77,8 @@ std::vector<Ring> share::reveal_vec(Party id, std::shared_ptr<io::NetIOMP> netwo
         case P0: {
             std::vector<Ring> share_other(share.size());
 
-            network->send_vec(P1, share.size(), share);
-            network->recv_vec(P1, share.size(), share_other);
+            network->send_vec(P1, share, share.size());
+            network->recv_vec(P1, share_other, share.size());
 
             for (size_t i = 0; i < result.size(); ++i) {
                 result[i] = share[i] + share_other[i];
@@ -88,8 +88,8 @@ std::vector<Ring> share::reveal_vec(Party id, std::shared_ptr<io::NetIOMP> netwo
         case P1: {
             std::vector<Ring> share_other(share.size());
 
-            network->recv_vec(P0, share.size(), share_other);
-            network->send_vec(P0, share.size(), share);
+            network->recv_vec(P0, share_other, share.size());
+            network->send_vec(P0, share, share.size());
 
             for (size_t i = 0; i < result.size(); ++i) {
                 result[i] = share[i] + share_other[i];
@@ -107,13 +107,13 @@ std::vector<Ring> share::reveal_vec_bin(Party id, std::shared_ptr<io::NetIOMP> n
 
     switch (id) {
         case P0: {
-            network->send_vec(P1, share.size(), share);
-            network->recv_vec(P1, share.size(), share_other);
+            network->send_vec(P1, share, share.size());
+            network->recv_vec(P1, share_other, share.size());
             break;
         }
         case P1: {
-            network->recv_vec(P0, share.size(), share_other);
-            network->send_vec(P0, share.size(), share);
+            network->recv_vec(P0, share_other, share.size());
+            network->send_vec(P0, share, share.size());
             break;
         }
         default:
