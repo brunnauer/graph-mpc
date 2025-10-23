@@ -30,6 +30,7 @@ Storage::~Storage() {
         for (auto &disk : triples_disk) {
             std::filesystem::remove(disk.name());
         }
+        std::filesystem::remove(preproc_disk.name());
     }
 }
 
@@ -97,6 +98,22 @@ void Storage::reset() {
         for (auto &disk : triples_disk) {
             std::filesystem::remove(disk.name());
         }
-    } else {
+        std::filesystem::remove(preproc_disk.name());
     }
+
+    for (auto &perm : pi_0) {
+        perm.perm_vec.clear();
+    }
+    for (auto &perm : pi_1) {
+        perm.perm_vec.clear();
+    }
+    for (auto &perm : pi_0_p) {
+        perm.perm_vec.clear();
+    }
+    for (auto &perm : pi_1_p) {
+        perm.perm_vec.clear();
+    }
+
+    preproc.clear();
+    B.clear();
 }
