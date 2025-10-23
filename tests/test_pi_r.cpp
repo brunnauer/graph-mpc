@@ -11,8 +11,6 @@ class TestPiR : public Test {
 
     Circuit *create_circuit() override {
         auto circ = new PiRCircuit(conf);
-        circ->build();
-        circ->level_order();
         return circ;
     }
 

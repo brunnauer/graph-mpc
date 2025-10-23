@@ -4,7 +4,10 @@
 
 class PiKCircuit : public Circuit {
    public:
-    PiKCircuit(ProtocolConfig &conf) : Circuit(conf) {}
+    PiKCircuit(ProtocolConfig &conf) : Circuit(conf) {
+        build();
+        level_order();
+    }
 
     void compute_sorts() override {
         ctx.src_order = sort(in.src_order_bits, bits + 2);  // Sorting src_order_bits + appended deduplication_bits

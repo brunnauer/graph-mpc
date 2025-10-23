@@ -53,16 +53,16 @@ void Evaluator::online_communication() {
     auto comm_begin = std::chrono::high_resolution_clock::now();
     if (id == P0) {
         network->send(P1, &n_send, sizeof(size_t));
-        network->send_vec(P1, n_send, send_vals);
+        network->send_vec(P1, send_vals, n_send);
         network->recv(P1, &n_recv, sizeof(size_t));
         data_recv.resize(n_recv);
-        network->recv_vec(P1, n_recv, data_recv);
+        network->recv_vec(P1, data_recv, n_recv);
     } else {
         network->recv(P0, &n_recv, sizeof(size_t));
         data_recv.resize(n_recv);
-        network->recv_vec(P0, n_recv, data_recv);
+        network->recv_vec(P0, data_recv, n_recv);
         network->send(P0, &n_send, sizeof(size_t));
-        network->send_vec(P0, n_send, send_vals);
+        network->send_vec(P0, send_vals, n_send);
     }
     auto comm_end = std::chrono::high_resolution_clock::now();
 
@@ -89,7 +89,7 @@ void Evaluator::online_communication() {
     sr_ms += time_comm.count();
 }
 
-void Evaluator::evaluate_send(std::vector<std::shared_ptr<Function>> &layer) {
+void Evaluator::evaluate_send(std::vector<std::shared_ptr<Gate>> &layer) {
     for (auto &f : layer) {
         switch (f->type) {
             case Input: {
@@ -322,7 +322,7 @@ void Evaluator::evaluate_send(std::vector<std::shared_ptr<Function>> &layer) {
     }
 }
 
-void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Function>> &layer) {
+void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer) {
     for (auto &f : layer) {
         switch (f->type) {
             case Input: {

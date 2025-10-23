@@ -3,33 +3,28 @@
 #include <memory>
 
 #include "../utils/structs.h"
-#include "function.h"
+#include "gate.h"
 
 class Circuit {
    public:
     Circuit(ProtocolConfig &conf)
-        : shuffle_idx(0), n_shuffles(0), n_mults(0), n_wires(0), size(conf.size), bits(conf.bits), depth(conf.depth), weights(conf.weights) {}
+        : n_shuffles(0), n_mults(0), n_wires(0), shuffle_idx(0), size(conf.size), bits(conf.bits), depth(conf.depth), weights(conf.weights) {}
 
-    std::vector<std::vector<std::shared_ptr<Function>>> get() { return circ; }
-
-    void build();
-
-    void level_order();
+    std::vector<std::vector<std::shared_ptr<Gate>>> get() { return circ; }
 
     virtual void pre_mp() = 0;
     virtual size_t apply(size_t &data_old, size_t &data_new) = 0;
     virtual size_t post_mp(size_t &data) = 0;
     virtual void compute_sorts();  // Can be overwritten
 
-    size_t shuffle_idx;
     size_t n_shuffles;
     size_t n_mults;
-
     size_t n_wires;
+    size_t shuffle_idx;
 
    protected:
-    std::vector<std::vector<std::shared_ptr<Function>>> circ;
-    std::vector<std::shared_ptr<Function>> f_queue;
+    std::vector<std::vector<std::shared_ptr<Gate>>> circ;
+    std::vector<std::shared_ptr<Gate>> f_queue;
 
     MPContext ctx;
     Inputs in;
@@ -38,6 +33,10 @@ class Circuit {
     size_t bits;
     size_t depth;
     std::vector<Ring> weights;
+
+    void build();
+
+    void level_order();
 
     void set_inputs();
 

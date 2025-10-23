@@ -7,12 +7,12 @@
 class Preprocessor {
    public:
     Preprocessor(ProtocolConfig &conf, Storage *store, std::shared_ptr<io::NetIOMP> network)
-        : store(store), id(conf.id), size(conf.size), ssd(conf.ssd), rngs(&conf.rngs), network(network), recv(P0) {}
+        : data(store), id(conf.id), size(conf.size), ssd(conf.ssd), rngs(&conf.rngs), network(network), recv(P0) {}
 
     void run(Circuit *circ);
 
    private:
-    Storage *store;
+    Storage *data;
 
     Party id;
     size_t size;

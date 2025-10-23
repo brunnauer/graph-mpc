@@ -11,8 +11,6 @@ class TestPiK : public Test {
 
     Circuit *create_circuit() override {
         auto circ = new PiKCircuit(conf);
-        circ->build();
-        circ->level_order();
         return circ;
     }
 

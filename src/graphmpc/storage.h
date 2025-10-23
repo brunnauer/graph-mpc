@@ -14,9 +14,9 @@ class Storage {
 
     void load_triples(std::vector<Ring> &a, std::vector<Ring> &b, std::vector<Ring> &c, size_t mul_idx, size_t triple_size);
 
-    void reset();
-
     void read_preproc(std::vector<Ring> &buffer, size_t n_elems);
+
+    void reset();
 
     std::vector<Permutation> pi_0;
     std::vector<Permutation> pi_1;

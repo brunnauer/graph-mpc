@@ -4,7 +4,11 @@
 
 class PiRCircuit : public Circuit {
    public:
-    PiRCircuit(ProtocolConfig &conf) : Circuit(conf) { in.data_parallel.resize(conf.nodes); }
+    PiRCircuit(ProtocolConfig &conf) : Circuit(conf) {
+        in.data_parallel.resize(conf.nodes);
+        build();
+        level_order();
+    }
 
     void pre_mp() override {}
 

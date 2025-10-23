@@ -4,7 +4,10 @@
 
 class PiMCircuit : public Circuit {
    public:
-    PiMCircuit(ProtocolConfig &conf) : Circuit(conf) {}
+    PiMCircuit(ProtocolConfig &conf) : Circuit(conf) {
+        build();
+        level_order();
+    }
 
     void pre_mp() override {}
 

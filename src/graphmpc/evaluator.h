@@ -65,11 +65,11 @@ class Evaluator {
     long long comm_ms = 0;
     long long sr_ms = 0;
 
-    void evaluate_send(std::vector<std::shared_ptr<Function>> &layer);
+    void evaluate_send(std::vector<std::shared_ptr<Gate>> &layer);
 
     void online_communication();
 
-    void evaluate_recv(std::vector<std::shared_ptr<Function>> &layer);
+    void evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer);
 
     std::vector<Ring> read_online(std::vector<Ring> &buffer, size_t n_elems);
 
@@ -84,7 +84,7 @@ class Evaluator {
         }
     }
 
-    void update_wires(std::vector<std::shared_ptr<Function>> &layer) {
+    void update_wires(std::vector<std::shared_ptr<Gate>> &layer) {
         for (auto &f : layer) {
             waiting[f->in1_idx]--;
             if (f->in2_idx != 0) {

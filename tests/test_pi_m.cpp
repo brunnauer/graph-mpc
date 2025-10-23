@@ -11,8 +11,6 @@ class TestPiM : public Test {
 
     Circuit *create_circuit() override {
         auto circ = new PiMCircuit(conf);
-        circ->build();
-        circ->level_order();
         return circ;
     }
 

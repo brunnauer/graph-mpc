@@ -17,8 +17,6 @@ int main(int argc, char **argv) {
         auto network = setup::setupNetwork(opts);
 
         auto circuit = PiMCircuit(conf);
-        circuit.build();
-        circuit.level_order();
 
         Graph g = Graph::benchmark_graph(conf, network);
 
