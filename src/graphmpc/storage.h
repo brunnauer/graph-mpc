@@ -16,7 +16,7 @@ class Storage {
 
     void reset();
 
-    std::vector<Ring> read_preproc(size_t n_elems);
+    void read_preproc(std::vector<Ring> &buffer, size_t n_elems);
 
     std::vector<Permutation> pi_0;
     std::vector<Permutation> pi_1;

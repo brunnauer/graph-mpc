@@ -50,7 +50,9 @@ std::vector<Ring> Preprocessor::random_share_secret_vec_3P(std::vector<Ring> &se
         store->preproc[recv].insert(store->preproc[recv].end(), share_1.begin(), share_1.end());
         return secret;
     } else if (id == recv) {
-        return store->read_preproc(secret.size());
+        std::vector<Ring> share(secret.size());
+        store->read_preproc(share, secret.size());
+        return share;
     } else {
         std::vector<Ring> share(secret.size());
         if (id == P0) {
@@ -135,7 +137,8 @@ void Preprocessor::preprocess(Circuit *circ) {
                         case P0: {
                             if (recv == P0 && (!store->preprocessed[f->shuffle_idx])) {
                                 /* Save pi_0_p */
-                                std::vector<Ring> perm_vec = store->read_preproc(size);
+                                std::vector<Ring> perm_vec;
+                                store->read_preproc(perm_vec, size);
                                 store->pi_0_p[f->shuffle_idx] = Permutation(perm_vec);
                             }
                             break;
@@ -143,7 +146,8 @@ void Preprocessor::preprocess(Circuit *circ) {
                         case P1: {
                             if (recv == P1 && !store->preprocessed[f->shuffle_idx]) {
                                 /* Save pi_1_p */
-                                std::vector<Ring> perm_vec = store->read_preproc(size);
+                                std::vector<Ring> perm_vec;
+                                store->read_preproc(perm_vec, size);
                                 store->pi_1_p[f->shuffle_idx] = Permutation(perm_vec);
                             }
                             break;
@@ -217,7 +221,7 @@ void Preprocessor::preprocess(Circuit *circ) {
                             /* Save pi_0_p */
                             if (!store->preprocessed[f->shuffle_idx]) {
                                 std::vector<Ring> sigma_0_p_vec(size);
-                                sigma_0_p_vec = store->read_preproc(size);
+                                store->read_preproc(sigma_0_p_vec, size);
                                 store->pi_0_p[f->shuffle_idx] = Permutation(sigma_0_p_vec);
                             }
                             break;
@@ -226,7 +230,7 @@ void Preprocessor::preprocess(Circuit *circ) {
                             /* Save pi_1 */
                             if (!store->preprocessed[f->shuffle_idx]) {
                                 std::vector<Ring> sigma_1_vec(size);
-                                sigma_1_vec = store->read_preproc(size);
+                                store->read_preproc(sigma_1_vec, size);
                                 store->pi_1[f->shuffle_idx] = Permutation(sigma_1_vec);
                             }
                             break;

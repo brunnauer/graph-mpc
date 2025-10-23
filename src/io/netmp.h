@@ -186,21 +186,38 @@ class NetIOMP {
         }
     }
 
+    //    void recv_vec(Party src, size_t n_elems, FileWriter &disk) {
+    // size_t n_msgs = n_elems / BLOCK_SIZE;
+    // size_t last_msg_size = n_elems % BLOCK_SIZE;
+
+    // std::vector<Ring> tmp(BLOCK_SIZE);
+    // for (size_t i = 0; i < n_msgs; i++) {
+    // recv(src, tmp.data(), sizeof(Ring) * BLOCK_SIZE);
+    // disk.write({tmp.begin(), tmp.end()});
+    //}
+
+    ///* Receive last elements */
+    // if (last_msg_size > 0) {
+    // tmp.resize(last_msg_size);
+    // recv(src, tmp.data(), sizeof(Ring) * last_msg_size);
+    // disk.write({tmp.begin(), tmp.end()});
+    //}
+    //}
+
     void recv_vec(Party src, size_t n_elems, FileWriter &disk) {
         size_t n_msgs = n_elems / BLOCK_SIZE;
         size_t last_msg_size = n_elems % BLOCK_SIZE;
 
         std::vector<Ring> tmp(BLOCK_SIZE);
-        for (size_t i = 0; i < n_msgs; i++) {
+
+        for (size_t i = 0; i < n_msgs; ++i) {
             recv(src, tmp.data(), sizeof(Ring) * BLOCK_SIZE);
-            disk.write({tmp.begin(), tmp.end()});
+            disk.write(tmp.data(), BLOCK_SIZE);
         }
 
-        /* Receive last elements */
         if (last_msg_size > 0) {
-            tmp.resize(last_msg_size);
             recv(src, tmp.data(), sizeof(Ring) * last_msg_size);
-            disk.write({tmp.begin(), tmp.end()});
+            disk.write(tmp.data(), last_msg_size);
         }
     }
 

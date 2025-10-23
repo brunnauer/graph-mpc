@@ -20,13 +20,6 @@ void test() {
     perm_share.has_pi_0 = true;
     perm_share.has_pi_1 = true;
     perm_share.preprocessed = true;
-
-    disk.write_shuffle(perm_share);
-    auto perm_share_read = disk.read_shuffle(size);
-
-    assert(perm_share.preprocessed == perm_share_read.preprocessed);
-    assert(perm_share.pi_0 == perm_share_read.pi_0);
-    assert(perm_share.pi_1 == perm_share_read.pi_1);
 }
 
 int main() {

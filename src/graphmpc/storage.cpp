@@ -34,29 +34,27 @@ Storage::~Storage() {
     }
 }
 
-std::vector<Ring> Storage::read_preproc(size_t n_elems) {
+void Storage::read_preproc(std::vector<Ring> &buffer, size_t n_elems) {
     if (ssd) {
-        return preproc_disk.read(n_elems);
+        preproc_disk.read(buffer, n_elems);
     } else {
         if (n_elems > preproc[id].size()) {
             throw new std::invalid_argument("Cannot read more preproc values than available.");
         } else {
-            std::vector<Ring> data(n_elems);
-            data = {preproc[id].begin(), preproc[id].begin() + n_elems};
+            buffer.resize(n_elems);
+            buffer = {preproc[id].begin(), preproc[id].begin() + n_elems};
 
             /* Delete read values from buffer */
             preproc[id].erase(preproc[id].begin(), preproc[id].begin() + n_elems);
-
-            return data;
         }
     }
 }
 
 void Storage::store_triples(std::vector<Ring> &a, std::vector<Ring> &b, std::vector<Ring> &c, size_t mul_idx) {
     if (ssd) {
-        triples_disk[mul_idx].write(a);
-        triples_disk[mul_idx].write(b);
-        triples_disk[mul_idx].write(c);
+        triples_disk[mul_idx].write(a.data(), a.size());
+        triples_disk[mul_idx].write(b.data(), b.size());
+        triples_disk[mul_idx].write(c.data(), c.size());
     } else {
         triples_a[mul_idx] = a;
         triples_b[mul_idx] = b;
@@ -66,9 +64,9 @@ void Storage::store_triples(std::vector<Ring> &a, std::vector<Ring> &b, std::vec
 
 void Storage::load_triples(std::vector<Ring> &a, std::vector<Ring> &b, std::vector<Ring> &c, size_t mul_idx) {
     if (ssd) {
-        a = triples_disk[mul_idx].read(size);
-        b = triples_disk[mul_idx].read(size);
-        c = triples_disk[mul_idx].read(size);
+        triples_disk[mul_idx].read(a, size);
+        triples_disk[mul_idx].read(b, size);
+        triples_disk[mul_idx].read(c, size);
     } else {
         a = triples_a[mul_idx];
         b = triples_b[mul_idx];
@@ -77,9 +75,9 @@ void Storage::load_triples(std::vector<Ring> &a, std::vector<Ring> &b, std::vect
 }
 void Storage::load_triples(std::vector<Ring> &a, std::vector<Ring> &b, std::vector<Ring> &c, size_t mul_idx, size_t triple_size) {
     if (ssd) {
-        a = triples_disk[mul_idx].read(triple_size);
-        b = triples_disk[mul_idx].read(triple_size);
-        c = triples_disk[mul_idx].read(triple_size);
+        triples_disk[mul_idx].read(a, triple_size);
+        triples_disk[mul_idx].read(b, triple_size);
+        triples_disk[mul_idx].read(c, triple_size);
     } else {
         a = triples_a[mul_idx];
         b = triples_b[mul_idx];

@@ -359,7 +359,8 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Function>> &layer) {
                 auto t = read_online(shuffle_vals, size);  // t
                 t = perm(t);
 
-                auto B = store->read_preproc(size);
+                std::vector<Ring> B;
+                store->read_preproc(B, size);
 #pragma omp parallel for if (size > 10000)
                 for (size_t i = 0; i < size; ++i) {
                     output[i] = t[i] - B[i];  // Read B directly from preprocessing (needs recv also in evaluator)
@@ -379,7 +380,8 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Function>> &layer) {
                 vec_t = perm.inverse()(vec_t);
 
                 /* Last step: subtract B_0 / B_1 */
-                std::vector<Ring> unshuffle = store->read_preproc(size);  // Read directly from preprocessing
+                std::vector<Ring> unshuffle;
+                store->read_preproc(unshuffle, size);  // Read directly from preprocessing
 #pragma omp parallel for if (size > 10000)
                 for (size_t i = 0; i < size; ++i) vec_t[i] -= unshuffle[i];
 
