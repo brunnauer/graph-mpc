@@ -55,16 +55,17 @@ class NetIOMP {
     std::mutex mtx;
     std::condition_variable cv;
     bool connection_established;
+    size_t BLOCK_SIZE;
 
     NetIOMP(NetworkConfig &conf)
         : party(conf.id),
           nP(conf.n_parties),
           connection_established(false),
+          BLOCK_SIZE(conf.BLOCK_SIZE),
           conf(conf),
           ios(conf.n_parties),
           ios2(conf.n_parties),
-          sent(conf.n_parties, false),
-          BLOCK_SIZE(conf.BLOCK_SIZE) {
+          sent(conf.n_parties, false) {
         init_thread = std::thread(&NetIOMP::init_network, this);
     }
 
@@ -284,7 +285,6 @@ class NetIOMP {
     std::vector<std::unique_ptr<TLSNetIO>> ios;
     std::vector<std::unique_ptr<TLSNetIO>> ios2;
     std::vector<bool> sent;
-    size_t BLOCK_SIZE;
 
     std::thread init_thread;
 };

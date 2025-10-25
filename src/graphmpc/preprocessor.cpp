@@ -5,7 +5,7 @@ void Preprocessor::run(Circuit *circ) {
         size_t n_recv;
         network->recv(D, &n_recv, sizeof(size_t));
         if (ssd) {
-            network->recv_vec(D, data->preproc_disk, n_recv);
+            network->recv_vec(D, data->preproc_disk[id], n_recv);
         } else {
             network->recv_vec(D, data->preproc[id], n_recv);
         }
@@ -15,16 +15,40 @@ void Preprocessor::run(Circuit *circ) {
 
     if (id == D) {
         for (auto &party : {P0, P1}) {
-            auto &data_send = data->preproc[party];
-            data_send.insert(data_send.end(), data->B[party].begin(), data->B[party].end());
-            data->B[party].clear();
+            if (ssd) {
+                auto &pre_disk = data->preproc_disk[party];
+                auto &B_disk = data->B_disk[party];
 
-            size_t n_send = data_send.size();
-            network->send(party, &n_send, sizeof(size_t));
-            network->send_vec(party, data_send, n_send);
-            data->preproc[party].clear();
+                std::vector<Ring> data_send(pre_disk.size());
+                pre_disk.read(data_send, data_send.size());
 
-            std::vector<Ring>().swap(data_send);
+                std::vector<Ring> B(B_disk.size());
+                B_disk.read(B, B_disk.size());
+                data_send.insert(data_send.end(), B.begin(), B.end());
+
+                std::vector<Ring>().swap(B);
+
+                size_t n_send = data_send.size();
+                network->send(party, &n_send, sizeof(size_t));
+                network->send_vec(party, data_send, n_send);
+
+                data->preproc_disk[party].reset();
+                data->B_disk[party].reset();
+
+                std::vector<Ring>().swap(data_send);
+
+            } else {
+                auto &data_send = data->preproc[party];
+                data_send.insert(data_send.end(), data->B[party].begin(), data->B[party].end());
+                data->B[party].clear();
+
+                size_t n_send = data_send.size();
+                network->send(party, &n_send, sizeof(size_t));
+                network->send_vec(party, data_send, n_send);
+                data->preproc[party].clear();
+
+                std::vector<Ring>().swap(data_send);
+            }
         }
     }
 }
@@ -47,11 +71,10 @@ std::vector<Ring> Preprocessor::random_share_secret_vec_3P(std::vector<Ring> &se
             for (size_t i = 0; i < secret.size(); ++i) share_1[i] = (secret[i] - share_0[i]);
         }
 
-        data->preproc[recv].insert(data->preproc[recv].end(), share_1.begin(), share_1.end());
+        data->store_vec(recv, share_1);
         return secret;
     } else if (id == recv) {
-        std::vector<Ring> share(secret.size());
-        data->read_preproc(share, secret.size());
+        std::vector<Ring> share = data->read_preproc(secret.size());
         return share;
     } else {
         std::vector<Ring> share(secret.size());
@@ -104,9 +127,9 @@ void Preprocessor::preprocess(Circuit *circ) {
                                 }
 
                                 if (recv == P0) {
-                                    data->preproc[P0].insert(data->preproc[P0].end(), pi_0_p.perm_vec.begin(), pi_0_p.perm_vec.end());
+                                    data->store_vec(P0, pi_0_p.perm_vec);
                                 } else {
-                                    data->preproc[P1].insert(data->preproc[P1].end(), pi_1_p.perm_vec.begin(), pi_1_p.perm_vec.end());
+                                    data->store_vec(P1, pi_1_p.perm_vec);
                                 }
 
                                 data->pi_0[f->shuffle_idx] = pi_0;
@@ -130,15 +153,14 @@ void Preprocessor::preprocess(Circuit *circ) {
 #pragma omp parallel for if (size > 10000)
                             for (size_t i = 0; i < B_1.size(); ++i) B_1[i] += R;
 
-                            data->B[P0].insert(data->B[P0].end(), B_0.begin(), B_0.end());
-                            data->B[P1].insert(data->B[P1].end(), B_1.begin(), B_1.end());
+                            data->store_B(P0, B_0);
+                            data->store_B(P1, B_1);
                             break;
                         }
                         case P0: {
                             if (recv == P0 && (!data->preprocessed[f->shuffle_idx])) {
                                 /* Save pi_0_p */
-                                std::vector<Ring> perm_vec;
-                                data->read_preproc(perm_vec, size);
+                                std::vector<Ring> perm_vec = data->read_preproc(size);
                                 data->pi_0_p[f->shuffle_idx] = Permutation(perm_vec);
                             }
                             break;
@@ -146,8 +168,7 @@ void Preprocessor::preprocess(Circuit *circ) {
                         case P1: {
                             if (recv == P1 && !data->preprocessed[f->shuffle_idx]) {
                                 /* Save pi_1_p */
-                                std::vector<Ring> perm_vec;
-                                data->read_preproc(perm_vec, size);
+                                std::vector<Ring> perm_vec = data->read_preproc(size);
                                 data->pi_1_p[f->shuffle_idx] = Permutation(perm_vec);
                             }
                             break;
@@ -193,8 +214,8 @@ void Preprocessor::preprocess(Circuit *circ) {
                                 data->pi_0[f->shuffle_idx] = sigma_0;
                                 data->pi_1[f->shuffle_idx] = sigma_1;
 
-                                data->preproc[P0].insert(data->preproc[P0].end(), sigma_0_p_vec.begin(), sigma_0_p_vec.end());
-                                data->preproc[P1].insert(data->preproc[P1].end(), sigma_1_vec.begin(), sigma_1_vec.end());
+                                data->store_vec(P0, sigma_0_p_vec);
+                                data->store_vec(P1, sigma_1_vec);
                             }
 
                             std::vector<Ring> B_0(size);
@@ -213,15 +234,14 @@ void Preprocessor::preprocess(Circuit *circ) {
 #pragma omp parallel for if (size > 10000)
                             for (size_t i = 0; i < B_1.size(); ++i) B_1[i] += R;
 
-                            data->B[P0].insert(data->B[P0].end(), B_0.begin(), B_0.end());
-                            data->B[P1].insert(data->B[P1].end(), B_1.begin(), B_1.end());
+                            data->store_B(P0, B_0);
+                            data->store_B(P1, B_1);
                             break;
                         }
                         case P0: {
                             /* Save pi_0_p */
                             if (!data->preprocessed[f->shuffle_idx]) {
-                                std::vector<Ring> sigma_0_p_vec(size);
-                                data->read_preproc(sigma_0_p_vec, size);
+                                std::vector<Ring> sigma_0_p_vec = data->read_preproc(size);
                                 data->pi_0_p[f->shuffle_idx] = Permutation(sigma_0_p_vec);
                             }
                             break;
@@ -229,8 +249,7 @@ void Preprocessor::preprocess(Circuit *circ) {
                         case P1: {
                             /* Save pi_1 */
                             if (!data->preprocessed[f->shuffle_idx]) {
-                                std::vector<Ring> sigma_1_vec(size);
-                                data->read_preproc(sigma_1_vec, size);
+                                std::vector<Ring> sigma_1_vec = data->read_preproc(size);
                                 data->pi_1[f->shuffle_idx] = Permutation(sigma_1_vec);
                             }
                             break;
@@ -269,8 +288,8 @@ void Preprocessor::preprocess(Circuit *circ) {
 #pragma omp parallel for if (size > 10000)
                         for (size_t i = 0; i < B_1.size(); ++i) B_1[i] += R;
 
-                        data->B[P0].insert(data->B[P0].end(), B_0.begin(), B_0.end());
-                        data->B[P1].insert(data->B[P1].end(), B_1.begin(), B_1.end());
+                        data->store_B(P0, B_0);
+                        data->store_B(P1, B_1);
                     }
                     break;
                 }

@@ -62,8 +62,10 @@ class Evaluator {
 
     std::shared_ptr<io::NetIOMP> network;
 
-    long long comm_ms = 0;
-    long long sr_ms = 0;
+    size_t mul_idx = 0;
+    size_t and_idx = 0;
+    size_t shuffle_idx = 0;
+    size_t reveal_idx = 0;
 
     void evaluate_send(std::vector<std::shared_ptr<Gate>> &layer);
 
@@ -71,7 +73,7 @@ class Evaluator {
 
     void evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer);
 
-    std::vector<Ring> read_online(std::vector<Ring> &buffer, size_t n_elems);
+    std::vector<Ring> read_online(std::vector<Ring> &buffer, size_t n_elems, size_t &idx);
 
     void init_waiting(Circuit *circ) {
         for (auto &layer : circ->get()) {

@@ -14,7 +14,11 @@ class Storage {
 
     void load_triples(std::vector<Ring> &a, std::vector<Ring> &b, std::vector<Ring> &c, size_t mul_idx, size_t triple_size);
 
-    void read_preproc(std::vector<Ring> &buffer, size_t n_elems);
+    std::vector<Ring> read_preproc(size_t n_elems);
+
+    void store_B(Party dst, std::vector<Ring> &B);
+
+    void store_vec(Party dst, std::vector<Ring> &vec);
 
     void reset();
 
@@ -24,9 +28,12 @@ class Storage {
     std::vector<Permutation> pi_1_p;
     std::vector<bool> preprocessed;
 
-    std::unordered_map<Party, std::vector<Ring>> preproc;
-    std::unordered_map<Party, std::vector<Ring>> B; /* Dealer saves B vectors extra as they need to be in the back */
-    FileWriter preproc_disk;
+    std::vector<std::vector<Ring>> preproc;
+    std::vector<std::vector<Ring>> B;
+    std::vector<FileWriter> preproc_disk;
+    std::vector<FileWriter> B_disk;
+
+    size_t read_idx = 0;
 
    private:
     Party id;

@@ -373,7 +373,9 @@ class Graph {
             for (size_t i = conf.nodes / 2; i < conf.nodes; i++) g.add_list_entry(i + 1, i + 1, 1);
             for (size_t i = (conf.size - conf.nodes) / 2; i < conf.size - conf.nodes; i++) g.add_list_entry(1, 2, 0);
         }
-        auto g_shared = g.share_subgraphs(conf.id, conf.rngs, network, conf.bits);
+        auto g_P0 = g.secret_share_parties(conf.id, conf.rngs, network, conf.bits, P0);
+        auto g_P1 = g.secret_share_parties(conf.id, conf.rngs, network, conf.bits, P1);
+        auto g_shared = g_P0 + g_P1;
         g_shared.init_mp(conf.id);
         return g_shared;
     }

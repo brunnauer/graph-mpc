@@ -47,7 +47,7 @@ bpo::options_description setup::programOptions() {
                                                                                                               "File to save benchmarks.")(
         "repeat,r", bpo::value<size_t>()->default_value(1), "Number of times to run benchmarks.")("num_parties,np", bpo::value<size_t>()->default_value(3),
                                                                                                   "Number of parties running the protocol.")(
-        "BLOCK_SIZE", bpo::value<size_t>()->default_value(1000000), "BLOCK_SIZE for sending messages over the network.")(
+        "BLOCK_SIZE", bpo::value<size_t>()->default_value(100000), "BLOCK_SIZE for sending messages over the network.")(
         "ssd", bpo::bool_switch(), "Preprocessing values are stored on disk before they are sent.")(
         "input,i", bpo::value<std::string>(), "File specifying the graph.")("depth,d", bpo::value<size_t>()->default_value(0), "search depth parameter D")(
         "clients", bpo::value<size_t>()->default_value(0), "Number of clients participating in input-sharing.")(
@@ -92,7 +92,7 @@ bpo::options_description setup::programOptionsBenchmark() {
         "port", bpo::value<int>()->default_value(10000), "Base port for networking.")(
         "nodes", bpo::value<size_t>()->default_value(5), "Number of nodes for benchmarking graph algorithms")("output,o", bpo::value<std::string>(),
                                                                                                               "File to save benchmarks.")(
-        "repeat,r", bpo::value<size_t>()->default_value(1), "Number of times to run benchmarks.")("BLOCK_SIZE", bpo::value<size_t>()->default_value(100000000),
+        "repeat,r", bpo::value<size_t>()->default_value(1), "Number of times to run benchmarks.")("BLOCK_SIZE", bpo::value<size_t>()->default_value(100000),
                                                                                                   "BLOCK_SIZE for sending messages over the network.")(
         "ssd", bpo::bool_switch(), "Preprocessing values are stored on disk before they are sent.")(
         "input,i", bpo::value<std::string>(), "File specifying the graph.")("depth,d", bpo::value<size_t>()->default_value(0), "search depth parameter D")(
@@ -134,9 +134,9 @@ bpo::options_description setup::programOptionsTest() {
                                                                              "Path to full certificate chain file for TLS server connections")(
         "private_key_path", bpo::value<std::string>()->default_value("certs/key1.pem"), "Path to private key for TLS server connections")(
         "trusted_cert_path", bpo::value<std::string>()->default_value("certs/cert_ca.pem"), "Path with trusted certificate for TLS client connections")(
-        "port", bpo::value<int>()->default_value(10000), "Base port for networking.")("parties", bpo::value<size_t>()->default_value(3),
-                                                                                      "Number of parties running the protocol.")(
-        "BLOCK_SIZE", bpo::value<size_t>()->default_value(1000000), "BLOCK_SIZE for sending messages over the network.")(
+        "port", bpo::value<int>()->default_value(10000), "Base port for networking.")(
+        "parties", bpo::value<size_t>()->default_value(3), "Number of parties running the protocol.")("BLOCK_SIZE", bpo::value<size_t>()->default_value(100000),
+                                                                                                      "BLOCK_SIZE for sending messages over the network.")(
         "ssd", bpo::bool_switch(), "Preprocessing values are stored on disk before they are sent.")(
         "input,i", bpo::value<std::string>(), "File specifying the graph.")("clients", bpo::value<size_t>()->default_value(0),
                                                                             "Number of clients participating in input-sharing.")(

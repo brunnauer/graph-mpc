@@ -1,14 +1,16 @@
 #include "evaluator.h"
 
-std::vector<Ring> Evaluator::read_online(std::vector<Ring> &buffer, size_t n_elems) {
+std::vector<Ring> Evaluator::read_online(std::vector<Ring> &buffer, size_t n_elems, size_t &idx) {
     if (n_elems > buffer.size()) {
         throw new std::invalid_argument("Trying to read more online elements than available.");
     } else {
         std::vector<Ring> data(n_elems);
-        data = {buffer.begin(), buffer.begin() + n_elems};
+        data = {buffer.begin() + idx, buffer.begin() + idx + n_elems};
 
-        /* Delete read values from buffer */
-        buffer.erase(buffer.begin(), buffer.begin() + n_elems);
+        idx += n_elems;
+        if (idx >= buffer.size()) {
+            idx = 0;
+        }
         return data;
     }
 }
@@ -27,66 +29,58 @@ void Evaluator::run(Circuit *circ) {
         evaluate_send(layer);
         online_communication();
         evaluate_recv(layer);
+        mul_vals.clear();
+        and_vals.clear();
+        shuffle_vals.clear();
+        reveal_vals.clear();
         update_wires(layer);
     }
-
-    std::cout << "Communication (Entire round): " << comm_ms << std::endl;
-    std::cout << "Communication (Sending/Receiving): " << sr_ms << std::endl;
-    comm_ms = 0;
-    sr_ms = 0;
 }
 
 const std::vector<Ring> Evaluator::result() { return output; }
 
 void Evaluator::online_communication() {
-    auto round_begin = std::chrono::high_resolution_clock::now();
+    size_t n_comm = mul_vals.size() + and_vals.size() + shuffle_vals.size() + reveal_vals.size();
+    if (n_comm == 0) return;
 
-    size_t n_send = mul_vals.size() + and_vals.size() + shuffle_vals.size() + reveal_vals.size();
-    size_t n_recv = 0;
+    std::vector<Ring> data_recv(n_comm);
+    std::vector<Ring> data_send;
+    data_send.insert(data_send.end(), mul_vals.begin(), mul_vals.end());
+    data_send.insert(data_send.end(), and_vals.begin(), and_vals.end());
+    data_send.insert(data_send.end(), shuffle_vals.begin(), shuffle_vals.end());
+    data_send.insert(data_send.end(), reveal_vals.begin(), reveal_vals.end());
 
-    std::vector<Ring> send_vals;
-    send_vals.insert(send_vals.end(), mul_vals.begin(), mul_vals.end());
-    send_vals.insert(send_vals.end(), and_vals.begin(), and_vals.end());
-    send_vals.insert(send_vals.end(), shuffle_vals.begin(), shuffle_vals.end());
-    send_vals.insert(send_vals.end(), reveal_vals.begin(), reveal_vals.end());
+    const size_t BLOCK_SIZE = network->BLOCK_SIZE;
+    size_t n_msgs = n_comm / BLOCK_SIZE;
+    size_t last_msg = n_comm % BLOCK_SIZE;
 
-    auto comm_begin = std::chrono::high_resolution_clock::now();
-    if (id == P0) {
-        network->send(P1, &n_send, sizeof(size_t));
-        network->send_vec(P1, send_vals, n_send);
-        network->recv(P1, &n_recv, sizeof(size_t));
-        data_recv.resize(n_recv);
-        network->recv_vec(P1, data_recv, n_recv);
-    } else {
-        network->recv(P0, &n_recv, sizeof(size_t));
-        data_recv.resize(n_recv);
-        network->recv_vec(P0, data_recv, n_recv);
-        network->send(P0, &n_send, sizeof(size_t));
-        network->send_vec(P0, send_vals, n_send);
+    Party partner = id == P0 ? P1 : P0;
+
+    for (size_t i = 0; i < n_msgs; i++) {
+        network->send(partner, data_send.data() + i * BLOCK_SIZE, sizeof(Ring) * BLOCK_SIZE);
+        network->recv(partner, data_recv.data() + i * BLOCK_SIZE, sizeof(Ring) * BLOCK_SIZE);
     }
-    auto comm_end = std::chrono::high_resolution_clock::now();
 
+    network->send(partner, data_send.data() + n_msgs * BLOCK_SIZE, sizeof(Ring) * last_msg);
+    network->recv(partner, data_recv.data() + n_msgs * BLOCK_SIZE, sizeof(Ring) * last_msg);
+
+#pragma omp parallel for if (mul_vals.size() > 10000)
     for (size_t i = 0; i < mul_vals.size(); i++) {
         mul_vals[i] += data_recv[i];
     }
+#pragma omp parallel for if (and_vals.size() > 10000)
     for (size_t i = 0; i < and_vals.size(); i++) {
         and_vals[i] ^= data_recv[mul_vals.size() + i];
     }
+#pragma omp parallel for if (shuffle_vals.size() > 10000)
     for (size_t i = 0; i < shuffle_vals.size(); i++) {
         shuffle_vals[i] = data_recv[mul_vals.size() + and_vals.size() + i];
     }
+#pragma omp parallel for if (reveal_vals.size() > 10000)
     for (size_t i = 0; i < reveal_vals.size(); i++) {
         reveal_vals[i] += data_recv[mul_vals.size() + and_vals.size() + shuffle_vals.size() + i];
     }
     data_recv.clear();
-
-    auto round_end = std::chrono::high_resolution_clock::now();
-
-    auto time_round = std::chrono::duration_cast<std::chrono::milliseconds>(round_end - round_begin);
-    auto time_comm = std::chrono::duration_cast<std::chrono::milliseconds>(comm_end - comm_begin);
-
-    comm_ms += time_round.count();
-    sr_ms += time_comm.count();
 }
 
 void Evaluator::evaluate_send(std::vector<std::shared_ptr<Gate>> &layer) {
@@ -127,23 +121,17 @@ void Evaluator::evaluate_send(std::vector<std::shared_ptr<Gate>> &layer) {
                     }
                 }
 
-                /* Compute input + R */
 #pragma omp parallel for if (size > 10000)
                 for (size_t j = 0; j < size; ++j) {
-                    t[j] = wires[f->in1_idx][j] + R[j];
+                    t[perm[j]] = wires[f->in1_idx][j] + R[j];
                 }
-
-                /* Compute perm(input + R) */
-                std::vector<Ring> t_permuted(size);
-                t_permuted = perm(t);
-                t.swap(t_permuted);
 
                 shuffle_vals.insert(shuffle_vals.end(), t.begin(), t.end());
                 break;
             }
 
             case Unshuffle: {
-                std::vector<Ring> vec_t(size);
+                std::vector<Ring> t(size);
                 std::vector<Ring> R(size);
 
                 /* Sampling 1: R_0 / R_1 */
@@ -153,16 +141,12 @@ void Evaluator::evaluate_send(std::vector<std::shared_ptr<Gate>> &layer) {
                     for (size_t i = 0; i < size; ++i) rngs->rng_D1_send().random_data(&R[i], sizeof(Ring));
                 }
 
-#pragma omp parallel for if (size > 10000)
-                for (size_t i = 0; i < size; ++i) vec_t[i] = wires[f->in1_idx][i] + R[i];
-
                 Permutation perm = id == P0 ? data->pi_0[f->shuffle_idx] : data->pi_1_p[f->shuffle_idx];
 
-                std::vector<Ring> vec_t_permuted(size);
-                vec_t_permuted = perm.inverse()(vec_t);
-                vec_t.swap(vec_t_permuted);
+#pragma omp parallel for if (size > 10000)
+                for (size_t i = 0; i < size; ++i) t[i] = wires[f->in1_idx][perm[i]] + R[perm[i]];
 
-                shuffle_vals.insert(shuffle_vals.end(), vec_t.begin(), vec_t.end());
+                shuffle_vals.insert(shuffle_vals.end(), t.begin(), t.end());
                 break;
             }
 
@@ -246,7 +230,6 @@ void Evaluator::evaluate_send(std::vector<std::shared_ptr<Gate>> &layer) {
                 /* x_0 == -x_1 <=> ~x_0 ^ -x_1 */
                 if (id == P0 && f->layer == 0) {
 #pragma omp parallel for if (size > 10000)
-                    // for (auto &elem : f->in1) elem = ~elem;
                     for (size_t i = 0; i < f->size; ++i) {
                         wires[f->in1_idx][i] = ~wires[f->in1_idx][i];
                     }
@@ -254,7 +237,6 @@ void Evaluator::evaluate_send(std::vector<std::shared_ptr<Gate>> &layer) {
 
                 if (id == P1 && f->layer == 0) {
 #pragma omp parallel for if (size > 10000)
-                    // for (auto &elem : f->in1) elem = -elem;
                     for (size_t i = 0; i < f->size; ++i) {
                         wires[f->in1_idx][i] = -wires[f->in1_idx][i];
                     }
@@ -331,6 +313,7 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer) {
             }
             case Output: {
                 output.resize(size);
+#pragma omp parallel for if (size > 10000)
                 for (size_t i = 0; i < size; ++i) {
                     output[i] = wires[f->in1_idx][i];
                 }
@@ -338,7 +321,7 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer) {
             }
             case MergedShuffle:
             case Shuffle: {
-                std::vector<Ring> output(size);
+                wires[f->out_idx].resize(size);
                 Permutation perm;
                 if (id == P0) {
                     if (data->pi_0[f->shuffle_idx].size() == 0) {
@@ -356,43 +339,33 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer) {
                     }
                 }
 
-                auto t = read_online(shuffle_vals, size);  // t
-                t = perm(t);
+                auto t = read_online(shuffle_vals, size, shuffle_idx);  // t
+                std::vector<Ring> B = data->read_preproc(size);
 
-                std::vector<Ring> B;
-                data->read_preproc(B, size);
 #pragma omp parallel for if (size > 10000)
                 for (size_t i = 0; i < size; ++i) {
-                    output[i] = t[i] - B[i];  // Read B directly from preprocessing (needs recv also in evaluator)
+                    wires[f->out_idx][perm[i]] = t[i] - B[perm[i]];
                 }
-                wires[f->out_idx] = output;
                 break;
             }
 
             case Unshuffle: {
-                std::vector<Ring> output(size);
+                wires[f->out_idx].resize(size);
                 Permutation perm;
                 perm = id == P0 ? data->pi_0_p[f->shuffle_idx] : data->pi_1[f->shuffle_idx];
 
-                std::vector<Ring> vec_t = read_online(shuffle_vals, size);
+                std::vector<Ring> t = read_online(shuffle_vals, size, shuffle_idx);
+                std::vector<Ring> unshuffle = data->read_preproc(size);  // Read directly from preprocessing
 
-                /* Apply inverse */
-                vec_t = perm.inverse()(vec_t);
-
-                /* Last step: subtract B_0 / B_1 */
-                std::vector<Ring> unshuffle;
-                data->read_preproc(unshuffle, size);  // Read directly from preprocessing
 #pragma omp parallel for if (size > 10000)
-                for (size_t i = 0; i < size; ++i) vec_t[i] -= unshuffle[i];
-
-                for (size_t i = 0; i < size; ++i) output[i] = vec_t[i];
-
-                wires[f->out_idx] = output;
+                for (size_t i = 0; i < size; ++i) {
+                    wires[f->out_idx][i] = t[perm[i]] - unshuffle[i];
+                }
                 break;
             }
 
             case Compaction: {
-                std::vector<Ring> output(size);
+                wires[f->out_idx].resize(size);
                 std::vector<Ring> _a, _b, _c;
                 data->load_triples(_a, _b, _c, f->mult_idx);
 
@@ -413,7 +386,7 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer) {
                     s_0[i] = s;
                 }
 
-                auto data_recv = read_online(mul_vals, 2 * size);
+                auto data_recv = read_online(mul_vals, 2 * size, mul_idx);
 
 #pragma omp parallel for if (size > 10000)
                 for (size_t i = 0; i < size; ++i) {
@@ -424,29 +397,27 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer) {
                     auto xa = data_recv[2 * i];
                     auto yb = data_recv[2 * i + 1];
 
-                    output[i] = (xa * yb * (id)) - (xa * b) - (yb * a) + c;
+                    wires[f->out_idx][i] = (xa * yb * (id)) - (xa * b) - (yb * a) + c;
                 }
 
 #pragma omp parallel for if (size > 10000)
                 for (size_t i = 0; i < size; ++i) {
-                    output[i] += s_0[i];
-                    if (id == P0) output[i]--;
+                    wires[f->out_idx][i] += s_0[i];
+                    if (id == P0) wires[f->out_idx][i]--;
                 }
-
-                wires[f->out_idx] = output;
                 break;
             }
 
             case Mul: {
-                std::vector<Ring> output(f->size);
+                wires[f->out_idx].resize(f->size);
                 std::vector<Ring> _a, _b, _c;
                 data->load_triples(_a, _b, _c, f->mult_idx, f->size);
 
                 std::vector<Ring> data_recv;
                 if (f->binary) {
-                    data_recv = read_online(and_vals, 2 * f->size);
+                    data_recv = read_online(and_vals, 2 * f->size, and_idx);
                 } else {
-                    data_recv = read_online(mul_vals, 2 * f->size);
+                    data_recv = read_online(mul_vals, 2 * f->size, mul_idx);
                 }
 
 #pragma omp parallel for if (size > 10000)
@@ -459,20 +430,19 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer) {
                     auto yb = data_recv[2 * i + 1];
 
                     if (f->binary)
-                        output[i] = (xa & yb) * (id) ^ (xa & b) ^ (yb & a) ^ c;
+                        wires[f->out_idx][i] = (xa & yb) * (id) ^ (xa & b) ^ (yb & a) ^ c;
                     else
-                        output[i] = (xa * yb * (id)) - (xa * b) - (yb * a) + c;
+                        wires[f->out_idx][i] = (xa * yb * (id)) - (xa * b) - (yb * a) + c;
                 }
-                wires[f->out_idx] = output;
                 break;
             }
 
             case EQZ: {
-                std::vector<Ring> output(f->size);
+                wires[f->out_idx].resize(f->size);
                 std::vector<Ring> _a, _b, _c;
                 data->load_triples(_a, _b, _c, f->mult_idx, f->size);
 
-                std::vector<Ring> data_recv = read_online(and_vals, 2 * f->size);
+                std::vector<Ring> data_recv = read_online(and_vals, 2 * f->size, and_idx);
 
 #pragma omp parallel for if (size > 10000)
                 for (size_t i = 0; i < f->size; ++i) {
@@ -483,25 +453,24 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer) {
                     auto xa = data_recv[2 * i];
                     auto yb = data_recv[2 * i + 1];
 
-                    output[i] = (xa & yb) * (id) ^ (xa & b) ^ (yb & a) ^ c;
+                    wires[f->out_idx][i] = (xa & yb) * (id) ^ (xa & b) ^ (yb & a) ^ c;
                 }
                 if (f->layer == 4) {
 #pragma omp parallel for if (size > 10000)
                     for (size_t i = 0; i < f->size; ++i) {
-                        output[i] <<= 31;
-                        output[i] >>= 31;
+                        wires[f->out_idx][i] <<= 31;
+                        wires[f->out_idx][i] >>= 31;
                     }
                 }
-                wires[f->out_idx] = output;
                 break;
             }
 
             case Bit2A: {
-                std::vector<Ring> output(f->size);
+                wires[f->out_idx].resize(f->size);
                 std::vector<Ring> _a, _b, _c;
                 data->load_triples(_a, _b, _c, f->mult_idx, f->size);
 
-                std::vector<Ring> data_recv = read_online(mul_vals, 2 * f->size);
+                std::vector<Ring> data_recv = read_online(mul_vals, 2 * f->size, mul_idx);
 #pragma omp parallel for if (size > 10000)
                 for (size_t i = 0; i < f->size; ++i) {
                     Ring a = _a[i];
@@ -511,150 +480,136 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer) {
                     auto yb = data_recv[2 * i + 1];
 
                     auto mul_result = (xa * yb * (id)) - (xa * b) - (yb * a) + c;
-                    output[i] = (wires[f->in1_idx][i] & 1) - 2 * mul_result;
+                    wires[f->out_idx][i] = (wires[f->in1_idx][i] & 1) - 2 * mul_result;
                 }
-                wires[f->out_idx] = output;
                 break;
             }
 
             case Reveal: {
-                auto data_revealed = read_online(reveal_vals, size);
-                wires[f->out_idx] = data_revealed;
+                wires[f->out_idx] = read_online(reveal_vals, size, reveal_idx);
                 break;
             }
 
             case Permute: {
-                std::vector<Ring> output(size);
+                wires[f->out_idx].resize(size);
 #pragma omp parallel for if (size > 10000)
-                for (size_t i = 0; i < size; ++i) output[wires[f->in2_idx][i]] = wires[f->in1_idx][i];
-                wires[f->out_idx] = output;
+                for (size_t i = 0; i < size; ++i) wires[f->out_idx][wires[f->in2_idx][i]] = wires[f->in1_idx][i];
                 break;
             }
 
             case ReversePermute: {
-                std::vector<Ring> output(size);
+                wires[f->out_idx].resize(size);
 #pragma omp parallel for if (size > 10000)
                 for (size_t i = 0; i < size; ++i) {
-                    output[i] = wires[f->in1_idx][wires[f->in2_idx][i]];
+                    wires[f->out_idx][i] = wires[f->in1_idx][wires[f->in2_idx][i]];
                 }
-                wires[f->out_idx] = output;
                 break;
             }
 
             case AddConst: {
-                std::vector<Ring> output(size);
+                wires[f->out_idx].resize(size);
 #pragma omp parallel for if (nodes > 10000)
                 for (size_t j = 0; j < size; ++j) {
                     if (id == P0 && j < nodes) {
-                        output[j] = wires[f->in1_idx][j] + f->val;
+                        wires[f->out_idx][j] = wires[f->in1_idx][j] + f->val;
                     } else {
-                        output[j] = wires[f->in1_idx][j];
+                        wires[f->out_idx][j] = wires[f->in1_idx][j];
                     }
                 }
-                wires[f->out_idx] = output;
                 break;
             }
 
             case Add: {
-                std::vector<Ring> output(size);
+                wires[f->out_idx].resize(size);
 #pragma omp parallel for if (size > 10000)
                 for (size_t i = 0; i < size; ++i) {
-                    output[i] = wires[f->in1_idx][i] + wires[f->in2_idx][i];
+                    wires[f->out_idx][i] = wires[f->in1_idx][i] + wires[f->in2_idx][i];
                 }
-                wires[f->out_idx] = output;
                 break;
             }
 
             case Flip: {
-                std::vector<Ring> output(size);
+                wires[f->out_idx].resize(size);
 #pragma omp parallel for if (size > 10000)
                 for (size_t i = 0; i < size; ++i) {
                     if (id == P0) {
-                        output[i] = 1 - wires[f->in1_idx][i];
+                        wires[f->out_idx][i] = 1 - wires[f->in1_idx][i];
                     } else if (id == P1) {
-                        output[i] = -wires[f->in1_idx][i];
+                        wires[f->out_idx][i] = -wires[f->in1_idx][i];
                     }
                 }
-                wires[f->out_idx] = output;
                 break;
             }
 
             case Propagate1: {
-                std::vector<Ring> output(size);
+                wires[f->out_idx].resize(size);
                 for (size_t i = nodes - 1; i > 0; --i) {
-                    output[i] = wires[f->in1_idx][i] - wires[f->in1_idx][i - 1];
+                    wires[f->out_idx][i] = wires[f->in1_idx][i] - wires[f->in1_idx][i - 1];
                 }
-                output[0] = wires[f->in1_idx][0];
+                wires[f->out_idx][0] = wires[f->in1_idx][0];
                 for (size_t i = nodes; i < size; ++i) {
-                    output[i] = wires[f->in1_idx][i];
+                    wires[f->out_idx][i] = wires[f->in1_idx][i];
                 }
-                wires[f->out_idx] = output;
                 break;
             }
 
             case Propagate2: {
-                std::vector<Ring> output(size);
+                wires[f->out_idx].resize(size);
                 Ring sum = 0;
                 for (size_t i = 0; i < size; ++i) {
                     sum += wires[f->in1_idx][i];
-                    output[i] = sum - wires[f->in2_idx][i];
+                    wires[f->out_idx][i] = sum - wires[f->in2_idx][i];
                 }
-                wires[f->out_idx] = output;
                 break;
             }
 
             case Gather1: {
-                std::vector<Ring> output(size);
+                wires[f->out_idx].resize(size);
                 Ring sum = 0;
                 for (size_t i = 0; i < size; ++i) {
                     sum += wires[f->in1_idx][i];
-                    output[i] = sum;
+                    wires[f->out_idx][i] = sum;
                 }
-                wires[f->out_idx] = output;
                 break;
             }
 
             case Gather2: {
-                std::vector<Ring> output(size);
+                wires[f->out_idx].resize(size);
                 Ring sum = 0;
                 for (size_t i = 0; i < nodes; ++i) {
-                    output[i] = wires[f->in1_idx][i] - sum;
-                    sum += output[i];
+                    wires[f->out_idx][i] = wires[f->in1_idx][i] - sum;
+                    sum += wires[f->out_idx][i];
                 }
 #pragma omp parallel for if (size > 10000)
                 for (size_t i = nodes; i < size; ++i) {
-                    output[i] = 0;
+                    wires[f->out_idx][i] = 0;
                 }
-                wires[f->out_idx] = output;
                 break;
             }
 
             case Sub: {
-                std::vector<Ring> output(size - 1);
+                wires[f->out_idx].resize(size - 1);
                 for (size_t i = 1; i < size; ++i) {
-                    output[i - 1] = wires[f->in1_idx][i] - wires[f->in1_idx][i - 1];
+                    wires[f->out_idx][i - 1] = wires[f->in1_idx][i] - wires[f->in1_idx][i - 1];
                 }
-                wires[f->out_idx] = output;
                 break;
             }
 
             case Insert: {
-                std::vector<Ring> output({wires[f->in1_idx].begin(), wires[f->in1_idx].end()});
-                output.insert(output.begin(), 0);
-                wires[f->out_idx] = output;
+                wires[f->out_idx] = wires[f->in1_idx];
+                wires[f->out_idx].insert(wires[f->out_idx].begin(), 0);
                 break;
             }
 
             case ConstructData: {
-                std::vector<Ring> output(size);
+                wires[f->out_idx].resize(size);
                 for (size_t i = 0; i < nodes; ++i) {
                     auto sum = wires[f->data_parallel[i]][0];
                     for (size_t j = 1; j < nodes; ++j) {
                         sum += wires[f->data_parallel[i]][j];
                     }
-                    output[i] = sum;
+                    wires[f->out_idx][i] = sum;
                 }
-                wires[f->out_idx] = output;
                 break;
             }
             default:

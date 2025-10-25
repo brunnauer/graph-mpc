@@ -1,24 +1,45 @@
 #include "storage.h"
 
-Storage::Storage(ProtocolConfig &conf, Circuit *circ)
-    : preproc_disk("preproc_" + std::to_string(conf.id) + ".bin"), id(conf.id), size(conf.size), ssd(conf.ssd) {
+Storage::Storage(ProtocolConfig &conf, Circuit *circ) : id(conf.id), size(conf.size), ssd(conf.ssd) {
     if (id == D || id == P0) pi_0.resize(circ->shuffle_idx + 1);
     if (id == D || id == P1) pi_1.resize(circ->shuffle_idx + 1);
     if (id == P0) pi_0_p.resize(circ->shuffle_idx + 1);
     if (id == P1) pi_1_p.resize(circ->shuffle_idx + 1);
 
-    if (id == D) {
-        B[P0].reserve(size * circ->n_shuffles);
-        B[P1].reserve(size * circ->n_shuffles);
-    }
-
     preprocessed.resize(circ->shuffle_idx + 1);
 
     if (ssd) {
+        if (id == D) {
+            preproc_disk.resize(2);
+            preproc_disk[P0] = FileWriter("preproc_" + std::to_string(id) + "_P0.bin");
+            preproc_disk[P1] = FileWriter("preproc_" + std::to_string(id) + "_P1.bin");
+            B_disk.resize(2);
+            B_disk[P0] = FileWriter("B_" + std::to_string(id) + "_P0.bin");
+            B_disk[P1] = FileWriter("B_" + std::to_string(id) + "_P1.bin");
+        }
+
+        if (id == P0) {
+            preproc_disk.resize(1);
+            preproc_disk[P0] = FileWriter("preproc_" + std::to_string(id) + ".bin");
+        }
+
+        if (id == P1) {
+            preproc_disk.resize(2);
+            preproc_disk[P1] = FileWriter("preproc_" + std::to_string(id) + ".bin");
+        }
+
         for (size_t i = 0; i < circ->n_mults; ++i) {
             triples_disk.emplace_back("triples_" + std::to_string(i) + "_" + std::to_string(conf.id) + ".bin");
         }
     } else {
+        preproc.resize(2);
+
+        if (id == D) {
+            B.resize(2);
+            B[P0].reserve(size * circ->n_shuffles);
+            B[P1].reserve(size * circ->n_shuffles);
+        }
+
         triples_a.resize(circ->n_mults);
         triples_b.resize(circ->n_mults);
         triples_c.resize(circ->n_mults);
@@ -30,23 +51,53 @@ Storage::~Storage() {
         for (auto &disk : triples_disk) {
             std::filesystem::remove(disk.name());
         }
-        std::filesystem::remove(preproc_disk.name());
+        if (id == D) {
+            for (auto &disk : preproc_disk) {
+                std::filesystem::remove(disk.name());
+            }
+        }
+        if (id == P0) {
+            std::filesystem::remove(preproc_disk[P0].name());
+        }
+        if (id == P1) {
+            std::filesystem::remove(preproc_disk[P1].name());
+        }
     }
 }
 
-void Storage::read_preproc(std::vector<Ring> &buffer, size_t n_elems) {
+std::vector<Ring> Storage::read_preproc(size_t n_elems) {
     if (ssd) {
-        preproc_disk.read(buffer, n_elems);
+        std::vector<Ring> data(n_elems);
+        preproc_disk[id].read(data, n_elems);
+        return data;
     } else {
         if (n_elems > preproc[id].size()) {
             throw new std::invalid_argument("Cannot read more preproc values than available.");
         } else {
-            buffer.resize(n_elems);
-            buffer = {preproc[id].begin(), preproc[id].begin() + n_elems};
+            std::vector<Ring> &buffer = preproc[id];
+            std::vector<Ring> data(n_elems);
+            data = {buffer.begin() + read_idx, buffer.begin() + read_idx + n_elems};
 
-            /* Delete read values from buffer */
-            preproc[id].erase(preproc[id].begin(), preproc[id].begin() + n_elems);
+            read_idx += n_elems;
+            if (read_idx >= buffer.size()) read_idx = 0;
+            return data;
         }
+    }
+}
+
+void Storage::store_B(Party dst, std::vector<Ring> &vec) {
+    if (ssd) {
+        B_disk[dst].write(vec.data(), vec.size());
+    } else {
+        B[dst].insert(B[dst].end(), vec.begin(), vec.end());
+    }
+}
+
+void Storage::store_vec(Party dst, std::vector<Ring> &vec) {
+    if (ssd) {
+        preproc_disk[dst].write(vec.data(), vec.size());
+    } else {
+        preproc[dst].insert(preproc[dst].end(), vec.begin(), vec.end());
     }
 }
 
@@ -90,7 +141,26 @@ void Storage::reset() {
         for (auto &disk : triples_disk) {
             disk.reset();
         }
-        preproc_disk.reset();
+        if (id == D || id == P0) preproc_disk[P0].reset();
+
+        if (id == D || id == P1) preproc_disk[P1].reset();
+
+        if (id == D) {
+            B_disk[P0].reset();
+            B_disk[P1].reset();
+        }
+    } else {
+        if (id == D || id == P0) {
+            preproc[P0].clear();
+        }
+
+        if (id == D || id == P1) {
+            preproc[P1].clear();
+        }
+        if (id == D) {
+            B[P0].clear();
+            B[P1].clear();
+        }
     }
 
     for (auto &perm : pi_0) {
@@ -108,7 +178,4 @@ void Storage::reset() {
     for (size_t i = 0; i < preprocessed.size(); ++i) {
         preprocessed[i] = false;
     }
-
-    preproc.clear();
-    B.clear();
 }
