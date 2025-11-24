@@ -69,7 +69,7 @@ class Test {
         std::cout << std::endl;
 
         auto result = eval->result();
-        run_assertions(result);
+        run_assertions(result, bytes_sent_pre, bytes_sent_eval);
     }
 
    protected:
@@ -88,7 +88,7 @@ class Test {
 
     virtual Graph create_graph() = 0;
 
-    virtual void run_assertions(std::vector<Ring> &result) = 0;
+    virtual void run_assertions(std::vector<Ring> &result, size_t &bytes_sent_pre, size_t &bytes_sent_eval) = 0;
 
     void print_vec(std::vector<Ring> &vec) {
         for (size_t i = 0; i < vec.size(); ++i) {

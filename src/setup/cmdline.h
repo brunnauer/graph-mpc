@@ -36,13 +36,13 @@ bpo::variables_map parseOptions(bpo::options_description &cmdline, bpo::options_
 void setupClient(const bpo::variables_map &opts, int &id, size_t &start_idx, std::string &ip_0, std::string &ip_1, int &port_0, int &port_1,
                  std::string &input_file, size_t &n_bits, std::string &password);
 
-void setupServer(const bpo::variables_map &opts);
+void setupServer(const bpo::variables_map &opts, Graph &g);
 
 RandomGenerators setupRNGs(const bpo::variables_map &opts);
 
 std::shared_ptr<io::NetIOMP> setupNetwork(const bpo::variables_map &opts);
 
-ProtocolConfig setupProtocol(const bpo::variables_map &opts);
+ProtocolConfig setupProtocol(const bpo::variables_map &opts, std::shared_ptr<io::NetIOMP> network);
 
 BenchmarkConfig setupBenchmark(const bpo::variables_map &opts);
 

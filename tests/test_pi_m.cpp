@@ -63,10 +63,21 @@ class TestPiM : public Test {
         return g_shared;
     }
 
-    void run_assertions(std::vector<Ring> &result) override {
-        if (conf.id != D) {
-            result = share::reveal_vec(id, network, result);
+    void run_assertions(std::vector<Ring> &result, size_t &bytes_sent_pre, size_t &bytes_sent_eval) override {
+        if (conf.id == D) {
+            size_t expected_pre = 4 * (16 * conf.size * conf.bits + 27 * conf.size + 8 * conf.size * conf.depth) +
+                                  2 * sizeof(size_t);  // one element per party always sent to synchronize vector sizes
+            size_t expected_eval = 0;
 
+            assert(bytes_sent_pre == expected_pre);
+            assert(bytes_sent_eval == expected_eval);
+        } else {
+            size_t expected_pre = 0;
+            size_t expected_eval = 4 * (12 * conf.size * conf.bits + 17 * conf.size + 4 * conf.size * conf.depth);
+            assert(bytes_sent_pre == expected_pre);
+            assert(bytes_sent_eval == expected_eval);
+
+            result = share::reveal_vec(id, network, result);
             print_vec(result);
 
             assert(result[0] == 31030096);  // 3 of length 1, 10 of length 2, 30 of length 3,  96 of length 4

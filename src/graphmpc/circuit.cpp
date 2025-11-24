@@ -78,6 +78,12 @@ void Circuit::level_order() {
     gates.clear();
 }
 
+void Circuit::pre_mp() {}
+
+size_t Circuit::apply(size_t &data_old, size_t &data_new) { return data_new; }
+
+size_t Circuit::post_mp(size_t &data) { return data; }
+
 void Circuit::compute_sorts() {
     ctx.src_order = sort(in.src_order_bits, bits + 1);
     ctx.dst_order = sort(in.dst_order_bits, bits + 1);

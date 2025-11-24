@@ -33,7 +33,6 @@ void Evaluator::run(Circuit *circ) {
         and_vals.clear();
         shuffle_vals.clear();
         reveal_vals.clear();
-        update_wires(layer);
     }
 }
 
@@ -126,6 +125,7 @@ void Evaluator::evaluate_send(std::vector<std::shared_ptr<Gate>> &layer) {
                     t[perm[j]] = wires[f->in1_idx][j] + R[j];
                 }
 
+                update_wire(f->in1_idx);
                 shuffle_vals.insert(shuffle_vals.end(), t.begin(), t.end());
                 break;
             }
@@ -145,6 +145,7 @@ void Evaluator::evaluate_send(std::vector<std::shared_ptr<Gate>> &layer) {
 
 #pragma omp parallel for if (size > 10000)
                 for (size_t i = 0; i < size; ++i) t[i] = wires[f->in1_idx][perm[i]] + R[perm[i]];
+                update_wire(f->in1_idx);
 
                 shuffle_vals.insert(shuffle_vals.end(), t.begin(), t.end());
                 break;
@@ -220,6 +221,7 @@ void Evaluator::evaluate_send(std::vector<std::shared_ptr<Gate>> &layer) {
                 } else {
                     mul_vals.insert(mul_vals.end(), data_send.begin(), data_send.end());
                 }
+                update_wires(f->in1_idx, f->in2_idx);
                 break;
             }
 
@@ -269,6 +271,7 @@ void Evaluator::evaluate_send(std::vector<std::shared_ptr<Gate>> &layer) {
                     send_ptr[2 * i] = xa;
                     send_ptr[2 * i + 1] = yb;
                 }
+                update_wire(f->in1_idx);
                 break;
             }
 
@@ -317,6 +320,7 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer) {
                 for (size_t i = 0; i < size; ++i) {
                     output[i] = wires[f->in1_idx][i];
                 }
+                update_wire(f->in1_idx);
                 break;
             }
             case MergedShuffle:
@@ -405,6 +409,7 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer) {
                     wires[f->out_idx][i] += s_0[i];
                     if (id == P0) wires[f->out_idx][i]--;
                 }
+                update_wire(f->in1_idx);
                 break;
             }
 
@@ -482,6 +487,7 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer) {
                     auto mul_result = (xa * yb * (id)) - (xa * b) - (yb * a) + c;
                     wires[f->out_idx][i] = (wires[f->in1_idx][i] & 1) - 2 * mul_result;
                 }
+                update_wire(f->in1_idx);
                 break;
             }
 
@@ -494,6 +500,7 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer) {
                 wires[f->out_idx].resize(size);
 #pragma omp parallel for if (size > 10000)
                 for (size_t i = 0; i < size; ++i) wires[f->out_idx][wires[f->in2_idx][i]] = wires[f->in1_idx][i];
+                update_wires(f->in1_idx, f->in2_idx);
                 break;
             }
 
@@ -503,6 +510,7 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer) {
                 for (size_t i = 0; i < size; ++i) {
                     wires[f->out_idx][i] = wires[f->in1_idx][wires[f->in2_idx][i]];
                 }
+                update_wires(f->in1_idx, f->in2_idx);
                 break;
             }
 
@@ -516,6 +524,7 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer) {
                         wires[f->out_idx][j] = wires[f->in1_idx][j];
                     }
                 }
+                update_wire(f->in1_idx);
                 break;
             }
 
@@ -525,6 +534,7 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer) {
                 for (size_t i = 0; i < size; ++i) {
                     wires[f->out_idx][i] = wires[f->in1_idx][i] + wires[f->in2_idx][i];
                 }
+                update_wires(f->in1_idx, f->in2_idx);
                 break;
             }
 
@@ -538,6 +548,7 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer) {
                         wires[f->out_idx][i] = -wires[f->in1_idx][i];
                     }
                 }
+                update_wire(f->in1_idx);
                 break;
             }
 
@@ -550,6 +561,7 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer) {
                 for (size_t i = nodes; i < size; ++i) {
                     wires[f->out_idx][i] = wires[f->in1_idx][i];
                 }
+                update_wire(f->in1_idx);
                 break;
             }
 
@@ -560,6 +572,7 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer) {
                     sum += wires[f->in1_idx][i];
                     wires[f->out_idx][i] = sum - wires[f->in2_idx][i];
                 }
+                update_wires(f->in1_idx, f->in2_idx);
                 break;
             }
 
@@ -570,6 +583,7 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer) {
                     sum += wires[f->in1_idx][i];
                     wires[f->out_idx][i] = sum;
                 }
+                update_wire(f->in1_idx);
                 break;
             }
 
@@ -584,6 +598,7 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer) {
                 for (size_t i = nodes; i < size; ++i) {
                     wires[f->out_idx][i] = 0;
                 }
+                update_wire(f->in1_idx);
                 break;
             }
 
@@ -592,12 +607,14 @@ void Evaluator::evaluate_recv(std::vector<std::shared_ptr<Gate>> &layer) {
                 for (size_t i = 1; i < size; ++i) {
                     wires[f->out_idx][i - 1] = wires[f->in1_idx][i] - wires[f->in1_idx][i - 1];
                 }
+                update_wire(f->in1_idx);
                 break;
             }
 
             case Insert: {
                 wires[f->out_idx] = wires[f->in1_idx];
                 wires[f->out_idx].insert(wires[f->out_idx].begin(), 0);
+                update_wire(f->in1_idx);
                 break;
             }
 

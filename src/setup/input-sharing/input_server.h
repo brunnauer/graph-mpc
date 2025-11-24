@@ -117,6 +117,8 @@ class InputServer {
         return {src, dst, isV, data, src_bits, dst_bits, n_vertices_total};
     }
 
+    void send_result(std::vector<Ring> &data, size_t client_idx) { m_pSSLTCPServer->Send(clients[client_idx], reinterpret_cast<char *>(&data)); }
+
    private:
     std::vector<Packet> recv_packets() {
         std::vector<Packet> packets;

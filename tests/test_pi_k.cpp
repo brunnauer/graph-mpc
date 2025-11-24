@@ -63,8 +63,19 @@ class TestPiK : public Test {
         return g_shared;
     }
 
-    void run_assertions(std::vector<Ring> &result) override {
-        if (conf.id != D) {
+    void run_assertions(std::vector<Ring> &result, size_t &bytes_sent_pre, size_t &bytes_sent_eval) override {
+        if (conf.id == D) {
+            size_t expected_pre = 4 * (24 * conf.size * conf.bits + 64 * conf.size - 12 + 8 * conf.size * conf.depth) +
+                                  2 * sizeof(size_t);  // one element per party always sent to synchronize vector sizes
+            size_t expected_eval = 0;
+
+            assert(bytes_sent_pre == expected_pre);
+            assert(bytes_sent_eval == expected_eval);
+        } else {
+            size_t expected_pre = 0;
+            size_t expected_eval = 4 * (18 * conf.size * conf.bits + 58 * conf.size - 24 + 4 * conf.size * conf.depth);
+            assert(bytes_sent_pre == expected_pre);
+            assert(bytes_sent_eval == expected_eval);
             result = share::reveal_vec(id, network, result);
 
             print_vec(result);

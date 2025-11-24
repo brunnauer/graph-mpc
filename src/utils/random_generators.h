@@ -16,10 +16,12 @@ class RandomGenerators {
     emp::PRG _rng_D1_send;
     emp::PRG _rng_D1_recv;
     emp::PRG _rng_self;
+
+   public:
     std::vector<uint64_t> seeds_hi;
     std::vector<uint64_t> seeds_lo;
 
-   public:
+    RandomGenerators() = default;
     RandomGenerators(std::vector<uint64_t> seeds_hi, std::vector<uint64_t> seeds_lo) : seeds_hi(seeds_hi), seeds_lo(seeds_lo) { reseed(); }
 
     void reseed() {

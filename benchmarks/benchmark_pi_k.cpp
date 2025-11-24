@@ -12,9 +12,9 @@ int main(int argc, char **argv) {
     bpo::variables_map opts = setup::parseOptions(cmdline, prog_opts, argc, argv);
 
     try {
-        auto conf = setup::setupProtocol(opts);
-        auto b_conf = setup::setupBenchmark(opts);
         auto network = setup::setupNetwork(opts);
+        auto conf = setup::setupProtocol(opts, network);
+        auto b_conf = setup::setupBenchmark(opts);
 
         auto circuit = PiKCircuit(conf);
 

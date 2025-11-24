@@ -75,6 +75,18 @@ class Evaluator {
 
     std::vector<Ring> read_online(std::vector<Ring> &buffer, size_t n_elems, size_t &idx);
 
+    void update_wires(size_t &in1_idx, size_t &in2_idx) {
+        waiting[in1_idx]--;
+        waiting[in2_idx]--;
+        if (waiting[in1_idx] == 0) std::vector<Ring>().swap(wires[in1_idx]);  // Free memory
+        if (waiting[in2_idx] == 0) std::vector<Ring>().swap(wires[in2_idx]);  // Free memory
+    }
+
+    void update_wire(size_t &in1_idx) {
+        waiting[in1_idx]--;
+        if (waiting[in1_idx] == 0) std::vector<Ring>().swap(wires[in1_idx]);  // Free memory
+    }
+
     void init_waiting(Circuit *circ) {
         for (auto &layer : circ->get()) {
             for (auto &f : layer) {
@@ -82,21 +94,6 @@ class Evaluator {
                 if (f->in2_idx != 0) {  // in2 set to zero means no in2
                     waiting[f->in2_idx]++;
                 }
-            }
-        }
-    }
-
-    void update_wires(std::vector<std::shared_ptr<Gate>> &layer) {
-        for (auto &f : layer) {
-            waiting[f->in1_idx]--;
-            if (f->in2_idx != 0) {
-                waiting[f->in2_idx]--;
-            }
-        }
-#pragma omp parallel for
-        for (size_t i = 0; i < waiting.size(); ++i) {
-            if (waiting[i] == 0) {
-                std::vector<Ring>().swap(wires[i]);  // Free memory
             }
         }
     }

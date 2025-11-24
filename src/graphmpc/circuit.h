@@ -12,9 +12,9 @@ class Circuit {
 
     std::vector<std::vector<std::shared_ptr<Gate>>> get() { return circ; }
 
-    virtual void pre_mp() = 0;
-    virtual size_t apply(size_t &data_old, size_t &data_new) = 0;
-    virtual size_t post_mp(size_t &data) = 0;
+    virtual void pre_mp();
+    virtual size_t apply(size_t &data_old, size_t &data_new);
+    virtual size_t post_mp(size_t &data);
     virtual void compute_sorts();  // Can be overwritten
 
     size_t n_shuffles;
