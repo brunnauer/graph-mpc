@@ -51,22 +51,28 @@ using namespace emp;
 class NetIOMP {
    public:
     int party;
-    int nP;
+    int nP, n_total;
     std::mutex mtx;
     std::condition_variable cv;
     bool connection_established;
     size_t BLOCK_SIZE;
 
-    NetIOMP(NetworkConfig &conf)
+    NetIOMP(NetworkConfig &conf, bool force_init = false)
         : party(conf.id),
           nP(conf.n_parties),
+          n_total(conf.n_parties + conf.n_clients),
           connection_established(false),
           BLOCK_SIZE(conf.BLOCK_SIZE),
           conf(conf),
-          ios(conf.n_parties),
-          ios2(conf.n_parties),
-          sent(conf.n_parties, false) {
-        init_thread = std::thread(&NetIOMP::init_network, this);
+          ios(conf.n_parties + conf.n_clients),
+          ios2(conf.n_parties + conf.n_clients),
+          sent(conf.n_parties + conf.n_clients, false) {
+        std::cout << "Establishing connection to " << nP << " parties via port " << conf.port << " and ID: " << party << ". " << std::endl;
+        if (force_init) {
+            init_network();
+        } else {
+            init_thread = std::thread(&NetIOMP::init_network, this);
+        }
     }
 
     ~NetIOMP() {
@@ -74,38 +80,41 @@ class NetIOMP {
     }
 
     void init_network() {
-        for (int i = 0; i < nP; ++i) {
-            for (int j = i + 1; j < nP; ++j) {
+        for (int i = 0; i < n_total; ++i) {
+            for (int j = i + 1; j < n_total; ++j) {
                 if (i == party) {
                     usleep(1000);
                     if (conf.localhost) {
-                        ios[j] = std::make_unique<TLSNetIO>("127.0.0.1", conf.port + 2 * (i * nP + j), conf.trusted_cert_path, BLOCK_SIZE, true);
+                        ios[j] = std::make_unique<TLSNetIO>("127.0.0.1", conf.port + 2 * (i * n_total + j), conf.trusted_cert_path, BLOCK_SIZE, true);
                     } else {
-                        ios[j] = std::make_unique<TLSNetIO>(conf.IP[j].c_str(), conf.port + 2 * (i * nP + j), conf.trusted_cert_path, BLOCK_SIZE, true);
+                        ios[j] = std::make_unique<TLSNetIO>(conf.IP[j].c_str(), conf.port + 2 * (i * n_total + j), conf.trusted_cert_path, BLOCK_SIZE, true);
                     }
                     ios[j]->set_nodelay();
 
                     usleep(1000);
                     if (conf.localhost) {
-                        ios2[j] = std::make_unique<TLSNetIO>(conf.port + 2 * (i * nP + j) + 1, conf.certificate_path, conf.private_key_path, BLOCK_SIZE, true);
+                        ios2[j] =
+                            std::make_unique<TLSNetIO>(conf.port + 2 * (i * n_total + j) + 1, conf.certificate_path, conf.private_key_path, BLOCK_SIZE, true);
                     } else {
-                        ios2[j] = std::make_unique<TLSNetIO>(conf.port + 2 * (i * nP + j) + 1, conf.certificate_path, conf.private_key_path, BLOCK_SIZE, true);
+                        ios2[j] =
+                            std::make_unique<TLSNetIO>(conf.port + 2 * (i * n_total + j) + 1, conf.certificate_path, conf.private_key_path, BLOCK_SIZE, true);
                     }
                     ios2[j]->set_nodelay();
                 } else if (j == party) {
                     usleep(1000);
                     if (conf.localhost) {
-                        ios[i] = std::make_unique<TLSNetIO>(conf.port + 2 * (i * nP + j), conf.certificate_path, conf.private_key_path, BLOCK_SIZE, true);
+                        ios[i] = std::make_unique<TLSNetIO>(conf.port + 2 * (i * n_total + j), conf.certificate_path, conf.private_key_path, BLOCK_SIZE, true);
                     } else {
-                        ios[i] = std::make_unique<TLSNetIO>(conf.port + 2 * (i * nP + j), conf.certificate_path, conf.private_key_path, BLOCK_SIZE, true);
+                        ios[i] = std::make_unique<TLSNetIO>(conf.port + 2 * (i * n_total + j), conf.certificate_path, conf.private_key_path, BLOCK_SIZE, true);
                     }
                     ios[i]->set_nodelay();
 
                     usleep(1000);
                     if (conf.localhost) {
-                        ios2[i] = std::make_unique<TLSNetIO>("127.0.0.1", conf.port + 2 * (i * nP + j) + 1, conf.trusted_cert_path, BLOCK_SIZE, true);
+                        ios2[i] = std::make_unique<TLSNetIO>("127.0.0.1", conf.port + 2 * (i * n_total + j) + 1, conf.trusted_cert_path, BLOCK_SIZE, true);
                     } else {
-                        ios2[i] = std::make_unique<TLSNetIO>(conf.IP[i].c_str(), conf.port + 2 * (i * nP + j) + 1, conf.trusted_cert_path, BLOCK_SIZE, true);
+                        ios2[i] =
+                            std::make_unique<TLSNetIO>(conf.IP[i].c_str(), conf.port + 2 * (i * n_total + j) + 1, conf.trusted_cert_path, BLOCK_SIZE, true);
                     }
                     ios2[i]->set_nodelay();
                 }
@@ -137,7 +146,7 @@ class NetIOMP {
         }
     }
 
-    void send(Party dst, const void *data, size_t len) {
+    void send(int dst, const void *data, size_t len) {
         {
             std::unique_lock<std::mutex> lock(mtx);
             cv.wait(lock, [this] { return connection_established; });
@@ -164,7 +173,7 @@ class NetIOMP {
         }
     }
 
-    void recv(Party src, void *data, size_t len) {
+    void recv(int src, void *data, size_t len) {
         {
             std::unique_lock<std::mutex> lock(mtx);
             cv.wait(lock, [this] { return connection_established; });

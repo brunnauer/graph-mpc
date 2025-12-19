@@ -15,61 +15,58 @@ class InputClient {
         std::vector<Ring> entries;
     };
 
-    InputClient(size_t bits, std::string password) : bits(bits), connected(false), password(password) {
-        auto PRINT_LOG = [](const std::string &strLogMsg) { std::cout << strLogMsg << std::endl; };
+    InputClient(std::shared_ptr<io::NetIOMP> client_network, size_t bits) : client_network(client_network), bits(bits) {};
 
-        m_pSSLTCPClient.reset(new CTCPSSLClient(PRINT_LOG));
-    };
+    ~InputClient() {};
 
-    ~InputClient() { m_pSSLTCPClient->Disconnect(); };
-
-    void connect(std::string ip, int port) {
-        m_pSSLTCPClient->Disconnect();
-        connected = m_pSSLTCPClient->Connect(ip, std::to_string(port));
-        if (!connected) {
-            throw std::runtime_error("Could not connect to " + ip + ":" + std::to_string(port));
+    void send_graph(emp::PRG &rng, Graph &g, size_t start) {
+        auto [share_0, share_1] = g.secret_share(rng, bits);
+        for (auto dst : {P0, P1}) {
+            auto share = dst == P0 ? share_0 : share_1;
+            Packet pkt;
+            pkt.start = start;
+            pkt.end = start + share.size;
+            pkt.entries = share.serialize(bits);
+            size_t n_vertices = share.nodes;
+            send(dst, n_vertices);
+            send_packet(dst, pkt);
         }
+        /* Dealer needs to know |V| and n */
+        send_nodes(D, g.nodes);
+        send_size(D, g.size);
+        std::cout << "Graph sent successfully." << std::endl;
     }
 
-    void send_graph(Graph &g, size_t start) {
-        Packet pkt;
-        pkt.start = start;
-        pkt.end = start + g.size;
-        pkt.entries = g.serialize(bits);
+    void send_nodes(int dst, size_t nodes) { send(dst, nodes); }
 
-        if (connected) {
-            size_t password_size = password.size();
-            send(password_size);
-            send(password);
-            std::cout << "Sent password: " << password << std::endl;
-            size_t n_vertices = g.nodes;
-            send(n_vertices);
-            send_packet(pkt);
-            std::cout << "Graph sent successfully." << std::endl;
-        } else {
-            std::cout << "Could not send packet since client is not connected to server." << std::endl;
+    void send_size(int dst, size_t size) { send(dst, size); }
+
+    std::vector<Ring> recv_result(size_t &size) {
+        std::vector<Ring> share_0, share_1, result;
+        share_0.resize(size);
+        client_network->recv(P0, share_0.data(), sizeof(Ring) * size);
+        share_1.resize(size);
+        client_network->recv(P1, share_1.data(), sizeof(Ring) * size);
+
+        result.resize(size);
+        for (size_t i = 0; i < size; ++i) {
+            result[i] = share_0[i] + share_1[i];
         }
+        return result;
     }
-
-    void send_nodes(size_t nodes) { send(nodes); }
-
-    void send_size(size_t size) { send(size); }
 
    private:
-    void send(size_t &elem) { m_pSSLTCPClient->Send(reinterpret_cast<const char *>(&elem), sizeof(size_t)); }
+    void send(int dst, size_t &elem) { client_network->send(dst, &elem, sizeof(size_t)); }
 
-    void send(std::string &str) { m_pSSLTCPClient->Send(reinterpret_cast<const char *>(str.data()), str.size()); }
+    void send(int dst, std::string &str) { client_network->send(dst, str.data(), str.size()); }
 
-    void send_packet(Packet &pkt) {
+    void send_packet(int dst, Packet &pkt) {
         std::array<size_t, 2> header{pkt.start, pkt.end};
-        m_pSSLTCPClient->Send(reinterpret_cast<const char *>(header.data()), sizeof(header));
-
-        m_pSSLTCPClient->Send(reinterpret_cast<const char *>(pkt.entries.data()), pkt.entries.size() * sizeof(Ring));
+        client_network->send(dst, header.data(), sizeof(header));
+        client_network->send(dst, pkt.entries.data(), pkt.entries.size() * sizeof(Ring));
     }
 
    private:
+    std::shared_ptr<io::NetIOMP> client_network;
     size_t bits;
-    bool connected;
-    std::string password;
-    std::unique_ptr<CTCPSSLClient> m_pSSLTCPClient;
 };

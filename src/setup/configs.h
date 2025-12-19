@@ -14,8 +14,8 @@ struct ProtocolConfig {
 };
 
 struct NetworkConfig {
-    Party id;
-    size_t n_parties, BLOCK_SIZE;
+    int id;
+    size_t n_parties, n_clients, BLOCK_SIZE;
     int port;
     std::vector<std::string> IP;
     std::string certificate_path, private_key_path, trusted_cert_path;

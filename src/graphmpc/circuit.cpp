@@ -16,6 +16,7 @@ void Circuit::build() {
     shuffle_idx += 3;
     auto data_post_mp = post_mp(data_out);
     output(data_post_mp);
+    level_order();
 }
 
 void Circuit::set_inputs() {
@@ -271,12 +272,21 @@ SIMD_wire_id Circuit::reverse_permute(SIMD_wire_id &input, SIMD_wire_id &perm) {
     return output;
 }
 
-SIMD_wire_id Circuit::equals_zero(SIMD_wire_id &input, SIMD_wire_id size, SIMD_wire_id layer) {
+SIMD_wire_id Circuit::_equals_zero(SIMD_wire_id &input, SIMD_wire_id size, SIMD_wire_id layer) {
     SIMD_wire_id output = n_wires;
     n_wires++;
     gates.push_back(std::make_shared<Gate>(EQZ, gates.size(), input, output, size, layer, n_mults));
     n_mults++;
     return output;
+}
+
+SIMD_wire_id Circuit::equals_zero(SIMD_wire_id &input, SIMD_wire_id size) {
+    input = _equals_zero(input, size, 0);
+    input = _equals_zero(input, size, 1);
+    input = _equals_zero(input, size, 2);
+    input = _equals_zero(input, size, 3);
+    input = _equals_zero(input, size, 4);
+    return input;
 }
 
 SIMD_wire_id Circuit::bit2A(SIMD_wire_id &input, SIMD_wire_id size) {
@@ -393,4 +403,10 @@ SIMD_wire_id Circuit::construct_data(std::vector<SIMD_wire_id> &parallel_data) {
     n_wires++;
     gates.push_back(std::make_shared<Gate>(ConstructData, gates.size(), parallel_data[parallel_data.size() - 1], output, parallel_data));
     return output;
+}
+
+SIMD_wire_id Circuit::clip(SIMD_wire_id &data) {
+    data = equals_zero(data, nodes);
+    data = bit2A(data, nodes);
+    return flip(data);
 }

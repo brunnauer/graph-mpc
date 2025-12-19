@@ -19,7 +19,6 @@ int main(int argc, char **argv) {
         auto circuit = PiMCircuit(conf);
 
         Graph g = Graph::benchmark_graph(conf, network);
-
         auto benchmark = Benchmark(conf, b_conf, &circuit, network, g);
         benchmark.run();
 

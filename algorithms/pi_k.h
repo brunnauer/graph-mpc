@@ -4,10 +4,7 @@
 
 class PiKCircuit : public Circuit {
    public:
-    PiKCircuit(ProtocolConfig &conf) : Circuit(conf) {
-        build();
-        level_order();
-    }
+    PiKCircuit(ProtocolConfig &conf) : Circuit(conf) { build(); }
 
     void compute_sorts() override {
         ctx.src_order = sort(in.src_order_bits, bits + 2);  // Sorting src_order_bits + appended deduplication_bits
@@ -36,17 +33,8 @@ class PiKCircuit : public Circuit {
         auto deduplication_src_dupl = deduplication_sub(deduplication_src);
         auto deduplication_dst_dupl = deduplication_sub(deduplication_dst);
 
-        deduplication_src_dupl = equals_zero(deduplication_src_dupl, size - 1, 0);
-        deduplication_src_dupl = equals_zero(deduplication_src_dupl, size - 1, 1);
-        deduplication_src_dupl = equals_zero(deduplication_src_dupl, size - 1, 2);
-        deduplication_src_dupl = equals_zero(deduplication_src_dupl, size - 1, 3);
-        deduplication_src_dupl = equals_zero(deduplication_src_dupl, size - 1, 4);
-
-        deduplication_dst_dupl = equals_zero(deduplication_dst_dupl, size - 1, 0);
-        deduplication_dst_dupl = equals_zero(deduplication_dst_dupl, size - 1, 1);
-        deduplication_dst_dupl = equals_zero(deduplication_dst_dupl, size - 1, 2);
-        deduplication_dst_dupl = equals_zero(deduplication_dst_dupl, size - 1, 3);
-        deduplication_dst_dupl = equals_zero(deduplication_dst_dupl, size - 1, 4);
+        deduplication_src_dupl = equals_zero(deduplication_src_dupl, size - 1);
+        deduplication_dst_dupl = equals_zero(deduplication_dst_dupl, size - 1);
 
         auto deduplication_duplicates = mul_SIMD(deduplication_src_dupl, deduplication_dst_dupl, size - 1, true);
         deduplication_duplicates = bit2A(deduplication_duplicates, size - 1);

@@ -1,10 +1,9 @@
 #pragma once
 
-#include <socket/TCPSSLServer.h>
-
 #include <cassert>
 #include <future>
 
+#include "../../io/netmp.h"
 #include "../../utils/graph.h"
 
 class InputServer {
@@ -15,54 +14,13 @@ class InputServer {
         std::vector<Ring> entries;
     };
 
-    InputServer(std::string password, std::string port, size_t n_clients) : password(password), clients(n_clients) {
-        auto PRINT_LOG = [](const std::string &strLogMsg) { std::cout << strLogMsg << std::endl; };
-        m_pSSLTCPServer.reset(new CTCPSSLServer(PRINT_LOG, port));  // creates an SSL/TLS TCP server
-
-        std::string SSL_CERT_FILE = "certs/socket_cert.pem";
-        std::string SSL_KEY_FILE = "certs/socket_key.pem";
-
-        m_pSSLTCPServer->SetSSLCertFile(SSL_CERT_FILE);
-        m_pSSLTCPServer->SetSSLKeyFile(SSL_KEY_FILE);
-    };
+    InputServer(std::shared_ptr<io::NetIOMP> client_network, size_t n_clients) : client_network(client_network), n_clients(n_clients) {};
 
     ~InputServer() = default;
 
-    void connect_clients() {
-        bool success = true;
-        do {
-            for (auto &client : clients) {
-                bool connected = m_pSSLTCPServer->Listen(client);
-                success = success && connected;
-            }
-        } while (!success);
-        std::cout << "Clients connected." << std::endl;
-    }
-
     Graph recv_graph() {
-        /* Receive passwords */
-        size_t password_size;
-        std::string recvd_pwd;
-        for (auto &client : clients) {
-            m_pSSLTCPServer->Receive(client, reinterpret_cast<char *>(&password_size), sizeof(size_t));
-            std::cout << "Received password size: " << password_size << std::endl;
-
-            recvd_pwd.resize(password_size);
-            m_pSSLTCPServer->Receive(client, recvd_pwd.data(), password_size);
-            std::cout << "Received password: " << recvd_pwd << std::endl;
-            if (!check_password(recvd_pwd)) {
-                throw std::runtime_error("A client failed to authenticate.");
-            }
-        }
-
         /* Receive n_vertices */
-        size_t nodes_total = 0;
-        for (auto &client : clients) {
-            size_t nodes;
-            m_pSSLTCPServer->Receive(client, reinterpret_cast<char *>(&nodes), sizeof(size_t));
-            nodes_total += nodes;
-        }
-        std::cout << "nodes received: " << nodes_total << std::endl;
+        size_t nodes_total = recv_nodes();
         bits = std::ceil(std::log2(nodes_total + 2));
 
         /* Receive contents */
@@ -117,47 +75,44 @@ class InputServer {
         return {src, dst, isV, data, src_bits, dst_bits, nodes_total};
     }
 
-    void recv_nodes(size_t &nodes_total) {
-        nodes_total = 0;
-        for (auto &client : clients) {
+    size_t recv_nodes() {
+        size_t nodes_total = 0;
+        for (size_t client = 3; client < n_clients + 3; ++client) {
             size_t nodes;
-            m_pSSLTCPServer->Receive(client, reinterpret_cast<char *>(&nodes), sizeof(size_t));
+            client_network->recv(client, &nodes, sizeof(size_t));
             nodes_total += nodes;
         }
         std::cout << "Received nodes: " << nodes_total << std::endl;
+        return nodes_total;
     }
 
     void recv_size(size_t &size_total) {
         size_total = 0;
-        for (auto &client : clients) {
+        for (size_t client = 3; client < n_clients + 3; ++client) {
             size_t size;
-            m_pSSLTCPServer->Receive(client, reinterpret_cast<char *>(&size), sizeof(size_t));
+            client_network->recv(client, &size, sizeof(size_t));
             size_total += size;
         }
         std::cout << "Received nodes: " << size_total << std::endl;
     }
 
-    void send_result(std::vector<Ring> &data, size_t client_idx) { m_pSSLTCPServer->Send(clients[client_idx], reinterpret_cast<char *>(&data)); }
+    void send_result(std::vector<Ring> &data, int client_id) { client_network->send(client_id, &data, sizeof(Ring) * data.size()); }
 
    private:
     std::vector<Packet> recv_packets() {
         std::vector<Packet> packets;
-        for (auto &client : clients) {
+        for (size_t client = 3; client < n_clients + 3; ++client) {
             auto packet = recv_packet(client);
             packets.push_back(packet);
         }
         return packets;
     }
 
-    Packet recv_packet(ASecureSocket::SSLSocket &client) {
+    Packet recv_packet(size_t &client) {
         Packet pkt;
 
         std::array<size_t, 2> header{};
-        auto n_bytes_recvd = m_pSSLTCPServer->Receive(client, reinterpret_cast<char *>(header.data()), sizeof(header));
-
-        if (n_bytes_recvd != sizeof(header)) {
-            throw std::runtime_error("Failed to receive packet header");
-        }
+        client_network->recv(client, header.data(), sizeof(header));
 
         pkt.start = header[0];
         pkt.end = header[1];
@@ -175,23 +130,12 @@ class InputServer {
             return pkt;  // nothing else to receive
         }
 
-        n_bytes_recvd = m_pSSLTCPServer->Receive(client, reinterpret_cast<char *>(pkt.entries.data()), bytes_to_recv);
-
-        if (n_bytes_recvd != static_cast<int>(bytes_to_recv)) {
-            throw std::runtime_error("Failed to receive all ring elements.");
-        }
+        client_network->recv(client, pkt.entries.data(), bytes_to_recv);
 
         return pkt;
     }
 
-    /* Not safe against side-channel attacks */
-    bool check_password(std::string &recvd_pwd) {
-        if (password == recvd_pwd) return true;
-        return false;
-    }
-
-    std::string password;
+    std::shared_ptr<io::NetIOMP> client_network;
     size_t bits = 0;
-    std::vector<ASecureSocket::SSLSocket> clients;
-    std::unique_ptr<CTCPSSLServer> m_pSSLTCPServer;
+    size_t n_clients;
 };

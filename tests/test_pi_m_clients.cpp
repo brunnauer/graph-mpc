@@ -55,9 +55,10 @@ int main(int argc, char **argv) {
 
     try {
         Graph graph;
-        setup::setupServer(opts, graph);
+        auto network = setup::setupNetwork(opts);
+        setup::setupServer(opts, graph, network);
 
-        Party id = (Party)opts["pid"].as<size_t>();
+        Party id = (Party)opts["pid"].as<int>();
         const size_t size = graph.size;
         const size_t nodes = graph.nodes;
         const size_t depth = 4;
@@ -67,7 +68,6 @@ int main(int argc, char **argv) {
         std::vector<Ring> weights = {10000000, 100000, 1000, 1};
 
         ProtocolConfig conf = {id, size, nodes, depth, bits, rngs, ssd, weights};
-        auto network = setup::setupNetwork(opts);
 
         auto g_rev = graph.reveal(id, network);
         g_rev.print();

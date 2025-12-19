@@ -8,7 +8,15 @@
 class Circuit {
    public:
     Circuit(ProtocolConfig &conf)
-        : n_shuffles(0), n_mults(0), n_wires(0), shuffle_idx(0), size(conf.size), bits(conf.bits), depth(conf.depth), weights(conf.weights) {}
+        : n_shuffles(0),
+          n_mults(0),
+          n_wires(0),
+          shuffle_idx(0),
+          size(conf.size),
+          nodes(conf.nodes),
+          bits(conf.bits),
+          depth(conf.depth),
+          weights(conf.weights) {}
 
     std::vector<std::vector<std::shared_ptr<Gate>>> get() { return circ; }
 
@@ -30,6 +38,7 @@ class Circuit {
     Inputs in;
 
     size_t size;
+    size_t nodes;
     size_t bits;
     size_t depth;
     std::vector<Ring> weights;
@@ -76,7 +85,9 @@ class Circuit {
 
     SIMD_wire_id reverse_permute(SIMD_wire_id &input, SIMD_wire_id &perm);
 
-    SIMD_wire_id equals_zero(SIMD_wire_id &input, SIMD_wire_id size, SIMD_wire_id layer);
+    SIMD_wire_id _equals_zero(SIMD_wire_id &input, SIMD_wire_id size, SIMD_wire_id layer);
+
+    SIMD_wire_id equals_zero(SIMD_wire_id &input, SIMD_wire_id size);
 
     SIMD_wire_id bit2A(SIMD_wire_id &input, SIMD_wire_id size);
 
@@ -109,4 +120,6 @@ class Circuit {
     SIMD_wire_id mul_const_SIMD(SIMD_wire_id &data, Ring val);
 
     SIMD_wire_id construct_data(std::vector<SIMD_wire_id> &parallel_data);
+
+    SIMD_wire_id clip(SIMD_wire_id &data);
 };
