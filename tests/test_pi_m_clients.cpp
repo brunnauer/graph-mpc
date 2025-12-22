@@ -24,7 +24,6 @@ class TestPiMClients : public Test {
 
             assert(bytes_sent_pre == expected_pre);
             assert(bytes_sent_eval == expected_eval);
-            network->sync_clients();
         } else {
             size_t expected_pre = 0;
             size_t expected_eval = 4 * (12 * conf.size * conf.bits + 17 * conf.size + 4 * conf.size * conf.depth);
@@ -32,9 +31,9 @@ class TestPiMClients : public Test {
             assert(bytes_sent_eval == expected_eval);
 
             /* Sending the result to the clients --> Has some bug regarding NetIOMP */
-            // for (int i = 0; i < (network->n_total - network->nP); ++i) {
-            // network->send_result(i, result);
-            //}
+            for (int i = 0; i < (network->n_total - network->nP); ++i) {
+                network->send_result(i, result);
+            }
 
             result = share::reveal_vec(id, network, result);
             print_vec(result);

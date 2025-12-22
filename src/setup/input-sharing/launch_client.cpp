@@ -16,8 +16,11 @@ void launch_client(std::shared_ptr<io::NetIOMP> network, emp::PRG rng, size_t st
     /* Send shares*/
     InputClient client(network, bits);
     client.send_graph(rng, g, start_idx);
-    // auto result = client.recv_result(g.size); // Some network bug that needs to be fixed
-    // setup::print_vec(result);
+    network->sync();
+    network->sync();
+    network->sync();
+    auto result = client.recv_result(g.size);
+    setup::print_vec(result);
 }
 
 int main(int argc, char **argv) {

@@ -270,8 +270,8 @@ class NetIOMP {
             std::unique_lock<std::mutex> lock(mtx);
             cv.wait(lock, [this] { return connection_established; });
         }
-        for (int i = 0; i < nP; ++i) {
-            for (int j = 0; j < nP; ++j) {
+        for (int i = 0; i < n_total; ++i) {
+            for (int j = 0; j < n_total; ++j) {
                 if (i < j) {
                     if (i == party) {
                         ios[j]->sync();
@@ -279,28 +279,6 @@ class NetIOMP {
                     } else if (j == party) {
                         ios[i]->sync();
                         ios2[i]->sync();
-                    }
-                }
-            }
-        }
-    }
-
-    void sync_clients() {
-        {
-            std::unique_lock<std::mutex> lock(mtx);
-            cv.wait(lock, [this] { return connection_established; });
-        }
-        for (int i = 0; i < n_total; ++i) {
-            for (int j = 0; j < n_total; ++j) {
-                if (i < j) {
-                    if (i <= 2 || j <= 2) {
-                        if (i == party) {
-                            ios[j]->sync();
-                            ios2[j]->sync();
-                        } else if (j == party) {
-                            ios[i]->sync();
-                            ios2[i]->sync();
-                        }
                     }
                 }
             }

@@ -48,7 +48,6 @@ class InputClient {
 
         network->recv(P0, &share_0, sizeof(Ring) * size);
         network->recv(P1, &share_1, sizeof(Ring) * size);
-        network->sync_clients();
 
         for (size_t i = 0; i < size; ++i) {
             result[i] = share_0[i] + share_1[i];
