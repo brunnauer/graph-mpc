@@ -22,7 +22,7 @@ target_sources(GraphMPC_lib
     setup/input-sharing/input_server.h
     # Add further files if necessary
 )
-target_link_libraries(GraphMPC_lib PUBLIC OpenSSL::SSL EMPTool SOCKET GMP OpenMP::OpenMP_CXX nlohmann_json::nlohmann_json Boost::system Boost::program_options)
+target_link_libraries(GraphMPC_lib PUBLIC OpenSSL::SSL EMPTool GMP OpenMP::OpenMP_CXX nlohmann_json::nlohmann_json Boost::system Boost::program_options)
 target_include_directories(GraphMPC_lib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_features(GraphMPC_lib PRIVATE cxx_std_17)
 

@@ -2,8 +2,6 @@
 
 #include <emp-tool/emp-tool.h>
 
-#include <future>
-
 #include "../../utils/graph.h"
 
 class InputClient {
