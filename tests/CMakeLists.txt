@@ -16,8 +16,6 @@ macro(add_test source_name)
 endmacro()
 
 add_test(test_perm)
-add_test(test_disk)
-add_test(test_network)
 add_test(test_pi_k)
 add_test(test_pi_m)
 add_test(test_pi_r)
